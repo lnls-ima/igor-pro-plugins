@@ -1,0 +1,13 @@
+Requirements
+============
+
+- Igor Pro 7
+- Igor XOP Toolkit 7
+
+
+Installation
+============
+
+- Copy the files in "LNLS_procedures" to the "Igor Procedures" folder located in the Igor Pro installation directory.
+- Copy the files in "LNLS_helpfiles" to the "Igor Help Files" folder.
+- Copy the files in "LNLS_extensions/xop" to the "Igor Extensions (64-bit)" folder.
