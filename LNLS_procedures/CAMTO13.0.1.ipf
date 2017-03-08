@@ -5644,7 +5644,7 @@ Window Field_Specification() : Panel
 	TabControl MyTabControl,pos={5,5},size={370,440},tabLabel(0)="Main Parameters",value=0
 	TabControl MyTabControl,proc=TabActionProc,tabLabel(1)="Multipole Errors"
 
-	SetVariable tab0_maink,pos={20,45},size={140,20},title="Main K: "
+	SetVariable tab0_maink,pos={20,45},size={140,20},title="Main Harmonic: "
 	SetVariable tab0_maink,value=root:varsCAMTO:MainK,limits={0,15,1}
 
 	PopupMenu tab0_mainskew,pos={170,45},size={100,20},proc=PopupFieldComponent,title=""
@@ -7692,8 +7692,8 @@ Function Create_Report()
 		Killwindow/Z Report
 	endif
 	
-	NewNotebook/W=(60,60,550,400)/F=1/N=Report as "Report"
-	Notebook Report showRuler=1, userKillMode=1, writeProtect=0
+	NewNotebook/W=(100,30,570,700)/F=1/N=Report as "Report"
+	Notebook Report showRuler=0, userKillMode=1, writeProtect=0
 	Notebook Report selection={startOfFile, endOfFile}, text="\r", selection={startOfFile, startOfFile} 
 
 	Notebook Report newRuler=TitleRuler, justification=1, rulerDefaults={"Calibri", 16, 1, (0, 0, 0)}	
