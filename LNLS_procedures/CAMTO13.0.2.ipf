@@ -1,8 +1,8 @@
 // Code for Analysis of Multipoles, Trajectories and Others.
-// Last Upgrade: 16/02/2017
+// Last Upgrade: 22/05/2017
 
 #pragma rtGlobals = 1	
-#pragma version = 13.0.1
+#pragma version = 13.0.2
 
 
 Menu "CAMTO"
@@ -37,8 +37,8 @@ End
 Function Header()
 	Print(" ")
 	Print("CAMTO - Code for Analysis of Multipoles, Trajectories and Others.")
-	Print("Version 13.0.1")
-	Print("Last Upgrade: February, 16th 2017")	
+	Print("Version 13.0.2")
+	Print("Last Upgrade: May, 22th 2017")	
 	Print("Creator: James Citadini")	
 	Print("Co-Creators: Giancarlo Tosin, Priscila Palma Sanchez, Tiago Reis and Luana Vilela")
 	Print("Acknowlegments to: Ximenes Rocha Resende and Liu Lin")
@@ -75,7 +75,7 @@ Function Initialize_CAMTO()
 	Killvariables/A/Z
 	KillStrings/A/Z
 	
-	string/G CAMTOVersion = "13.0.1"
+	string/G CAMTOVersion = "13.0.2"
 		
 	variable/G aux0
 	variable/G aux1
@@ -125,7 +125,7 @@ Function Initialize_CAMTO()
 	
 	Make/T FieldMapDirs
 	Make/N=(1, 2) NormalMultipoles
-	Make/N=(1, 2) SkewMultipoles
+	Make/N=(0, 2) SkewMultipoles
 	Make/N=(10,5) MultipoleErrors
 	
 	SetDataFolder root:
@@ -452,7 +452,7 @@ Window Load_Field_Data() : Panel
 		Killwindow Load_Field_Data
 	endif
 		
-	NewPanel /K=1 /W=(735,60,1161,508)
+	NewPanel /K=1 /W=(740,60,1166,508)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 5,3,421,62
@@ -1748,7 +1748,7 @@ Function IncludeHeader(fullPath)
 	HeaderText[size + 1] = "center_pos_x[mm]: \t" + HeaderCenterPosX
 	HeaderText[size + 2] = "rotation[deg]:    \t" + HeaderRotation
 	HeaderText[size + 3] = ""	
-	HeaderText[size + 4] = "X[mm]		Y[mm]		Z[mm]		B x, By, B z   [T]"	
+	HeaderText[size + 4] = "X[mm]	Y[mm]	Z[mm]	Bx	By	Bz	[T]"	
 	HeaderText[size + 5] = "------------------------------------------------------------------------------------------------------------------------------------------------------------------"	
 	
 	Edit/N=Header HeaderText
@@ -1789,7 +1789,7 @@ Function ClearField(ctrlName) : ButtonControl
 	endif
 	
 	InitializeFieldMapVariables()	
-	UpdateLoadDataPanel()
+	UpdatePanels()
 End
 
 
@@ -2097,7 +2097,7 @@ Window Integrals_Multipoles() : Panel
 		Killwindow Integrals_Multipoles
 	endif	
 
-	NewPanel/K=1/W=(1190,60,1515,495)
+	NewPanel/K=1/W=(80,310,405,735)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,4,320,185
@@ -2345,6 +2345,7 @@ Function CalcIntegralsMultipoles(ctrlName) : ButtonControl
 	IntegralsCalculation()
 	MultipolarFitting()
 	ResidualMultipolesCalc()
+	UpdateResultsPanel()
 	
 	calc_time = StopMSTimer(timerRefNum)
 	Print "Elapsed time :", calc_time*(10^(-6)), " seconds"
@@ -2550,8 +2551,9 @@ Function/Wave GetPerpendicularFieldST(index, DeflectionAngle, PosX, PosYZ, GridX
 End
 
 
-Function MultipolarFitting()
-      
+Function MultipolarFitting([ReloadField])
+   variable ReloadField
+   
 	Wave C_PosX
 	Wave C_PosYZ
 	
@@ -2569,14 +2571,20 @@ Function MultipolarFitting()
       
 	variable i,j, n
 
-	print ("Reloading Field Data...")
-	variable spline_flag
-	spline_flag = CalcFieldmapInterpolant()
-	
-	if(spline_flag == 1)
-		print("Field data successfully reloaded.")
-	else
-		print("Problem with cubic spline XOP. Using single thread calculation.")
+	if (ParamIsDefault(ReloadField))
+		ReloadField = 1
+	endif	
+
+	if (ReloadField)
+		print ("Reloading Field Data...")
+		variable spline_flag
+		spline_flag = CalcFieldmapInterpolant()
+		
+		if(spline_flag == 1)
+			print("Field data successfully reloaded.")
+		else
+			print("Problem with cubic spline XOP. Using single thread calculation.")
+		endif
 	endif
 	
 	variable imin = 0
@@ -2621,6 +2629,22 @@ Function MultipolarFitting()
 		normal_idx = 1
 	endif
 
+	variable normal_on = 0
+	for (j=0; j<FittingOrder; j=j+1)
+		if (cmpstr(NormalCoefs[j],"0")==0)
+			normal_on = 1
+			break
+		endif
+	endfor
+
+	variable skew_on = 0
+	for (j=0; j<FittingOrder; j=j+1)
+		if (cmpstr(SkewCoefs[j],"0")==0)
+			skew_on = 1
+			break
+		endif
+	endfor
+
 	for (i=0; i<NPointsYZ; i=i+1)
 		
 		if (spline_flag == 1)
@@ -2633,14 +2657,18 @@ Function MultipolarFitting()
 		K11 = 0;K12 = 0;K13 = 0;K14 = 0;K15 = 0;K16 = 0;K17 = 0;K18 = 0;K19 = 0 
 		
 		W_coef[] = 0
-		CurveFit/L=(NPointsX)/H=NormalCoefs/N=1/Q poly FittingOrder, Field_Perp[][normal_idx] /X=Mult_Grid/D
+		if (normal_on == 1)
+			CurveFit/L=(NPointsX)/H=NormalCoefs/N=1/Q poly FittingOrder, Field_Perp[][normal_idx] /X=Mult_Grid/D
+		endif
 		Mult_Normal[i][] = W_coef[q]
 
 		K0 = 0;K1 = 0;K2 = 0;K3 = 0;K4 = 0;K5 = 0;K6 = 0;K7 = 0;K8 = 0;K9 = 0;K10 = 0;
 		K11 = 0;K12 = 0;K13 = 0;K14 = 0;K15 = 0;K16 = 0;K17 = 0;K18 = 0;K19 = 0 
 
 		W_coef[] = 0
-		CurveFit/L=(NPointsX)/H=SkewCoefs/N=1/Q poly FittingOrder, Field_Perp[][skew_idx] /X=Mult_Grid/D
+		if (skew_on == 1)
+			CurveFit/L=(NPointsX)/H=SkewCoefs/N=1/Q poly FittingOrder, Field_Perp[][skew_idx] /X=Mult_Grid/D
+		endif
 		Mult_Skew[i][] = W_coef[q]
 		
 	endfor
@@ -2761,100 +2789,6 @@ Function ResidualMultipolesCalc()
 End
 
 
-//Function ResidualMultipolesCalc()
-//
-//   	NVAR BeamDirection 	= :varsFieldMap:BeamDirection
-//	NVAR NPointsX 		= :varsFieldMap:NPointsX
-//	NVAR GridMin			= :varsFieldMap:GridMin
-//	NVAR GridMax			= :varsFieldMap:GridMax
-//	NVAR FittingOrder 	= :varsFieldMap:FittingOrder
-//	NVAR NormComponent	= :varsFieldMap:NormComponent
-//	NVAR KNorm			= :varsFieldMap:KNorm
-//	SVAR ResNormalCoefs	= :varsFieldMap:ResNormalCoefs
-//	SVAR ResSkewCoefs  	= :varsFieldMap:ResSkewCoefs
-//
-//	print ("Calculating Field Residual Multipoles")
-//	       
-//	Wave C_PosX
-//	Wave Mult_Normal_Int
-//	Wave Mult_Skew_Int  
-//
-//	Wave Int_Skew_Field = $("IntBx_X")
-//	if (BeamDirection == 1)
-//		Wave Int_Normal_Field = $("IntBz_X") 
-//	else
-//		Wave Int_Normal_Field = $("IntBy_X") 
-//	endif
-//	
-//	variable BNorm 
-//	if (NormComponent == 2)
-//		BNorm = Mult_Skew_Int[KNorm]
-//	else
-//		BNorm = Mult_Normal_Int[KNorm]
-//	endif
-//
-//	Make/D/O/N=(NPointsX) Temp_Normal = Int_Normal_Field
-//	Make/D/O/N=(NPointsX) Temp_Skew   = Int_Skew_Field
-//	
-//	variable i		
-//
-//	for(i=0;i<FittingOrder;i+=1)
-//	
-//		if (stringmatch(ResNormalCoefs[i], "1"))
-//			Temp_Normal -= Mult_Normal_Int[i]*(C_PosX ^ i)
-//		endif
-//		
-//		if (stringmatch(ResSkewCoefs[i], "1"))
-//			Temp_Skew -= Mult_Skew_Int[i]*(C_PosX ^ i)
-//		endif
-//	
-//	endfor			
-//	
-//	Temp_Normal = Temp_Normal/(BNorm*(C_PosX ^ KNorm))
-//	Temp_Skew   =   Temp_Skew/(BNorm*(C_PosX ^ KNorm))
-//
-//	for (i=0; i<NPointsX; i=i+1)
-//		if (numtype(Temp_Normal[i]) == 1)
-//			Temp_Normal[i] = NaN
-//		endif
-//		
-//		if (numtype(Temp_Skew[i]) == 1)
-//			Temp_Skew[i] = NaN
-//		endif
-//
-//	endfor
-//	
-//	variable imin = 0
-//	for (i=0; i<NPointsX; i=i+1)
-//		if (C_PosX[i] > GridMin/1000)
-//			break
-//		elseif (C_PosX[i] == GridMin/1000)
-//			imin = i
-//		else
-//			imin = i+1
-//		endif
-//	endfor
-//	
-//	variable imax = NPointsX	
-//	for (i=(NPointsX-1); i>=0; i=i-1)
-//		if (C_PosX[i] < GridMax/1000)
-//			break
-//		elseif (C_PosX[i] == GridMax/1000)
-//			imax = i
-//		else
-//			imax = i-1
-//		endif
-//	endfor
-//
-//	Duplicate/O/R=(imin, imax) Temp_Normal Mult_Normal_Res
-//	Duplicate/O/R=(imin, imax) Temp_Skew   Mult_Skew_Res
-//	
-//	Killwaves/Z Temp_Normal
-//	Killwaves/Z Temp_Skew
-//	
-//End
-
-
 Window Trajectories() : Panel
 	PauseUpdate; Silent 1		// building window...
 
@@ -2870,7 +2804,7 @@ Window Trajectories() : Panel
 		Killwindow Trajectories
 	endif		
 
-	NewPanel/K=1/W=(430,310,740,700)
+	NewPanel/K=1/W=(440,310,750,700)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 5,2,304,40
@@ -3312,6 +3246,8 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 	Killwaves VetorCampoX	   
 	Killwaves VetorCampoY	   
 	Killwaves VetorCampoZ	
+	
+	UpdateResultsPanel()
 End
 
 
@@ -3651,7 +3587,7 @@ Window Dynamic_Multipoles() : Panel
 		Killwindow Dynamic_Multipoles
 	endif	
 	
-	NewPanel/K=1/W=(900,250,1223,790)
+	NewPanel/K=1/W=(780,310,1103,850)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,4,320,70
@@ -3928,6 +3864,7 @@ Function CalcDynIntegralsMultipoles(ctrlName) : ButtonControl
 	
 		IntegralMultipoles_Traj()
 		ResidualDynMultipolesCalc()
+		UpdateResultsPanel()
 		
 		// Stop timer
 		calc_time = StopMSTimer(timerRefNum)
@@ -3939,7 +3876,8 @@ Function CalcDynIntegralsMultipoles(ctrlName) : ButtonControl
 End
 
 
-Function IntegralMultipoles_Traj()
+Function IntegralMultipoles_Traj([ReloadField])
+	variable ReloadField
 
 	NVAR TrajShift 		     	 = root:varsCAMTO:TrajShift
 
@@ -3958,14 +3896,20 @@ Function IntegralMultipoles_Traj()
 	
 	print ("Calculating Multipoles over Trajectory X = " + num2str(StartXTraj/1000))
 
-	print ("Reloading Field Data...")
-	variable spline_flag
-	spline_flag = CalcFieldmapInterpolant()
-	
-	if(spline_flag == 1)
-		print("Field data successfully reloaded.")
-	else
-		print("Problem with cubic spline XOP. Using single thread calculation.")
+	if (ParamIsDefault(ReloadField))
+		ReloadField = 1
+	endif	
+
+	if (ReloadField)
+		print ("Reloading Field Data...")
+		variable spline_flag
+		spline_flag = CalcFieldmapInterpolant()
+		
+		if(spline_flag == 1)
+			print("Field data successfully reloaded.")
+		else
+			print("Problem with cubic spline XOP. Using single thread calculation.")
+		endif
 	endif
 
 	variable i, j, n, f
@@ -4008,6 +3952,23 @@ Function IntegralMultipoles_Traj()
 	Make/O/D/N=(FittingOrder) W_coef, W_sigma
 	Make/O/D/N=(PosNrpts, GridNrpts) Bx, By, Bz
 	
+	
+	variable normal_on = 0
+	for (j=0; j<FittingOrder; j=j+1)
+		if (cmpstr(NormalCoefs[j],"0")==0)
+			normal_on = 1
+			break
+		endif
+	endfor
+
+	variable skew_on = 0
+	for (j=0; j<FittingOrder; j=j+1)
+		if (cmpstr(SkewCoefs[j],"0")==0)
+			skew_on = 1
+			break
+		endif
+	endfor
+	
 	PosS = 0
 	PosX = TrajX[0]
 	PosL = TrajL[0]
@@ -4033,14 +3994,20 @@ Function IntegralMultipoles_Traj()
 	
 		K0 = 0;K1 = 0;K2 = 0;K3 = 0;K4 = 0;K5 = 0;K6 = 0;K7 = 0;K8 = 0;K9 = 0;K10 = 0;
 		K11 = 0;K12 = 0;K13 = 0;K14 = 0;K15 = 0;K16 = 0;K17 = 0;K18 = 0;K19 = 0 
-					
-		CurveFit/L=(GridNrpts)/H=NormalCoefs/N=1/Q poly FittingOrder, Field_Perp[][normal_idx] /X=Dyn_Mult_Grid /D
+			
+		W_coef[] = 0
+		if (normal_on == 1)
+			CurveFit/L=(GridNrpts)/H=NormalCoefs/N=1/Q poly FittingOrder, Field_Perp[][normal_idx] /X=Dyn_Mult_Grid /D
+		endif
 		Dyn_Mult_Normal[i][] = W_coef[q]
 
 		K0 = 0;K1 = 0;K2 = 0;K3 = 0;K4 = 0;K5 = 0;K6 = 0;K7 = 0;K8 = 0;K9 = 0;K10 = 0;
 		K11 = 0;K12 = 0;K13 = 0;K14 = 0;K15 = 0;K16 = 0;K17 = 0;K18 = 0;K19 = 0 
 	
-		CurveFit/L=(GridNrpts)/H=SkewCoefs/N=1/Q poly FittingOrder, Field_Perp[][skew_idx] /X=Dyn_Mult_Grid /D
+		W_coef[] = 0
+		if (skew_on == 1)
+			CurveFit/L=(GridNrpts)/H=SkewCoefs/N=1/Q poly FittingOrder, Field_Perp[][skew_idx] /X=Dyn_Mult_Grid /D
+		endif
 		Dyn_Mult_Skew[i][] = W_coef[q]
 	
 	endfor
@@ -4155,72 +4122,6 @@ Function ResidualDynMultipolesCalc()
 End
 
 
-//Function ResidualDynMultipolesCalc()
-//	     	
-//	NVAR StartXTraj        = :varsFieldMap:StartXTraj
-//	NVAR BeamDirection     = :varsFieldMap:BeamDirection
-//	NVAR FittingOrder	 	= :varsFieldMap:FittingOrderTraj
-//	NVAR NormComponent	 	= :varsFieldMap:DynNormComponent
-//	NVAR KNorm 				= :varsFieldMap:DynKNorm
-//	SVAR ResNormalCoefs    = :varsFieldMap:DynResNormalCoefs
-//	SVAR ResSkewCoefs      = :varsFieldMap:DynResSkewCoefs
-//
-//	print ("Calculating Residual Multipoles over Trajectory X = " + num2str(StartXTraj/1000))
-//		
-//	Wave Dyn_Mult_Grid
-//	Wave Dyn_Mult_Normal_Int
-//	Wave Dyn_Mult_Skew_Int  
-//	
-//	Wave Int_Skew_Field = $("IntBx_X_TrajGrid")
-//	if (BeamDirection == 1)
-//		Wave Int_Normal_Field = $("IntBz_X_TrajGrid") 
-//	else
-//		Wave Int_Normal_Field = $("IntBy_X_TrajGrid") 
-//	endif
-//
-//	variable BNorm 
-//	if (NormComponent == 2)
-//		BNorm = Dyn_Mult_Skew_Int[KNorm]
-//	else
-//		BNorm = Dyn_Mult_Normal_Int[KNorm]
-//	endif
-//	
-//	variable nrpts = numpnts(Dyn_Mult_Grid)
-//
-//	Make/D/O/N=(nrpts) Dyn_Mult_Normal_Res = Int_Normal_Field
-//	Make/D/O/N=(nrpts) Dyn_Mult_Skew_Res   = Int_Skew_Field
-//
-//	variable i
-//	for (i=0; i<FittingOrder; i=i+1)
-//		
-//		if (stringmatch(ResNormalCoefs[i], "1"))
-//			Dyn_Mult_Normal_Res -= Dyn_Mult_Normal_Int[i]*(Dyn_Mult_Grid ^ i)
-//		endif
-//
-//		if (stringmatch(ResSkewCoefs[i], "1"))
-//			Dyn_Mult_Skew_Res -= Dyn_Mult_Skew_Int[i]*(Dyn_Mult_Grid ^ i)
-//		endif
-//		
-//	endfor
-//
-//	Dyn_Mult_Normal_Res = Dyn_Mult_Normal_Res/(BNorm*(Dyn_Mult_Grid ^ KNorm))
-//	Dyn_Mult_Skew_Res   =   Dyn_Mult_Skew_Res/(BNorm*(Dyn_Mult_Grid ^ KNorm))
-//	
-//	for (i=0; i<nrpts; i=i+1)
-//		if (numtype(Dyn_Mult_Normal_Res[i]) == 1)
-//			Dyn_Mult_Normal_Res[i] = NaN
-//		endif
-//		
-//		if (numtype(Dyn_Mult_Skew_Res[i]) == 1)
-//			Dyn_Mult_Skew_Res[i] = NaN
-//		endif
-//
-//	endfor
-//	
-//		
-//End
-
-
 Window Find_Peaks() : Panel
 	PauseUpdate; Silent 1		// building window...
 
@@ -4236,7 +4137,7 @@ Window Find_Peaks() : Panel
 		Killwindow Find_Peaks
 	endif	
 
-	NewPanel/K=1/W=(80,350,403,576)
+	NewPanel/K=1/W=(1380,60,1703,286)
 	
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
@@ -4748,7 +4649,7 @@ Window Results() : Panel
 		Killwindow Results
 	endif
 
-	NewPanel/K=1/W=(785,160,1123,885)
+	NewPanel/K=1/W=(1235,60,1573,785)
 	SetDrawEnv fillpat= 0
 	DrawRect 3,5,333,125
 	SetDrawEnv fillpat= 0
@@ -4892,6 +4793,14 @@ Function UpdateResultsPanel()
 	NVAR EndXHom   = root:$(df):varsFieldMap:EndXHom    
 	NVAR PosYZHom  = root:$(df):varsFieldMap:PosYZHom  
 	
+	NVAR StartXTraj = root:$(df):varsFieldMap:StartXTraj
+	
+	Wave/Z C_PosX 				 = $("root:"+ df + ":C_PosX")
+	Wave/Z IntBx_X 				 = $("root:"+ df + ":IntBx_X")
+	Wave/Z Mult_Normal_Int		 = $("root:"+ df + ":Mult_Normal_Int")
+	Wave/Z Temp_Traj				 = $("root:"+ df + ":TrajX" + num2str(StartXTraj/1000))
+	Wave/Z Dyn_Mult_Normal_Int = $("root:"+ df + ":Dyn_Mult_Normal_Int")
+	
 	if (strlen(df) > 0)		
 		SetVariable PosXField, win=Results, value= root:$(df):varsFieldMap:PosXAux
 		SetVariable PosXField, win=Results, limits={StartX,EndX,StepsX}
@@ -4901,9 +4810,6 @@ Function UpdateResultsPanel()
 		ValDisplay FieldinPointX,win=Results,value= #("root:"+ df + ":varsFieldMap:FieldXAux")
 		ValDisplay FieldinPointY,win=Results,value= #("root:"+ df + ":varsFieldMap:FieldYAux")
 		ValDisplay FieldinPointZ,win=Results,value= #("root:"+ df + ":varsFieldMap:FieldZAux")
-	
-		Button field_point,win=Results,disable=0
-		Button field_Xline,win=Results,disable=0
 	
 		SetVariable PosXFieldLine,win=Results, value= root:$(df):varsFieldMap:PosXAux
 		SetVariable PosXFieldLine,win=Results, limits={StartX,EndX,StepsX}
@@ -4921,33 +4827,62 @@ Function UpdateResultsPanel()
 		ValDisplay FieldinPointY1,win=Results,value= #("root:"+ df + ":varsFieldMap:HomogY")
 		ValDisplay FieldinPointZ1,win=Results,value= #("root:"+ df + ":varsFieldMap:HomogZ")
 		
-		Button field_profile, win=Results,disable=0
-		Button field_profile_table,win=Results, disable=0
-		Button show_integrals,win=Results, disable=0
-		Button show_integrals_table,win=Results, disable=0
-		Button show_integrals2, win=Results,disable=0
-		Button show_integrals2_table,win=Results, disable=0
-		Button show_multipoles,win=Results, disable=0
-		Button show_multipoleprofile,win=Results, disable=0
+		variable disable_field = 2 
+		if (WaveExists(C_PosX))
+			disable_field = 0
+		endif
+		
+		variable disable_int = 2 
+		if (WaveExists(IntBx_X))
+			disable_int = 0
+		endif
+
+		variable disable_mult = 2 
+		if (WaveExists(Mult_Normal_Int))
+			disable_mult = 0
+		endif
+
+		variable disable_traj = 2 
+		if (WaveExists(Temp_Traj))
+			disable_traj = 0
+		endif
+
+		variable disable_dynmult = 2 
+		if (WaveExists(Dyn_Mult_Normal_Int))
+			disable_dynmult = 0
+		endif
+					
+		Button field_point,win=Results,disable=disable_field
+		Button field_Xline,win=Results,disable=disable_field
+		Button field_profile, win=Results,disable=disable_field
+		Button field_profile_table,win=Results, disable=disable_field
+
+		Button show_integrals,win=Results, disable=disable_int
+		Button show_integrals_table,win=Results, disable=disable_int
+		Button show_integrals2, win=Results,disable=disable_int
+		Button show_integrals2_table,win=Results, disable=disable_int
+		
+		Button show_multipoles,win=Results, disable=disable_mult
+		Button show_multipoleprofile,win=Results, disable=disable_mult
+		Button show_residmultipoles,win=Results, disable=disable_mult
+		Button show_residmultipoles_table,win=Results, disable=disable_mult
 		
 		SetVariable mnumber,win=Results,limits={0,(FittingOrder-1),1},value= root:$(df):varsFieldMap:MultipoleK
 	
-		Button show_residmultipoles,win=Results, disable=0
-		Button show_residmultipoles_table,win=Results, disable=0
-		Button show_integralstraj,win=Results, disable=0
-		Button show_integralstraj_Table, win=Results,disable=0
-		Button show_integrals2traj,win=Results, disable=0
-		Button show_integrals2traj_Table, win=Results,disable=0
-		Button show_trajectories,win=Results, disable=0
-		Button show_deflections,win=Results, disable=0
-		Button show_deflections_Table, win=Results,disable=0
-		Button show_dynmultipoles, win=Results,disable=0
-		Button show_dynmultipoleprofile,win=Results, disable=0
+		Button show_integralstraj,win=Results, disable=disable_traj
+		Button show_integralstraj_Table, win=Results,disable=disable_traj
+		Button show_integrals2traj,win=Results, disable=disable_traj
+		Button show_integrals2traj_Table, win=Results,disable=disable_traj
+		Button show_trajectories,win=Results, disable=disable_traj
+		Button show_deflections,win=Results, disable=disable_traj
+		Button show_deflections_Table, win=Results,disable=disable_traj
+		
+		Button show_dynmultipoles, win=Results,disable=disable_dynmult
+		Button show_dynmultipoleprofile,win=Results, disable=disable_dynmult
+		Button show_residdynmultipoles, win=Results,disable=disable_dynmult
+		Button show_residdynmultipoles_table, win=Results,disable=disable_dynmult
 		
 		SetVariable mtrajnumber,win=Results,limits={0,(FittingOrderTraj-1),1},value= root:$(df):varsFieldMap:DynMultipoleK
-		
-		Button show_residdynmultipoles, win=Results,disable=0
-		Button show_residdynmultipoles_table, win=Results,disable=0
 		
 		PosXAux  = StartX
 		PosYZAux = StartYZ
@@ -5639,7 +5574,7 @@ Window Field_Specification() : Panel
 		Killwindow Field_Specification
 	endif	
 	
-	NewPanel/K=1/W=(900,150,1280,640)
+	NewPanel/K=1/W=(240,60,615,590)
 
 	TabControl MyTabControl,pos={5,5},size={370,440},tabLabel(0)="Main Parameters",value=0
 	TabControl MyTabControl,proc=TabActionProc,tabLabel(1)="Multipole Errors"
@@ -5979,6 +5914,7 @@ Function Update_Field_Spec(ctrlName) : ButtonControl
 	UpdateIntegralsMultipolesPanel()
 	UpdateDynMultipolesPanel()
 	UpdateCompareResultsPanel()
+	print "Field specification updated!"
 End
 
 
@@ -6176,6 +6112,8 @@ Function InitializeSpecVariables()
 	Wave Multipole_Errors 	= root:wavesCAMTO:MultipoleErrors
 	Wave Normal_Sys 			= root:wavesCAMTO:normal_sys_monomials
 	Wave Skew_Sys 			= root:wavesCAMTO:skew_sys_monomials
+	Wave Normal_Rms 			= root:wavesCAMTO:normal_rms_monomials
+	Wave Skew_Rms 			= root:wavesCAMTO:skew_rms_monomials
 	
 	NVAR spec_dist_center = root:varsCAMTO:DistCenter
 	NVAR spec_knorm = root:varsCAMTO:MainK
@@ -6192,7 +6130,7 @@ Function InitializeSpecVariables()
 	
 	Concatenate/NP=0 {Mon_Normal, Mon_Skew, Mon_Errors}, Temp
 	Sort Temp, Temp
-	if (numpnts(Temp_All) > 1)
+	if (numpnts(Temp) > 1)
 		FindDuplicates/RN=AllMonomials Temp
 	else
 		Duplicate/O Temp AllMonomials
@@ -6202,7 +6140,7 @@ Function InitializeSpecVariables()
 
 	variable spec_fitting_order = WaveMax(AllMonomials)+1	
 	
-	Concatenate {Mon_Normal, Normal_Sys}, Temp
+	Concatenate {Mon_Normal, Normal_Sys, Normal_Rms}, Temp
 	Sort Temp, Temp
 	if (numpnts(Temp) > 1)
 		FindDuplicates/RN=Normal_Monomials Temp
@@ -6212,7 +6150,7 @@ Function InitializeSpecVariables()
 
 	Killwaves/Z Temp
 
-	Concatenate {Mon_Skew, Skew_Sys}, Temp
+	Concatenate {Mon_Skew, Skew_Sys, Skew_Rms}, Temp
 	Sort Temp, Temp
 	if (numpnts(Temp) > 1)
 		FindDuplicates/RN=Skew_Monomials Temp
@@ -6246,7 +6184,7 @@ Function InitializeSpecVariables()
 			spec_skew_coefs = spec_skew_coefs + "0"
 		endif
 	
-		if (j<spec_knorm)
+		if (j<=spec_knorm)
 			
 			spec_res_normal_coefs = spec_res_normal_coefs + "1"
 			spec_res_skew_coefs = spec_res_skew_coefs + "1"
@@ -6353,7 +6291,7 @@ Window Compare_Results() : Panel
 		Killwindow Compare_Results
 	endif	
 
-	NewPanel/K=1/W=(540,60,865,710)
+	NewPanel/K=1/W=(1010,60,1335,710)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,4,320,55
@@ -6444,6 +6382,19 @@ Function UpdateCompareResultsPanel()
 		
 		PopupMenu FieldMapDirA,win=Compare_Results,disable=0,value= #("\"" + FieldMapList + "\"")
 		PopupMenu FieldMapDirB,win=Compare_Results,disable=0,value= #("\"" + FieldMapList + "\"")
+		
+		variable modeA, modeB
+		modeA = WhichListItem(dfA, FieldMapList) 
+		modeB = WhichListItem(dfB, FieldMapList) 
+		
+		if (modeA != -1)
+			PopupMenu FieldMapDirA,win=Compare_Results,mode=modeA+1
+		endif
+		
+		if (modeB !=-1)
+			PopupMenu FieldMapDirB,win=Compare_Results,mode=modeB+1
+		endif
+		
 	else
 		PopupMenu FieldMapDirA,win=Compare_Results,disable=2
 		PopupMenu FieldMapDirB,win=Compare_Results,disable=2
@@ -6471,9 +6422,16 @@ Function UpdateCompareResultsPanel()
 		NVAR StartYZ_B = root:$(dfB):varsFieldMap:StartYZ
 		NVAR EndYZ_B   = root:$(dfB):varsFieldMap:EndYZ
 		NVAR StepsYZ_B = root:$(dfB):varsFieldMap:StepsYZ
+	
+		NVAR FittingOrder_A     = root:$(dfA):varsFieldMap:FittingOrder
+		NVAR FittingOrderTraj_A = root:$(dfA):varsFieldMap:FittingOrderTraj	
+		NVAR FittingOrder_B     = root:$(dfB):varsFieldMap:FittingOrder
+		NVAR FittingOrderTraj_B = root:$(dfB):varsFieldMap:FittingOrderTraj
+
 		
 		variable StartX, EndX, StepsX
 		variable StartYZ, EndYZ, StepsYZ
+		variable FittingOrder, FittingOrderTraj
 	
 		if ( numtype(Max(StartX_A, StartX_B))!= 0 )
 			if (numtype(StartX_B) != 0)
@@ -6514,6 +6472,21 @@ Function UpdateCompareResultsPanel()
 		CheckBox rep_dynmult,win=Compare_Results,variable=CheckDynMultipoles, value=CheckDynMultipoles
 		CheckBox rep_multtwo,win=Compare_Results,variable=CheckMultTwo, value=CheckMultTwo
 		
+		if (numtype(Min(FittingOrder_A, FittingOrder_B))!= 0 )
+			if (numtype(FittingOrder_B) != 0)
+				FittingOrderTraj = FittingOrderTraj_A
+				FittingOrder = FittingOrder_A
+			else
+				FittingOrderTraj = FittingOrderTraj_B
+				FittingOrder = FittingOrder_B	
+			endif
+		else
+			FittingOrderTraj = Min(FittingOrderTraj_A, FittingOrderTraj_B)
+			FittingOrder = Min(FittingOrder_A, FittingOrder_B)
+		endif
+		SetVariable mnumber,win=Compare_Results,limits={0,(FittingOrder-1),1}
+		SetVariable dynmnumber,win=Compare_Results,limits={0,(FittingOrderTraj-1),1}
+		
 	else
 		
 		CheckBox ReferenceA,win=Compare_Results, disable=2
@@ -6547,8 +6520,6 @@ Function UpdateFieldControls()
 	else
 		disable = 2
 	endif
-
-	
 
 	Button field_Xline, win=Compare_Results, disable=disable
 	SetVariable PosXFieldLine, win=Compare_Results, disable=disable
@@ -7256,14 +7227,14 @@ Function Compare_Multipole_Profile_(Dynamic, [K, FieldComponent])
 		pos = "Dyn_Mult_PosYZ"
 		dyn_graphlabel = "\rover trajectory"
 		nwindow = "CompareDynMultNormal"
-		swindow =   "CompareDynMultSkew"
+		swindow = "CompareDynMultSkew"
 	else
 		mult_normal = "Mult_Normal"
 		mult_skew = "Mult_Skew"
 		pos = "C_PosYZ"
 		dyn_graphlabel = ""
 		nwindow = "CompareMultNormal"
-		swindow =   "CompareMultSkew"
+		swindow = "CompareMultSkew"
 	endif
 	
 	if (K == 0)
@@ -7287,60 +7258,22 @@ Function Compare_Multipole_Profile_(Dynamic, [K, FieldComponent])
 
 	PanelName = WinList(swindow,";","")	
 	if (stringmatch(PanelName, swindow + ";"))
-		KillWindow swindow
+		KillWindow $(swindow)
 	endif		
-	
-	if (fieldmapA)
-	
-		wave PosYZ_A = root:$(dfA):$(pos)
-		wave Mult_Normal_A = root:$(dfA):$(mult_normal)
-		wave Mult_Skew_A   = root:$(dfA):$(mult_skew)
-	
-		string name_normal_A = mult_normal + "_A_k" + num2str(K)
-		string name_skew_A   = mult_skew + "_A_k" + num2str(K)
-
-		Make/O/N=(numpnts(PosYZ_A)) $name_normal_A
-		Make/O/N=(numpnts(PosYZ_A)) $name_skew_A
-		Wave/Z Ref_Normal_A = $name_normal_A
-		Wave/Z Ref_Skew_A   = $name_skew_A
-		
-		Ref_Normal_A[] = Mult_Normal_A[p][K]
-		Ref_Skew_A[]   = Mult_Skew_A[p][K]
-
-	endif
-	
-	if (fieldmapB)
-	
-		wave PosYZ_B = root:$(dfB):$(pos)
-		wave Mult_Normal_B = root:$(dfB):$(mult_normal)
-		wave Mult_Skew_B   = root:$(dfB):$(mult_skew)
-				
-		string name_normal_B = mult_normal + "_B_k" + num2str(K)
-		string name_skew_B	 = mult_skew + "_B_k" + num2str(K)
-		
-		Make/O/N=(numpnts(PosYZ_B)) $name_normal_B
-		Make/O/N=(numpnts(PosYZ_B)) $name_skew_B
-		Wave/Z Ref_Normal_B = $name_normal_B
-		Wave/Z Ref_Skew_B   = $name_skew_B
-
-		Ref_Normal_B[] = Mult_Normal_B[p][K]
-		Ref_Skew_B[]   = Mult_Skew_B[p][K]
-
-	endif
 	
 	if (cmpstr(FieldComponent, "Normal") == 0 || strlen(FieldComponent) == 0)		
 	
 		if (fieldmapA && fieldmapB)
-			Display/N=$(nwindow)/K=1 Ref_Normal_A vs PosYZ_A
-			AppendToGraph/W=$(nwindow)/C=(0,0,65535) Ref_Normal_B vs PosYZ_B
+			Display/N=$(nwindow)/K=1 root:$(dfA):$(mult_normal)[][K] vs root:$(dfA):$(pos)
+			AppendToGraph/W=$(nwindow)/C=(0,0,65535) root:$(dfB):$(mult_normal)[][K] vs root:$(dfB):$(pos)
 			Legend/W=$(nwindow) "\s(#0) "+ dfA + " \r\s(#1) " + dfB
 			
 		elseif (fieldmapA)
-			Display/N=$(nwindow)/K=1 Ref_Normal_A vs PosYZ_A
+			Display/N=$(nwindow)/K=1 root:$(dfA):$(mult_normal)[][K] vs root:$(dfA):$(pos)
 			Legend/W=$(nwindow) "\s(#0) "+ dfA
 		
 		elseif (fieldmapB)
-			Display/N=$(nwindow)/K=1 Ref_Normal_B vs PosYZ_B
+			Display/N=$(nwindow)/K=1 root:$(dfB):$(mult_normal)[][K] vs root:$(dfB):$(pos)
 			Legend/W=$(nwindow) "\s(#0) "+ dfB		
 			
 		endif
@@ -7352,16 +7285,16 @@ Function Compare_Multipole_Profile_(Dynamic, [K, FieldComponent])
 	if (cmpstr(FieldComponent, "Skew") == 0 || strlen(FieldComponent) == 0)
 
 		if (fieldmapA && fieldmapB)			
-			Display/N=$(swindow)/K=1 Ref_Skew_A vs PosYZ_A
-			AppendToGraph/W=$(swindow)/C=(0,0,65535) Ref_Skew_B vs PosYZ_B
+			Display/N=$(swindow)/K=1 root:$(dfA):$(mult_skew)[][K] vs root:$(dfA):$(pos)
+			AppendToGraph/W=$(swindow)/C=(0,0,65535) root:$(dfB):$(mult_skew)[][K] vs root:$(dfB):$(pos)
 			Legend/W=$(swindow) "\s(#0) "+ dfA + " \r\s(#1) " + dfB	
 			
 		elseif (fieldmapA)
-			Display/N=$(swindow)/K=1 Ref_Skew_A vs PosYZ_A
+			Display/N=$(swindow)/K=1 root:$(dfA):$(mult_skew)[][K] vs root:$(dfA):$(pos)
 			Legend/W=$(swindow) "\s(#0) "+ dfA
 		
 		elseif (fieldmapB)
-			Display/N=$(swindow)/K=1 Ref_Skew_B vs PosYZ_B
+			Display/N=$(swindow)/K=1 root:$(dfB):$(mult_skew)[][K] vs root:$(dfB):$(pos)
 			Legend/W=$(swindow) "\s(#0) "+ dfB
 				
 		endif
@@ -7663,6 +7596,7 @@ Function Magnet_Report(ctrlName) : ButtonControl
 	Add_Field_Profile()	
 	
 	Add_Multipoles_Info(DynMultipoles)
+	
 	Add_Multipoles_Error_Table()
 	Add_Residual_Field_Profile(DynMultipoles)
 	
@@ -7791,11 +7725,11 @@ Function Add_Field_Profile()
 		FieldComponent = "By"
 		
 		Compare_Field_In_Line_(FieldComponent=FieldComponent)
-		Notebook Report, text="\t",scaling={110,110},picture={$("CompareFieldInLine_" + FieldComponent),0, 1, 8},text="\r\r"
+		Notebook Report, text="\t",scaling={110,110},picture={$("CompareFieldInLine_" + FieldComponent),0, 1, 8},text="\r"
 		Killwindow/Z $("CompareFieldInLine_" + FieldComponent)
 
 		Compare_Field_Profile_(FieldComponent=FieldComponent)
-		Notebook Report, text="\t",scaling={110,110},picture={$("CompareFieldProfile_" + FieldComponent),0, 1, 8},text="\r\r"
+		Notebook Report, text="\t",scaling={110,110},picture={$("CompareFieldProfile_" + FieldComponent),0, 1, 8},text="\r"
 		Killwindow/Z $("CompareFieldProfile_" + FieldComponent)
 	endif
 
@@ -7803,14 +7737,15 @@ Function Add_Field_Profile()
 		FieldComponent = "Bx"
 		
 		Compare_Field_In_Line_(FieldComponent=FieldComponent)
-		Notebook Report, text="\t",scaling={110,110},picture={$("CompareFieldInLine_" + FieldComponent),0, 1, 8},text="\r\r"
+		Notebook Report, text="\t",scaling={110,110},picture={$("CompareFieldInLine_" + FieldComponent),0, 1, 8},text="\r"
 		Killwindow/Z $("CompareFieldInLine_" + FieldComponent)
 
 		Compare_Field_Profile_(FieldComponent=FieldComponent)
-		Notebook Report, text="\t",scaling={110,110},picture={$("CompareFieldProfile_" + FieldComponent),0, 1, 8},text="\r\r"
+		Notebook Report, text="\t",scaling={110,110},picture={$("CompareFieldProfile_" + FieldComponent),0, 1, 8},text="\r"
 		Killwindow/Z $("CompareFieldProfile_" + FieldComponent)
 	endif
 	
+	Notebook Report specialChar={1, 0, ""}
 End
 
 Function Add_Multipoles_Info(Dynamic)
@@ -7819,23 +7754,34 @@ Function Add_Multipoles_Info(Dynamic)
 	Wave NormalMultipoles = root:wavesCAMTO:NormalMultipoles
 	Wave SkewMultipoles   = root:wavesCAMTO:SkewMultipoles
 	
+	variable i
+	
 	if (DimSize(NormalMultipoles, 0))
 		Add_Multipoles_Table(Dynamic, "Normal")
-	endif
-
-	variable i
-	for (i=0; i<DimSize(NormalMultipoles,0); i=i+1)
-		Add_Multipole_Profile(NormalMultipoles[i], "Normal", Dynamic)
-	endfor
-
-	if (DimSize(SkewMultipoles, 0))
-		Add_Multipoles_Table(Dynamic, "Skew")
-	endif
-
-	for (i=0; i<DimSize(SkewMultipoles,0); i=i+1)
-		Add_Multipole_Profile(SkewMultipoles[i], "Skew", Dynamic)
-	endfor
 	
+		for (i=0; i<DimSize(NormalMultipoles,0); i=i+1)
+			Add_Multipole_Profile(NormalMultipoles[i], "Normal", Dynamic)
+		endfor
+		
+	endif
+		
+	if (DimSize(SkewMultipoles, 0))
+		if (DimSize(NormalMultipoles, 0)> 1)
+			Notebook Report specialChar={1, 0, ""}
+		elseif (DimSize(NormalMultipoles, 0))
+			Notebook Report, text="\r"	
+		endif
+
+		Add_Multipoles_Table(Dynamic, "Skew")
+
+		for (i=0; i<DimSize(SkewMultipoles,0); i=i+1)
+			Add_Multipole_Profile(SkewMultipoles[i], "Skew", Dynamic)
+		endfor
+	
+	endif
+	
+	Notebook Report specialChar={1, 0, ""}	
+		
 End
 
 
@@ -7935,11 +7881,11 @@ Function Add_Multipole_Profile(K, FieldComponent, Dynamic)
 	
 	if (Dynamic)
 		Compare_Multipole_Profile_(1, K=K, FieldComponent=FieldComponent)
-		Notebook Report, text="\t",scaling={90,90}, picture={$("CompareDynMult" + FieldComponent),0, 1, 8},text="\r\r"
+		Notebook Report, text="\t",scaling={90,90}, picture={$("CompareDynMult" + FieldComponent),0, 1, 8},text="\r"
 		Killwindow/Z $("CompareDynMult" + FieldComponent)
 	else
 		Compare_Multipole_Profile_(0, K=K, FieldComponent=FieldComponent)
-		Notebook Report, text="\t",scaling={90,90}, picture={$("CompareMult" + FieldComponent),0, 1, 8},text="\r\r"
+		Notebook Report, text="\t",scaling={90,90}, picture={$("CompareMult" + FieldComponent),0, 1, 8},text="\r"
 		Killwindow/Z $("CompareMult" + FieldComponent)	
 	endif
 	
@@ -8038,12 +7984,13 @@ Function Add_Residual_Field_Profile(Dynamic)
 	
 	Show_Residual_Field(Dynamic)
 	
-	Notebook Report, text="\t", picture={$("NormalResidualField"),0, 1, 8}, text="\r\r\r"
+	Notebook Report, text="\t", picture={$("NormalResidualField"),0, 1, 8}, text="\r\r"
 	Killwindow/Z $("NormalResidualField")
 
-	Notebook Report, text="\t", picture={$("SkewResidualField"),0, 1, 8}, text="\r\r\r"
+	Notebook Report, text="\t", picture={$("SkewResidualField"),0, 1, 8}, text="\r\r"
 	Killwindow/Z $("SkewResidualField")
 
+	Notebook Report specialChar={1, 0, ""}
 End
 
 
@@ -8291,7 +8238,6 @@ Function GetTrajPosX(PosYZ)
 
 	variable horizontal_pos	
 	variable index
-	string str
 	
 	if (BeamDirection == 1)
 		FindValue/V=(PosYZ/1000) TrajY
@@ -8322,9 +8268,118 @@ Function GetTrajPosX(PosYZ)
 End
 
 
+Function GetTrajAngleX(PosYZ)
+	variable PosYZ
+	
+	NVAR TrajShift = root:varsCAMTO:TrajShift
+	
+	NVAR StartXTraj = :varsFieldMap:StartXTraj
+	NVAR BeamDirection = :varsFieldMap:BeamDirection
+
+	Wave TrajX = $"TrajX"+num2str(StartXTraj/1000)
+	Wave VelX  = $"Vel_X"+num2str(StartXTraj/1000)
+
+	if (BeamDirection == 1)
+		Wave TrajL = $"TrajY"+num2str(StartXTraj/1000)
+		Wave VelL  = $"Vel_Y"+num2str(StartXTraj/1000)
+	else
+		Wave TrajL = $"TrajZ"+num2str(StartXTraj/1000)
+		Wave VelL  = $"Vel_Z"+num2str(StartXTraj/1000)
+	endif
+
+	variable angle
+	variable index
+	
+	FindValue/V=(PosYZ/1000) TrajL
+	if (V_value == -1)
+		FindValue/V=(PosYZ/1000)/T=(TrajShift) TrajL
+	endif
+	
+	if (V_value == -1)
+		return NaN
+	else
+		index = V_value
+		angle = atan(VelX[index]/VelL[index])*180/pi
+		return angle
+	endif
+
+End
+
+
+Function DipoleIntegratedField(intfn, x0, [f, tol])
+	variable intfn
+	variable x0
+	variable f
+	variable tol
+	
+	if (ParamIsDefault(f))
+		f = 50
+	endif
+	
+	if (ParamIsDefault(tol))
+		tol = 1e-3
+	endif
+	
+	SVAR df = root:varsCAMTO:FieldMapDir
+	
+	NVAR Analitico_RungeKutta = root:$(df):varsFieldMap:Analitico_RungeKutta
+	NVAR Checkfield 	 	= root:$(df):varsFieldMap:Checkfield
+	NVAR EntranceAngle	= root:$(df):varsFieldMap:EntranceAngle
+	NVAR StartYZ 		= root:$(df):varsFieldMap:StartYZTraj
+	NVAR StartX 			= root:$(df):varsFieldMap:StartXTraj
+		 
+	Analitico_RungeKutta = 2
+	Checkfield = 1
+	EntranceAngle = 0
+	StartYZ = 0
+		
+	variable x
+	string ctrlName = ""
+	variable intf, dif
+	
+	
+	print ("Reloading Field Data...")
+	variable spline_flag
+	spline_flag = CalcFieldmapInterpolant()
+		
+	if(spline_flag == 1)
+		print("Field data successfully reloaded.")
+	else
+		print("Problem with cubic spline XOP. Using single thread calculation.")
+	endif
+	
+	x = x0
+		
+	do
+		StartX = x
+		TrajectoriesCalculation(ctrlName)
+		IntegralMultipoles_Traj(ReloadField=0)
+	
+		wave Dyn_Mult_Normal_Int
+		intf = 2*Dyn_Mult_Normal_Int[0]
+		dif = intf - intfn
+		
+		print "Integrated field error: ", dif
+		
+		if (dif < 0) 
+			x = x + f*abs(dif/intfn)
+		else
+			x = x - f*abs(dif/intfn)
+		endif			
+					
+	while (abs(dif) > tol)	
+		
+	ResidualDynMultipolesCalc()
+ 
+ 	print "Value reached! (tolerance: " + num2str(tol) + ")"
+ 
+ End 
+
+
 // Alterações
 //Versão 12.9.1  - Multipolos Normalizados não são mais expressos por seus módulos (pedido da Priscila)
 //Versão 12.10.1 - Mudança no método de cálculo de simetrias, adição de rotinas para cálculo dos multipolos residuais normalizados e cabeçalho no arquivo exportado. Multipolos de todas as componentes são agora normalizados em relação ao mesmo termo.
 //Versão 12.11.0 - Mudança no método de cálculo de multipolos sobre a trajetória. 
 //Versão 13.0.0  - Mudança na estrutura de pastas para analisar mais de um mapa de campo no mesmo experimento.
 //Versão 13.0.1  - Diferenciação dos coeficientes usados para calcular multipolos normal e skew.
+//Versão 13.0.2  - Correção de bugs.
