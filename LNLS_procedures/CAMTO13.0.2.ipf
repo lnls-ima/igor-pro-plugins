@@ -1032,7 +1032,7 @@ Function Carrega_Resultados(ctrlName) : ButtonControl
 	endif
 	
 	variable i, j
-	LoadWave/O/G/D/W/A ""
+	LoadWave/H/O/G/D/W/A ""
 
 	if (V_flag==0) 
 		return -1
@@ -1519,6 +1519,8 @@ Function Save_header_info()
 		count = count + 1
 
 	while (count < 100)
+	
+	Close/A 
 
 End
 
