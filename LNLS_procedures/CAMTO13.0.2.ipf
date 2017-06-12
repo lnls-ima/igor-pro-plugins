@@ -282,27 +282,10 @@ Function InitializeFieldMapVariables()
 	
 	string/G FMFilename = ""
 	string/G FMPath = ""
-	string/G HeaderFieldMapName = ""
-	string/G HeaderNrMagnets = ""
-	string/G HeaderMagnetName = ""
-	string/G HeaderGap = ""
-	string/G HeaderControlGap = ""
-	string/G HeaderMagnetLength = ""
-	string/G HeaderCurrentMain = ""
-	string/G HeaderNIMain = ""
-	string/G HeaderCurrentTrim = ""
-	string/G HeaderNITrim = ""
-	string/G HeaderCurrentCH = ""
-	string/G HeaderNICH = ""
-	string/G HeaderCurrentCV = ""
-	string/G HeaderNICV = ""
-	string/G HeaderCurrentQS = ""
-	string/G HeaderNIQS = ""
-	string/G HeaderCenterPosZ = ""
-	string/G HeaderCenterPosX = ""
-	string/G HeaderRotation = ""
-	
+		
 	SetDataFolder root:$df	
+
+	Make/T HeaderLines
 End
 
 
@@ -1387,25 +1370,7 @@ Function Save_header_info()
 	SVAR FMFilename = :varsFieldMap:FMFilename
 	SVAR FMPath     = :varsFieldMap:FMPath
 	
-	SVAR HeaderFieldMapName = :varsFieldMap:HeaderFieldMapName
-	SVAR HeaderNrMagnets    = :varsFieldMap:HeaderNrMagnets
-	SVAR HeaderMagnetName   = :varsFieldMap:HeaderMagnetName
-	SVAR HeaderGap  			 = :varsFieldMap:HeaderGap
-	SVAR HeaderControlGap 	 = :varsFieldMap:HeaderControlGap
-	SVAR HeaderMagnetLength = :varsFieldMap:HeaderMagnetLength
-	SVAR HeaderCurrentMain  = :varsFieldMap:HeaderCurrentMain
-	SVAR HeaderNIMain		 = :varsFieldMap:HeaderNIMain
-	SVAR HeaderCurrentTrim  = :varsFieldMap:HeaderCurrentTrim
-	SVAR HeaderNITrim	    = :varsFieldMap:HeaderNITrim
-	SVAR HeaderCurrentCH 	 = :varsFieldMap:HeaderCurrentCH
-	SVAR HeaderNICH   		 = :varsFieldMap:HeaderNICH
-	SVAR HeaderCurrentCV 	 = :varsFieldMap:HeaderCurrentCV
-	SVAR HeaderNICV	    	 = :varsFieldMap:HeaderNICV
-	SVAR HeaderCurrentQS    = :varsFieldMap:HeaderCurrentQS
-	SVAR HeaderNIQS		    = :varsFieldMap:HeaderNIQS
-	SVAR HeaderCenterPosZ   = :varsFieldMap:HeaderCenterPosZ
-	SVAR HeaderCenterPosX   = :varsFieldMap:HeaderCenterPosX
-	SVAR HeaderRotation     = :varsFieldMap:HeaderRotation
+	Wave/T HeaderLines
 	
 	NewPath/O/Z SymPath FMPath
 	
@@ -1421,104 +1386,13 @@ Function Save_header_info()
 			break
 		endif	
 		
-		sscanf str, "fieldmap_name: %s", strv
-		if (strlen(strv) != 0)
-			HeaderFieldMapName = strv
-		endif
-
-		sscanf str, "nr_magnets: %s", strv
-		if (strlen(strv) != 0)
-			HeaderNrMagnets = strv
-		endif
-
-		sscanf str, "magnet_name: %s", strv
-		if (strlen(strv) != 0)
-			HeaderMagnetName = strv
-		endif
-
-		sscanf str, "gap[mm]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderGap = strv
-		endif
-
-		sscanf str, "control_gap[mm]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderControlGap = strv
-		endif
-
-		sscanf str, "magnet_length[mm]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderMagnetLength = strv
-		endif
-		
-		sscanf str, "current_main[A]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderCurrentMain = strv
-		endif
-		
-		sscanf str, "NI_main[A.esp]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderNIMain = strv
-		endif
-
-		sscanf str, "current_trim[A]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderCurrentTrim = strv
-		endif
-		
-		sscanf str, "NI_trim[A.esp]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderNITrim = strv
-		endif
-
-		sscanf str, "current_ch[A]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderCurrentCH = strv
-		endif
-		
-		sscanf str, "NI_ch[A.esp]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderNICH = strv
-		endif
-
-		sscanf str, "current_cv[A]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderCurrentCV = strv
-		endif
-		
-		sscanf str, "NI_cv[A.esp]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderNICV = strv
-		endif
-
-		sscanf str, "current_qs[A]: %s", strv
-		if (strlen(strv) != 0) 
-			HeaderCurrentQS = strv 
-		endif
-		
-		sscanf str, "NI_qs[A.esp]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderNIQS = strv
-		endif
-				
-		sscanf str, "center_pos_z[mm]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderCenterPosZ = strv
-		endif
-		
-		sscanf str, "center_pos_x[mm]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderCenterPosX = strv
-		endif
-		
-		sscanf str, "rotation[deg]: %s", strv
-		if (strlen(strv) != 0)
-			HeaderRotation = strv
-		endif
-		
+		Redimension/N=(count+1) HeaderLines
+		HeaderLines[count] = str
 		count = count + 1
-
+	
 	while (count < 100)
+	
+	Redimension/N=(count-1) HeaderLines
 	
 	Close/A 
 
@@ -1594,6 +1468,8 @@ Function Export_Full_Data()
 	NVAR StepsYZ   = :varsFieldMap:StepsYZ
 	NVAR NPointsYZ = :varsFieldMap:NPointsYZ	
 	
+	SVAR FMPath 		= :varsFieldMap:FMPath
+	
 	string nome
 	variable i, j, k
 	
@@ -1637,7 +1513,9 @@ Function Export_Full_Data()
 	Edit/N=CompleteTable Exportwave0,Exportwave1,Exportwave2,Exportwave3,Exportwave4,Exportwave5
 	ModifyTable sigDigits(Exportwave3)=16,sigDigits(Exportwave4)=16,sigDigits(Exportwave5)=16
 
-	Open/D TablePath
+	string NewFMFilename = GetDefaultFilename()	
+	
+	Open/D TablePath as FMPath+NewFMFilename
 	if (!stringmatch(S_fileName,""))
 		IncludeHeader(S_fileName)
 		SaveTableCopy/A=2/O/T=1/W=CompleteTable/N=0 as S_fileName
@@ -1710,76 +1588,117 @@ Function/S second()
 End
 
 
+Function/S GetDefaultFilename()
+	
+	SVAR FMFilename = :varsFieldMap:FMFilename
+	
+	NVAR StartX    = :varsFieldMap:StartX
+	NVAR EndX      = :varsFieldMap:EndX
+	NVAR StartY    = :varsFieldMap:StartY
+	NVAR EndY      = :varsFieldMap:EndY
+	NVAR StartZ    = :varsFieldMap:StartZ
+	NVAR EndZ      = :varsFieldMap:EndZ
+
+	string newfilename
+	string cropfilename
+	string old
+	string new
+	variable startidx, endidx
+		
+	newfilename = FMfilename
+	
+	startidx = strsearch(newfilename, "X=",0)
+	if (startidx!=-1) 
+		cropfilename = newfilename[startidx, strlen(newfilename)]
+		endidx   = strsearch(cropfilename, "mm",0)
+		old = cropfilename[0,endidx+1]
+		
+		sprintf new, "X=%g_%gmm", StartX, EndX
+		newfilename = ReplaceString(old, newfilename, new)
+	endif
+
+	startidx = strsearch(newfilename, "Y=",0)
+	if (startidx!=-1) 
+		cropfilename = newfilename[startidx, strlen(newfilename)]
+		endidx   = strsearch(cropfilename, "mm",0)
+		old = cropfilename[0,endidx+1]
+		
+		sprintf new, "Y=%g_%gmm", StartY, EndY
+		newfilename = ReplaceString(old, newfilename, new)
+	endif
+
+	startidx = strsearch(newfilename, "Z=",0)
+	if (startidx!=-1) 
+		cropfilename = newfilename[startidx, strlen(newfilename)]
+		endidx   = strsearch(cropfilename, "mm",0)
+		old = cropfilename[0,endidx+1]
+		
+		sprintf new, "Z=%g_%gmm", StartZ, EndZ
+		newfilename = ReplaceString(old, newfilename, new)
+	endif
+
+	endidx = strsearch(newfilename, "_", 0)
+	string oldtimestamp = newfilename[0, endidx-1]
+	string expr="([[:digit:]]+)-([[:digit:]]+)-([[:digit:]]+)"
+	string s1, s2, s3
+	SplitString/E=(expr) oldtimestamp, s1, s2, s3 
+	if (V_flag == 3)
+		string newtimestamp = year() + "-" + month() + "-" + day()
+		newfilename = ReplaceString(oldtimestamp, newfilename, newtimestamp)
+	endif
+	
+	return newfilename
+
+end 
+
+
 Function IncludeHeader(fullPath)
 	string fullPath
 		
-	SVAR HeaderFieldMapName = :varsFieldMap:HeaderFieldMapName
-	SVAR HeaderNrMagnets    = :varsFieldMap:HeaderNrMagnets
-	SVAR HeaderMagnetName   = :varsFieldMap:HeaderMagnetName
-	SVAR HeaderGap  			 = :varsFieldMap:HeaderGap
-	SVAR HeaderControlGap 	 = :varsFieldMap:HeaderControlGap
-	SVAR HeaderMagnetLength = :varsFieldMap:HeaderMagnetLength
-	SVAR HeaderCenterPosZ   = :varsFieldMap:HeaderCenterPosZ
-	SVAR HeaderCenterPosX   = :varsFieldMap:HeaderCenterPosX
-	SVAR HeaderRotation     = :varsFieldMap:HeaderRotation
+	Wave/T HeaderLines
 	
 	SplitString/E=".*:" fullPath
 	string NewFilename = fullPath[strlen(S_value),strlen(fullPath)-1]
+	string NewTimestamp = year() + "-" + month() + "-" + day() +  "_" + hour() + "-" + minute() + "-" + second()
 	
-	Make/O/T/N=(9) HeaderText
-	HeaderText[0] = "fieldmap_name:     \t" + HeaderFieldMapName
-	HeaderText[1] = "timestamp:         \t" + year() + "-" + month() + "-" + day() +  "_" + hour() + "-" + minute() + "-" + second()
-	HeaderText[2] = "filename:          \t" + NewFilename
-	HeaderText[3] = "nr_magnets:        \t" + HeaderNrMagnets 
-	HeaderText[4] = ""
-	HeaderText[5] = "magnet_name:       \t" + HeaderMagnetName
-	HeaderText[6] = "gap[mm]:           \t" + HeaderGap
-	HeaderText[7] = "control_gap[mm]:   \t" + HeaderControlGap
-	HeaderText[8] = "magnet_length[mm]: \t" + HeaderMagnetLength
+	Duplicate/O/T HeaderLines NewHeaderLines
 	
-	IncludeCoilInfo("Main", HeaderText)
-	IncludeCoilInfo("Trim", HeaderText)
-	IncludeCoilInfo("CH", HeaderText)
-	IncludeCoilInfo("CV", HeaderText)
-	IncludeCoilInfo("QS", HeaderText)
+	variable i, size, replaced
+	string str, strv
 	
-	variable size = numpnts(HeaderText)
-	Redimension/N=(size + 6) HeaderText
+	size = numpnts(NewHeaderLines)
+	replaced = 0
 	
-	HeaderText[size] = "center_pos_z[mm]: \t" + HeaderCenterPosZ
-	HeaderText[size + 1] = "center_pos_x[mm]: \t" + HeaderCenterPosX
-	HeaderText[size + 2] = "rotation[deg]:    \t" + HeaderRotation
-	HeaderText[size + 3] = ""	
-	HeaderText[size + 4] = "X[mm]	Y[mm]	Z[mm]	Bx	By	Bz	[T]"	
-	HeaderText[size + 5] = "------------------------------------------------------------------------------------------------------------------------------------------------------------------"	
+	for (i=0; i<size; i=i+1)
+		
+		str = NewHeaderLines[i]
+		
+		sscanf str, "timestamp: %s", strv
+		if (strlen(strv) != 0)
+			NewHeaderLines[i] =ReplaceString(strv, str, NewTimestamp)
+			replaced = replaced + 1
+		endif
+
+		sscanf str, "filename: %s", strv
+		if (strlen(strv) != 0)
+			NewHeaderLines[i] = ReplaceString(strv, str, NewFilename)
+			replaced = replaced + 1
+		endif
+		
+		if (replaced == 2)
+			break
+		endif
 	
-	Edit/N=Header HeaderText
+	endfor
+	
+	Redimension/N=(size+2) NewHeaderLines
+	NewHeaderLines[size] = "X[mm]	Y[mm]	Z[mm]	Bx	By	Bz	[T]"	
+	NewHeaderLines[size+1] = "------------------------------------------------------------------------------------------------------------------------------------------------------------------"	
+	
+	Edit/N=Header NewHeaderLines
 	SaveTableCopy/A=0/O/T=1/W=Header0/N=0 as fullPath
 	KillWindow Header0
-End
-
-
-Function IncludeCoilInfo(coil_label, header_text)
-	String coil_label
-	Wave/T header_text
-
-	SVAR Current  = :varsFieldMap:$("HeaderCurrent"+coil_label)
-	SVAR NI		 = :varsFieldMap:$("HeaderNI"+coil_label)
-	
-	variable size = numpnts(header_text)
-		
-	if (strlen(Current) > 0)
-		size = size + 1
-		Redimension/N=(size) header_text
-		header_text[size-1] = "current_" + lowerstr(coil_label) + "[A]:   \t" + Current
-	endif
-
-	if (strlen(NI) > 0)
-		size = size + 1
-		Redimension/N=(size) header_text
-		header_text[size-1] = "NI_" + lowerstr(coil_label) + "[A.esp]:   \t" + NI
-	endif
-	
+	KillWaves/Z NewHeaderLines
 End
 
 
@@ -2099,7 +2018,7 @@ Window Integrals_Multipoles() : Panel
 		Killwindow Integrals_Multipoles
 	endif	
 
-	NewPanel/K=1/W=(80,310,405,735)
+	NewPanel/K=1/W=(80,250,405,685)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,4,320,185
@@ -2806,7 +2725,7 @@ Window Trajectories() : Panel
 		Killwindow Trajectories
 	endif		
 
-	NewPanel/K=1/W=(440,310,750,700)
+	NewPanel/K=1/W=(440,250,750,640)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 5,2,304,40
@@ -3589,7 +3508,7 @@ Window Dynamic_Multipoles() : Panel
 		Killwindow Dynamic_Multipoles
 	endif	
 	
-	NewPanel/K=1/W=(780,310,1103,850)
+	NewPanel/K=1/W=(780,250,1103,790)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,4,320,70
@@ -4795,12 +4714,10 @@ Function UpdateResultsPanel()
 	NVAR EndXHom   = root:$(df):varsFieldMap:EndXHom    
 	NVAR PosYZHom  = root:$(df):varsFieldMap:PosYZHom  
 	
-	NVAR StartXTraj = root:$(df):varsFieldMap:StartXTraj
-	
 	Wave/Z C_PosX 				 = $("root:"+ df + ":C_PosX")
 	Wave/Z IntBx_X 				 = $("root:"+ df + ":IntBx_X")
 	Wave/Z Mult_Normal_Int		 = $("root:"+ df + ":Mult_Normal_Int")
-	Wave/Z Temp_Traj				 = $("root:"+ df + ":TrajX" + num2str(StartXTraj/1000))
+	Wave/Z Temp_Traj				 = $("root:"+ df + ":PosXTraj")
 	Wave/Z Dyn_Mult_Normal_Int = $("root:"+ df + ":Dyn_Mult_Normal_Int")
 	
 	if (strlen(df) > 0)		
@@ -8028,24 +7945,9 @@ Function Add_Calc_Parameters(df, Dynamic)
 	NVAR TrajShift = root:varsCAMTO:TrajShift
 	NVAR EnergyGev = root:varsCAMTO:EnergyGev
 	
-	SVAR HeaderFieldMapName  = :varsFieldMap:HeaderFieldMapName
-	SVAR FMFilename          = :varsFieldMap:FMFilename
-	SVAR HeaderNrMagnets     = :varsFieldMap:HeaderNrMagnets
-	SVAR HeaderMagnetName    = :varsFieldMap:HeaderMagnetName
-	SVAR HeaderGap  			  = :varsFieldMap:HeaderGap
-	SVAR HeaderControlGap 	  = :varsFieldMap:HeaderControlGap
-	SVAR HeaderMagnetLength  = :varsFieldMap:HeaderMagnetLength
-	
-	SVAR/Z HeaderCurrentMain 	= :varsFieldMap:HeaderCurrentMain
-	SVAR/Z HeaderNIMain	  	  = :varsFieldMap:HeaderNIMain
-	SVAR/Z HeaderCurrentTrim = :varsFieldMap:HeaderCurrentTrim
-	SVAR/Z HeaderNITrim		  = :varsFieldMap:HeaderNITrim
-	SVAR/Z HeaderCurrentCH	  = :varsFieldMap:HeaderCurrentCH
-	SVAR/Z HeaderNICH  		  = :varsFieldMap:HeaderNICH
-	SVAR/Z HeaderCurrentCV	  = :varsFieldMap:HeaderCurrentCV
-	SVAR/Z HeaderNICV	     = :varsFieldMap:HeaderNICV
-	SVAR/Z HeaderCurrentQS   = :varsFieldMap:HeaderCurrentQS
-	SVAR/Z HeaderNIQS		  = :varsFieldMap:HeaderNIQS
+	SVAR FMFilename = :varsFieldMap:FMFilename
+		
+	Wave/T HeaderLines
 			
 	if (Dynamic)
 		NVAR GridMin         = :varsFieldMap:GridMinTraj
@@ -8057,110 +7959,52 @@ Function Add_Calc_Parameters(df, Dynamic)
 		NVAR Distcenter     = :varsFieldMap:Distcenter
 	endif
 
-	variable i = 0
-	
 	Notebook Report ruler=TableHeader6, text="\t" + df + ":\r\r"
+
+	variable i
+	string filename
+		
+	for (i=0; i< numpnts(HeaderLines); i=i+1)
+		sscanf HeaderLines[i], "filename: %s", filename
+		if (strlen(filename) != 0)
+			Notebook Report ruler=Table6,text= "\tFilename:\r" 
+			Notebook Report ruler=Table6,text= "\t"+ FMFilename + "\r\r"
+			break
+		endif
+	endfor
+
+	for (i=0; i< numpnts(HeaderLines); i=i+1)
+		if (strlen(HeaderLines[i])>1)
+			sscanf HeaderLines[i], "filename: %s", filename
+			if (strlen(filename) != 0)
+				continue
+			endif
+			Notebook Report ruler=Table6,text= "\t"+ HeaderLines[i]	
+		endif
+	endfor
 	
-	Notebook Report ruler=Table6,text="\tFilename:\r"
-	Notebook Report ruler=Table6,text= "\t"+ FMFilename + "\r"
+	Notebook Report ruler=Table6,text= "\r"
 	
 	Make/O/T/N=(50, 2) TableWave
-	
-	TableWave[1][0] = "Fieldmap Name"
-	TableWave[1][1] = HeaderFieldMapName
 
-	TableWave[2][0] = "Number of magnets"
-	TableWave[2][1] = HeaderNrMagnets
-
-	TableWave[3][0] = "Gap"
-	TableWave[3][1] = HeaderGap + " mm"
-
-	if (strlen(HeaderControlGap) > 0 && cmpstr(ReplaceString(" ", HeaderControlGap,""), "--")!=0 )
-		TableWave[4+i][0] = "Control Gap"
-		TableWave[4+i][1] = HeaderControlGap + " mm"
-		i = i+1
-	endif
-
-	TableWave[4+i][0] = "Magnet Length"
-	TableWave[4+i][1] = HeaderMagnetLength + " mm"
-
-	if (SVAR_Exists(HeaderCurrentMain) && strlen(HeaderCurrentMain) > 0)
-		TableWave[5+i][0] = "Main Coil Current"
-		TableWave[5+i][1] = HeaderCurrentMain + " A"
-		i = i+1
-	endif
-
-	if  (SVAR_Exists(HeaderNIMain) && strlen(HeaderNIMain) > 0)
-		TableWave[5+i][0] = "Main Coil NI"
-		TableWave[5+i][1] = HeaderNIMain + " A.esp"
-		i = i+1
-	endif
-
-	if (SVAR_Exists(HeaderCurrentTrim) && strlen(HeaderCurrentTrim) > 0)
-		TableWave[5+i][0] = "Trim Coil Current"
-		TableWave[5+i][1] =  HeaderCurrentTrim + " A"
-		i = i + 1
-	endif
-
-	if (SVAR_Exists(HeaderNITrim) && strlen(HeaderNITrim) > 0)
-		TableWave[5+i][0] = "Trim Coil NI" 
-		TableWave[5+i][1] = HeaderNITrim + " A.esp"
-		i = i +1
-	endif
-
-	if (SVAR_Exists(HeaderCurrentCH) && strlen(HeaderCurrentCH) > 0)
-		TableWave[5+i][0] = "CH Coil Current"
-		TableWave[5+i][1] =  HeaderCurrentCH + " A"
-		i = i + 1
-	endif
-
-	if (SVAR_Exists(HeaderNICH) && strlen(HeaderNICH) > 0)
-		TableWave[5+i][0] = "CH Coil NI" 
-		TableWave[5+i][1] = HeaderNICH + " A.esp"
-		i = i +1
-	endif
-
-	if (SVAR_Exists(HeaderCurrentCV) && strlen(HeaderCurrentCV) > 0)
-		TableWave[5+i][0] = "CV Coil Current"
-		TableWave[5+i][1] =  HeaderCurrentCV + " A"
-		i = i + 1
-	endif
-
-	if (SVAR_Exists(HeaderNICV) && strlen(HeaderNICV) > 0)
-		TableWave[5+i][0] = "CV Coil NI" 
-		TableWave[5+i][1] = HeaderNICV + " A.esp"
-		i = i +1
-	endif
-
-	if (SVAR_Exists(HeaderCurrentQS) && strlen(HeaderCurrentQS) > 0)
-		TableWave[5+i][0] = "QS Coil Current"
-		TableWave[5+i][1] =  HeaderCurrentQS + " A"
-		i = i + 1
-	endif
-
-	if (SVAR_Exists(HeaderNIQS) && strlen(HeaderNIQS) > 0)
-		TableWave[5+i][0] = "QS Coil NI" 
-		TableWave[5+i][1] = HeaderNIQS + " A.esp"
-		i = i +1
-	endif
-	
+	i = 0
 	if (Dynamic)
-		TableWave[6+i][0] = "Particle energy"
-		TableWave[6+i][1] = num2str(EnergyGev) + " Gev"
-		TableWave[7+i][0] = "Trajectory step"
-		TableWave[7+i][1] = num2str(1000*TrajShift) + " mm"
-		TableWave[8+i][0] = "Trajectory x @z=0mm"
-		TableWave[8+i][1] = num2str(1000*GetTrajPosX(0)) + " mm"
+		TableWave[i][0] = "Particle energy"
+		TableWave[i][1] = num2str(EnergyGev) + " Gev"
+		TableWave[1+i][0] = "Trajectory step"
+		TableWave[1+i][1] = num2str(1000*TrajShift) + " mm"
+		TableWave[2+i][0] = "Trajectory x @z=0mm"
+		TableWave[2+i][1] = num2str(GetTrajPosX(0)) + " mm"
 		i=i+3
 	endif
 
-	TableWave[6+i][0] = "Multipoles grid"
-	TableWave[6+i][1] = "[" + num2str(GridMin) + " mm, " + num2str(GridMax) + " mm]"
+	TableWave[i][0] = "Multipoles grid"
+	TableWave[i][1] = "[" + num2str(GridMin) + " mm, " + num2str(GridMax) + " mm]"
 
-	TableWave[7+i][0] = "R0 relative multipoles"
-	TableWave[7+i][1] = num2str(Distcenter) + " mm"
+	TableWave[1+i][0] = "R0 relative multipoles"
+	TableWave[1+i][1] = num2str(Distcenter) + " mm"
 		
-	Redimension/N=(8+i, 2) TableWave
+	Redimension/N=(2+i, 2) TableWave
 	Add_Table(TableWave, Spacing=6)
 	
 	Killwaves/Z TableWave
@@ -8265,7 +8109,7 @@ Function GetTrajPosX(PosYZ)
 		endif
 	endif
 	
-	return horizontal_pos
+	return horizontal_pos*1000
 
 End
 
