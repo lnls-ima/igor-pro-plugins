@@ -1749,30 +1749,28 @@ Window Hall_Probe_Error_Correction() : Panel
 		Killwindow Hall_Probe_Error_Correction
 	endif	
 
-	NewPanel/K=1/W=(430,60,710,330)
+	NewPanel/K=1/W=(430,60,710,358)
 	SetDrawEnv fillpat= 0
 	DrawRect 2, 2, 278,113
 	SetDrawEnv fillpat= 0
 	DrawRect 2, 113, 278, 206
 	SetDrawEnv fillpat= 0
-	DrawRect 2, 206, 278, 236
-	SetDrawEnv fillpat= 0	
-	DrawRect 2, 236, 278, 265
+	DrawRect 2, 206, 278, 295
 	
-	Button AngularCorrection,pos={18,7},size={245,28},fStyle=1,proc=AngularErrorCorrection,title="Hall Probes Angular Error Correction"
-	SetVariable ErrAngXZ,pos={26,44},size={228,18},title="Angular Error XZ (°)"
-	SetVariable ErrAngYZ,pos={26,68},size={228,18},title="Angular Error YZ (°)"
-	SetVariable ErrAngXY,pos={26,92},size={228,18},title="Angular Error XY (°)"
+	SetVariable ErrAngXZ,pos={26,8},size={228,18},title="Angular Error XZ (°)"
+	SetVariable ErrAngYZ,pos={26,32},size={228,18},title="Angular Error YZ (°)"
+	SetVariable ErrAngXY,pos={26,56},size={228,18},title="Angular Error XY (°)"
+	Button AngularCorrection,pos={15,78},size={250,30},fSize=13,fStyle=1,proc=AngularErrorCorrection,title="Probes Angular Error Correction"
+		
+	SetVariable ErrDisplacementX,pos={26,126},size={228,18},title="Displacement Error X   (mm)"
+	SetVariable ErrDisplacementYZ,pos={26,150},size={228,18},title="Displacement Error YZ (mm)"
+	Button DisplacementCorrection,pos={15,172},size={250,30},fSize=13,fStyle=1,proc=DisplacementErrorCorrection,title="Probes Displacement Error Correction"
 	
-	Button DisplacementCorrection,pos={18,122},size={245,28},fStyle=1,proc=DisplacementErrorCorrection,title="Hall Probes Displacement Error Correction"
-	SetVariable ErrDisplacementX,pos={26,159},size={228,18},title="Displacement Error X   (mm)"
-	SetVariable ErrDisplacementYZ,pos={26,183},size={228,18},title="Displacement Error YZ (mm)"
-	
-	SetVariable fieldmapdir,pos={26,213},size={230,18},fStyle=1,title="FieldMap directory: "
+	SetVariable fieldmapdir,pos={15,215},size={255,18},title="Field Map Directory:"
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
-
-	TitleBox copy_title,pos={15,242},size={145,18},frame=0,fStyle=1,title="Copy configuration from:"
-	PopupMenu copy_dir,pos={160,242},size={110,18},bodyWidth=110,mode=0,proc=CopyHallProbeConfig,title=" "
+	TitleBox copy_title,pos={15,242},size={145,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={160,240},size={110,18},bodyWidth=110,mode=0,proc=CopyHallProbeConfig,title=" "
+	Button apply_to_all,pos={15,266},size={255,25},fStyle=1,proc=ApplyErrorCorrectionToAll,title="Apply Error Correction to All Field Maps"
 
 	UpdateFieldMapDirs()
 	UpdateHallProbePanel()
@@ -1795,8 +1793,10 @@ Function UpdateHallProbePanel()
 	if (FieldMapCount > 1)
 		string FieldMapList = getFieldmapDirs()
 		PopupMenu copy_dir,win=Hall_Probe_Error_Correction,disable=0,value= #("\"" + FieldMapList + "\"")
+		Button apply_to_all,win=Hall_Probe_Error_Correction,disable=0
 	else
 		PopupMenu copy_dir,win=Hall_Probe_Error_Correction,disable=2
+		Button apply_to_all,win=Hall_Probe_Error_Correction,disable=2
 	endif
 	
 	if (strlen(df) > 0)		
@@ -1823,8 +1823,18 @@ Function CopyHallProbeConfig(ctrlName,popNum,popStr) : PopupMenuControl
 	
 	SelectCopyDirectory(popNum,popStr)
 	
-	SVAR df  = root:varsCAMTO:FieldMapDir
 	SVAR dfc = root:varsCAMTO:FieldMapCopy
+	CopyHallProbeConfig_(dfc)
+
+	UpdateHallProbePanel()
+
+End
+
+
+Function CopyHallProbeConfig_(dfc)
+	string dfc
+	
+	SVAR df  = root:varsCAMTO:FieldMapDir
 	Wave/T FieldMapDirs= root:wavesCAMTO:FieldMapDirs
 	
 	UpdateFieldMapDirs()	
@@ -1854,10 +1864,6 @@ Function CopyHallProbeConfig(ctrlName,popNum,popStr) : PopupMenuControl
 	else
 		DoAlert 0, "Data folder not found."
 	endif
-	
-	UpdateHallProbePanel()
-
-
 
 End
 
@@ -2003,6 +2009,37 @@ Function DisplacementErrorCorrection(ctrlName) : ButtonControl
 End
 
 
+Function ApplyErrorCorrectionToAll(ctrlName) : ButtonControl
+	String ctrlName
+	
+	UpdateFieldMapDirs()
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR FieldMapCount  = root:varsCAMTO:FieldMapCount
+	SVAR FieldMapDir= root:varsCAMTO:FieldMapDir
+	
+	DFREF df = GetDataFolderDFR()
+	string dfc = GetDataFolder(0)
+	
+	variable i
+	string tdf
+	string empty = ""
+
+	for (i=0; i < FieldMapCount; i=i+1)
+		tdf = FieldMapDirs[i]
+		FieldMapDir = tdf
+		SetDataFolder root:$(tdf)
+		CopyHallProbeConfig_(dfc)
+		Print("Applying Hall Probe Error Correction to " + tdf + ":")
+		AngularErrorCorrection(empty)
+		DisplacementErrorCorrection(empty)
+	endfor
+
+	SetDataFolder df
+
+End
+
+
 Window Integrals_Multipoles() : Panel
 	PauseUpdate; Silent 1		// building window...
 
@@ -2018,29 +2055,28 @@ Window Integrals_Multipoles() : Panel
 		Killwindow Integrals_Multipoles
 	endif	
 
-	NewPanel/K=1/W=(80,250,405,685)
+	NewPanel/K=1/W=(80,250,407,722)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
-	DrawRect 3,4,320,185
+	DrawRect 3,4,322,185
 	SetDrawEnv fillpat= 0
-	DrawRect 3,185,320,260
+	DrawRect 3,185,322,260
 	SetDrawEnv fillpat= 0
-	DrawRect 3,260,320,335
+	DrawRect 3,260,322,335
 	SetDrawEnv fillpat= 0
-	DrawRect 3,335,320,380
+	DrawRect 3,335,322,380
 	SetDrawEnv fillpat= 0
-	DrawRect 3,380,320,405
-	SetDrawEnv fillpat= 0
-	DrawRect 3,405,320,430
+	DrawRect 3,380,322,468
+
 					
 	TitleBox title,pos={60,10},size={127,16},fSize=14,fStyle=1,frame=0, title="Field Integrals and Multipoles"
 	TitleBox subtitle,pos={86,30},size={127,16},fSize=14,frame=0, title="K0 to Kx (0 - On, 1 - Off)"
 
-	SetVariable order,pos={10,60},size={220,16},title="Order of multipolar analysis:"
-	SetVariable dist,pos={10,85},size={221,16},title="Distance for multipolar analysis:"	
-	TitleBox dist_unit,pos={230,85},size={72,16},title="mm from center",fSize=12,frame=0
+	SetVariable order,pos={10,60},size={220,16},title="Order of Multipolar Analysis:"
+	SetVariable dist,pos={10,85},size={221,16},title="Distance for Multipolar Analysis:"	
+	TitleBox dist_unit,pos={230,85},size={72,16},title=" mm from center",fSize=12,frame=0
 
-	SetVariable norm_K,pos={10,110},size={220,16},title="Normalize against K:"
+	SetVariable norm_K,pos={10,110},size={220,16},title="Normalize Against K:"
 	PopupMenu norm_comp,pos={10,135},size={241,16},proc=PopupMultComponent,title="Component:"
 	PopupMenu norm_comp,value= #"\"Normal;Skew\""
 	
@@ -2049,21 +2085,21 @@ Window Integrals_Multipoles() : Panel
 	SetVariable grid_max,pos={215,160},limits={-inf, inf, 0},size={95,18},title="Max [mm]:"
 
 	TitleBox    mult_title,pos={10, 190},size={90,18},frame=0,title="Multipoles"
-	SetVariable norm_ks,pos={20,210},size={285,16},title="Normal - Ks to use:"
-	SetVariable skew_ks,pos={20,235},size={285,16},title="\t Skew - Ks to use:"
+	SetVariable norm_ks,pos={20,210},size={285,16},title="Normal - Ks to Use:"
+	SetVariable skew_ks,pos={20,235},size={285,16},title="\t Skew - Ks to Use:"
 
 	TitleBox    res_title,pos={10, 265},size={90,18},frame=0,title="Residual Normalized Multipoles"
-	SetVariable res_norm_ks,pos={20,285},size={285,16},title="Normal - Ks to use:"
-	SetVariable res_skew_ks,pos={20,310},size={285,16},title="\t Skew - Ks to use:"
+	SetVariable res_norm_ks,pos={20,285},size={285,16},title="Normal - Ks to Use:"
+	SetVariable res_skew_ks,pos={20,310},size={285,16},title="\t Skew - Ks to Use:"
 
 	Button mult_button,pos={12,340},size={300,34},proc=CalcIntegralsMultipoles,title="Calculate Field Integrals and Multipoles"
 	Button mult_button,fSize=15,fStyle=1
 
-	SetVariable fieldmap_dir,pos={15,385},size={290,18},fStyle=1,title="FieldMap directory: "
+	SetVariable fieldmap_dir,pos={10,385},size={300,18},title="Field Map Directory: "
 	SetVariable fieldmap_dir,noedit=1,value=root:varsCAMTO:FieldMapDir
-	
-	TitleBox copy_title,pos={15,408},size={145,18},frame=0,fStyle=1,title="Copy configuration from:"
-	PopupMenu copy_dir,pos={160,408},size={145,18},bodyWidth=145,mode=0,proc=CopyMultipolesConfig,title=" "
+	TitleBox copy_title,pos={10,412},size={150,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={160,410},size={150,18},bodyWidth=145,mode=0,proc=CopyMultipolesConfig,title=" "
+	Button apply_to_all,pos={10,436},size={300,25},fStyle=1,proc=CalcIntegralsMultipolesToAll,title="Calculate Integrals and Multipoles for All Field Maps"
 	
 	UpdateFieldMapDirs()
 	UpdateIntegralsMultipolesPanel()
@@ -2086,8 +2122,10 @@ Function UpdateIntegralsMultipolesPanel()
 	string FieldMapList
 	if (FieldMapCount > 1)
 		FieldMapList = getFieldmapDirs()
+		Button apply_to_all,win=Integrals_Multipoles,disable=0
 	else
 		FieldMapList = ""
+		Button apply_to_all,win=Integrals_Multipoles,disable=2
 	endif
 	
 	if (DataFolderExists("root:Nominal"))
@@ -2198,45 +2236,7 @@ Function CopyMultipolesConfig(ctrlName,popNum,popStr) : PopupMenuControl
 			dfc = copydir
 		endif
 		
-		NVAR temp_df  = root:$(df):varsFieldMap:FittingOrder
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:FittingOrder
-		temp_df = temp_dfc
-		
-		NVAR temp_df  = root:$(df):varsFieldMap:Distcenter
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:Distcenter
-		temp_df = temp_dfc
-		
-		NVAR temp_df  = root:$(df):varsFieldMap:KNorm
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:KNorm
-		temp_df = temp_dfc		
-
-		NVAR temp_df  = root:$(df):varsFieldMap:NormComponent
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:NormComponent
-		temp_df = temp_dfc	
-
-		NVAR temp_df  = root:$(df):varsFieldMap:GridMin
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:GridMin
-		temp_df = temp_dfc	
-
-		NVAR temp_df  = root:$(df):varsFieldMap:GridMax
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:GridMax
-		temp_df = temp_dfc	
-
-		SVAR stemp_df  = root:$(df):varsFieldMap:NormalCoefs
-		SVAR stemp_dfc = root:$(dfc):varsFieldMap:NormalCoefs
-		stemp_df = stemp_dfc
-
-		SVAR stemp_df  = root:$(df):varsFieldMap:SkewCoefs
-		SVAR stemp_dfc = root:$(dfc):varsFieldMap:SkewCoefs
-		stemp_df = stemp_dfc
-
-		SVAR stemp_df  = root:$(df):varsFieldMap:ResNormalCoefs
-		SVAR stemp_dfc = root:$(dfc):varsFieldMap:ResNormalCoefs
-		stemp_df = stemp_dfc
-
-		SVAR stemp_df  = root:$(df):varsFieldMap:ResSkewCoefs
-		SVAR stemp_dfc = root:$(dfc):varsFieldMap:ResSkewCoefs
-		stemp_df = stemp_dfc
+		CopyMultipolesConfig_(dfc)
 		
 	endif
 	
@@ -2244,6 +2244,53 @@ Function CopyMultipolesConfig(ctrlName,popNum,popStr) : PopupMenuControl
 
 End
 
+
+Function CopyMultipolesConfig_(dfc)
+	string dfc
+	
+	SVAR df = root:varsCAMTO:FieldMapDir
+	
+	NVAR temp_df  = root:$(df):varsFieldMap:FittingOrder
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:FittingOrder
+	temp_df = temp_dfc
+	
+	NVAR temp_df  = root:$(df):varsFieldMap:Distcenter
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:Distcenter
+	temp_df = temp_dfc
+	
+	NVAR temp_df  = root:$(df):varsFieldMap:KNorm
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:KNorm
+	temp_df = temp_dfc		
+
+	NVAR temp_df  = root:$(df):varsFieldMap:NormComponent
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:NormComponent
+	temp_df = temp_dfc	
+
+	NVAR temp_df  = root:$(df):varsFieldMap:GridMin
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:GridMin
+	temp_df = temp_dfc	
+
+	NVAR temp_df  = root:$(df):varsFieldMap:GridMax
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:GridMax
+	temp_df = temp_dfc	
+
+	SVAR stemp_df  = root:$(df):varsFieldMap:NormalCoefs
+	SVAR stemp_dfc = root:$(dfc):varsFieldMap:NormalCoefs
+	stemp_df = stemp_dfc
+
+	SVAR stemp_df  = root:$(df):varsFieldMap:SkewCoefs
+	SVAR stemp_dfc = root:$(dfc):varsFieldMap:SkewCoefs
+	stemp_df = stemp_dfc
+
+	SVAR stemp_df  = root:$(df):varsFieldMap:ResNormalCoefs
+	SVAR stemp_dfc = root:$(dfc):varsFieldMap:ResNormalCoefs
+	stemp_df = stemp_dfc
+
+	SVAR stemp_df  = root:$(df):varsFieldMap:ResSkewCoefs
+	SVAR stemp_dfc = root:$(dfc):varsFieldMap:ResSkewCoefs
+	stemp_df = stemp_dfc
+
+End
 
 Function PopupMultComponent(ctrlName,popNum,popStr) : PopupMenuControl
 	String ctrlName
@@ -2710,6 +2757,36 @@ Function ResidualMultipolesCalc()
 End
 
 
+Function CalcIntegralsMultipolesToAll(ctrlName) : ButtonControl
+	String ctrlName
+	
+	UpdateFieldMapDirs()
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR FieldMapCount  = root:varsCAMTO:FieldMapCount
+	SVAR FieldMapDir= root:varsCAMTO:FieldMapDir
+		
+	DFREF df = GetDataFolderDFR()
+	string dfc = GetDataFolder(0)
+	
+	variable i
+	string tdf
+	string empty = ""
+
+	for (i=0; i < FieldMapCount; i=i+1)
+		tdf = FieldMapDirs[i]
+		FieldMapDir = tdf
+		SetDataFolder root:$(tdf)
+		CopyMultipolesConfig_(dfc)
+		Print("Calculating Integrals and Multipoles for " + tdf + ":")
+		CalcIntegralsMultipoles(empty)
+	endfor
+
+	SetDataFolder df
+	
+End
+
+
 Window Trajectories() : Panel
 	PauseUpdate; Silent 1		// building window...
 
@@ -2725,7 +2802,7 @@ Window Trajectories() : Panel
 		Killwindow Trajectories
 	endif		
 
-	NewPanel/K=1/W=(440,250,750,640)
+	NewPanel/K=1/W=(440,250,750,670)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 5,2,304,40
@@ -2742,11 +2819,9 @@ Window Trajectories() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 5,292,304,327
 	SetDrawEnv fillpat= 0
-	DrawRect 5,327,304,357
-	SetDrawEnv fillpat= 0
-	DrawRect 5,357,304,387
+	DrawRect 5,327,304,415
 			
-	PopupMenu popupSingleMulti,pos={38,11},size={224,23},proc=PopupSingleMulti,title="Number of Particles :"
+	PopupMenu popupSingleMulti,pos={38,11},size={224,23},proc=PopupSingleMulti,title="Number of Particles:"
 	PopupMenu popupSingleMulti,mode=1,popvalue="Single-Particle",value= #"\"Single-Particle;Multi-Particles\""
 		
 	CheckBox check_field,pos={15,51},size={286,15},title="Use constant field if trajectory is out of field matrix"
@@ -2759,18 +2834,18 @@ Window Trajectories() : Panel
 	SetVariable trajstartyz,pos={25,211},size={250,18},title="Start Particle YZ [mm]:"
 	SetVariable trajendyz,pos={25,235},size={250,18},title="End Particle YZ [mm]:"
 
-	PopupMenu popupAnalitico_RungeKutta,pos={38,264},size={220,23},proc=PopupAnalitico_RungeKutta,title="Calculation Method :"
+	PopupMenu popupAnalitico_RungeKutta,pos={38,264},size={220,23},proc=PopupAnalitico_RungeKutta,title="Calculation Method:"
 	PopupMenu popupAnalitico_RungeKutta,mode=2,popvalue="Analytical",value= #"\"Analytical;Runge_Kutta_1º\""
 	
 	Button CalcTraj,pos={27,297},size={250,25},proc=TrajectoriesCalculation,title="Trajectories Calculation"
 	Button CalcTraj,fSize=15,fStyle=1
 			
-	SetVariable fieldmapdir,pos={16,333},size={280,18},fStyle=1,title="FieldMap directory: "
+	SetVariable fieldmapdir,pos={15,333},size={280,18},title="Field Map Directory: "
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
-	
-	TitleBox copy_title,pos={15,362},size={145,18},frame=0,fStyle=1,title="Copy configuration from:"
-	PopupMenu copy_dir,pos={160,362},size={135,18},bodyWidth=135,mode=0,proc=CopyTrajectoriesConfig,title=" "
-	
+	TitleBox copy_title,pos={15,360},size={145,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={160,358},size={135,18},bodyWidth=135,mode=0,proc=CopyTrajectoriesConfig,title=" "
+	Button apply_to_all,pos={15,384},size={280,25},fStyle=1,proc=CalcTrajectoriesToAll,title="Calculate Trajectories for All Field Maps"
+
 	UpdateFieldMapDirs()
 	UpdateTrajectoriesPanel()
 	
@@ -2791,8 +2866,10 @@ Function UpdateTrajectoriesPanel()
 	if (FieldMapCount > 1)
 		string FieldMapList = getFieldmapDirs()
 		PopupMenu copy_dir,win=Trajectories,disable=0,value= #("\"" + FieldMapList + "\"")
+		Button apply_to_all,win=Trajectories,disable=0
 	else
-		PopupMenu copy_dir,win=Trajectories,disable=2
+		PopupMenu copy_dir,win=Trajectories,disable=2		
+		Button apply_to_all,win=Trajectories,disable=2
 	endif
 		
 	if (strlen(df) > 0)
@@ -2844,8 +2921,18 @@ Function CopyTrajectoriesConfig(ctrlName,popNum,popStr) : PopupMenuControl
 	
 	SelectCopyDirectory(popNum,popStr)
 
-	SVAR df  = root:varsCAMTO:FieldMapDir
 	SVAR dfc = root:varsCAMTO:FieldMapCopy
+	CopyTrajectoriesConfig_(dfc)
+	
+	UpdateTrajectoriesPanel()
+
+End
+
+
+Function CopyTrajectoriesConfig_(dfc)
+	string dfc
+	
+	SVAR df  = root:varsCAMTO:FieldMapDir
 	Wave/T FieldMapDirs= root:wavesCAMTO:FieldMapDirs
 	
 	UpdateFieldMapDirs()	
@@ -2895,9 +2982,7 @@ Function CopyTrajectoriesConfig(ctrlName,popNum,popStr) : PopupMenuControl
 	else
 		DoAlert 0, "Data folder not found."
 	endif
-	
-	UpdateTrajectoriesPanel()
-
+		
 End
 
 
@@ -3169,6 +3254,36 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 	Killwaves VetorCampoZ	
 	
 	UpdateResultsPanel()
+End
+
+
+Function CalcTrajectoriesToAll(ctrlName) : ButtonControl
+	String ctrlName
+	
+	UpdateFieldMapDirs()
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR FieldMapCount  = root:varsCAMTO:FieldMapCount
+	SVAR FieldMapDir= root:varsCAMTO:FieldMapDir
+		
+	DFREF df = GetDataFolderDFR()
+	string dfc = GetDataFolder(0)
+	
+	variable i
+	string tdf
+	string empty = ""
+
+	for (i=0; i < FieldMapCount; i=i+1)
+		tdf = FieldMapDirs[i]
+		FieldMapDir = tdf
+		SetDataFolder root:$(tdf)
+		CopyTrajectoriesConfig_(dfc)
+		Print("Calculating Trajectories for " + tdf + ":")
+		TrajectoriesCalculation(empty)
+	endfor
+
+	SetDataFolder df
+	
 End
 
 
@@ -3508,7 +3623,7 @@ Window Dynamic_Multipoles() : Panel
 		Killwindow Dynamic_Multipoles
 	endif	
 	
-	NewPanel/K=1/W=(780,250,1103,790)
+	NewPanel/K=1/W=(780,250,1103,825)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,4,320,70
@@ -3521,10 +3636,7 @@ Window Dynamic_Multipoles() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 3,440,320,480
 	SetDrawEnv fillpat= 0
-	DrawRect 3,480,320,510
-	SetDrawEnv fillpat= 0
-	DrawRect 3,510,320,538
-
+	DrawRect 3,480,320,570
 				
 	TitleBox    traj,pos={10,25},size={90,16},fSize=14,fStyle=1,frame=0,title="Trajectory"
 	ValDisplay  traj_x,pos={110,10},size={200,18},title="Start X [mm]:    "
@@ -3561,11 +3673,11 @@ Window Dynamic_Multipoles() : Panel
 	Button mult_button,pos={15,445},size={295,30},proc=CalcDynIntegralsMultipoles,title="Calculate Dynamic Multipoles"
 	Button mult_button,fSize=15,fStyle=1
 
-	SetVariable fieldmapdir,pos={15,487},size={290,18},fStyle=1,title="FieldMap directory: "
+	SetVariable fieldmapdir,pos={15,488},size={290,18},title="Field Map Directory: "
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
-	
-	TitleBox copy_title,pos={15,515},size={145,18},frame=0,fStyle=1,title="Copy configuration from:"
-	PopupMenu copy_dir,pos={160,515},size={145,18},bodyWidth=145,mode=0,proc=CopyDynMultipolesConfig,title=" "
+	TitleBox copy_title,pos={15,515},size={145,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={160,513},size={145,18},bodyWidth=145,mode=0,proc=CopyDynMultipolesConfig,title=" "
+	Button apply_to_all,pos={15,540},size={290,25},fStyle=1,proc=CalcDynIntegralsMultipolesToAll,title="Calculate Dynamic Multipoles for All Field Maps"
 	
 	UpdateFieldMapDirs()
 	UpdateDynMultipolesPanel()
@@ -3588,8 +3700,10 @@ Function UpdateDynMultipolesPanel()
 	string FieldMapList
 	if (FieldMapCount > 1)
 		FieldMapList = getFieldmapDirs()
+		Button apply_to_all,win=Dynamic_Multipoles, disable=0
 	else
 		FieldMapList = ""
+		Button apply_to_all,win=Dynamic_Multipoles, disable=2
 	endif
 	
 	if (DataFolderExists("root:Nominal"))
@@ -3706,57 +3820,67 @@ Function CopyDynMultipolesConfig(ctrlName,popNum,popStr) : PopupMenuControl
 			dfc = copydir
 		endif
 							
-		NVAR temp_df  = root:$(df):varsFieldMap:FittingOrderTraj
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:FittingOrderTraj
-		temp_df = temp_dfc
-		
-		NVAR temp_df  = root:$(df):varsFieldMap:DistcenterTraj
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:DistcenterTraj
-		temp_df = temp_dfc
-		
-		NVAR temp_df  = root:$(df):varsFieldMap:DynKNorm
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:DynKNorm
-		temp_df = temp_dfc		
-
-		NVAR temp_df  = root:$(df):varsFieldMap:DynNormComponent
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:DynNormComponent
-		temp_df = temp_dfc	
-
-		NVAR temp_df  = root:$(df):varsFieldMap:MultipolesTrajShift
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:MultipolesTrajShift 
-		temp_df = temp_dfc	
-
-		NVAR temp_df  = root:$(df):varsFieldMap:GridMinTraj
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:GridMinTraj
-		temp_df = temp_dfc	
-
-		NVAR temp_df  = root:$(df):varsFieldMap:GridMaxTraj
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:GridMaxTraj
-		temp_df = temp_dfc	
-		
-		NVAR temp_df  = root:$(df):varsFieldMap:GridNrptsTraj
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:GridNrptsTraj
-		temp_df = temp_dfc	
-			
-		SVAR stemp_df  = root:$(df):varsFieldMap:DynNormalCoefs
-		SVAR stemp_dfc = root:$(dfc):varsFieldMap:DynNormalCoefs
-		stemp_df = stemp_dfc
-
-		SVAR stemp_df  = root:$(df):varsFieldMap:DynSkewCoefs
-		SVAR stemp_dfc = root:$(dfc):varsFieldMap:DynSkewCoefs
-		stemp_df = stemp_dfc
-
-		SVAR stemp_df  = root:$(df):varsFieldMap:DynResNormalCoefs
-		SVAR stemp_dfc = root:$(dfc):varsFieldMap:DynResNormalCoefs
-		stemp_df = stemp_dfc
-
-		SVAR stemp_df  = root:$(df):varsFieldMap:DynResSkewCoefs
-		SVAR stemp_dfc = root:$(dfc):varsFieldMap:DynResSkewCoefs
-		stemp_df = stemp_dfc
+		CopyDynMultipolesConfig_(dfc)
 			
 	endif
 	
 	UpdateDynMultipolesPanel()
+
+End
+
+
+Function CopyDynMultipolesConfig_(dfc)
+	string dfc
+
+	SVAR df  = root:varsCAMTO:FieldMapDir
+
+	NVAR temp_df  = root:$(df):varsFieldMap:FittingOrderTraj
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:FittingOrderTraj
+	temp_df = temp_dfc
+	
+	NVAR temp_df  = root:$(df):varsFieldMap:DistcenterTraj
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:DistcenterTraj
+	temp_df = temp_dfc
+	
+	NVAR temp_df  = root:$(df):varsFieldMap:DynKNorm
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:DynKNorm
+	temp_df = temp_dfc		
+
+	NVAR temp_df  = root:$(df):varsFieldMap:DynNormComponent
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:DynNormComponent
+	temp_df = temp_dfc	
+
+	NVAR temp_df  = root:$(df):varsFieldMap:MultipolesTrajShift
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:MultipolesTrajShift 
+	temp_df = temp_dfc	
+
+	NVAR temp_df  = root:$(df):varsFieldMap:GridMinTraj
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:GridMinTraj
+	temp_df = temp_dfc	
+
+	NVAR temp_df  = root:$(df):varsFieldMap:GridMaxTraj
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:GridMaxTraj
+	temp_df = temp_dfc	
+	
+	NVAR temp_df  = root:$(df):varsFieldMap:GridNrptsTraj
+	NVAR temp_dfc = root:$(dfc):varsFieldMap:GridNrptsTraj
+	temp_df = temp_dfc	
+		
+	SVAR stemp_df  = root:$(df):varsFieldMap:DynNormalCoefs
+	SVAR stemp_dfc = root:$(dfc):varsFieldMap:DynNormalCoefs
+	stemp_df = stemp_dfc
+
+	SVAR stemp_df  = root:$(df):varsFieldMap:DynSkewCoefs
+	SVAR stemp_dfc = root:$(dfc):varsFieldMap:DynSkewCoefs
+	stemp_df = stemp_dfc
+
+	SVAR stemp_df  = root:$(df):varsFieldMap:DynResNormalCoefs
+	SVAR stemp_dfc = root:$(dfc):varsFieldMap:DynResNormalCoefs
+	stemp_df = stemp_dfc
+
+	SVAR stemp_df  = root:$(df):varsFieldMap:DynResSkewCoefs
+	SVAR stemp_dfc = root:$(dfc):varsFieldMap:DynResSkewCoefs
+	stemp_df = stemp_dfc
 
 End
 
@@ -4040,6 +4164,36 @@ Function ResidualDynMultipolesCalc()
 
 	endfor
 			
+End
+
+
+Function CalcDynIntegralsMultipolesToAll(ctrlName) : ButtonControl
+	String ctrlName
+	
+	UpdateFieldMapDirs()
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR FieldMapCount  = root:varsCAMTO:FieldMapCount
+	SVAR FieldMapDir= root:varsCAMTO:FieldMapDir
+		
+	DFREF df = GetDataFolderDFR()
+	string dfc = GetDataFolder(0)
+	
+	variable i
+	string tdf
+	string empty = ""
+
+	for (i=0; i < FieldMapCount; i=i+1)
+		tdf = FieldMapDirs[i]
+		FieldMapDir = tdf
+		SetDataFolder root:$(tdf)
+		CopyDynMultipolesConfig_(dfc)
+		Print("Calculating Dynamic Integrals and Multipoles for " + tdf + ":")
+		CalcDynIntegralsMultipoles(empty)
+	endfor
+
+	SetDataFolder df
+	
 End
 
 
@@ -8220,6 +8374,152 @@ Function DipoleIntegratedField(intfn, x0, [f, tol])
  	print "Value reached! (tolerance: " + num2str(tol) + ")"
  
  End 
+
+Function CenterTrajectory(maglength, defangle, [f, tol])
+	variable maglength
+	variable defangle
+	variable f
+	variable tol
+	
+	if (ParamIsDefault(f))
+		f = 1
+	endif
+	
+	if (ParamIsDefault(tol))
+		tol = 1e-3
+	endif
+	
+	SVAR df = root:varsCAMTO:FieldMapDir
+	
+	NVAR Analitico_RungeKutta = root:$(df):varsFieldMap:Analitico_RungeKutta
+	NVAR Checkfield 	 	= root:$(df):varsFieldMap:Checkfield
+	NVAR EntranceAngle	= root:$(df):varsFieldMap:EntranceAngle
+	NVAR StartYZTraj		= root:$(df):varsFieldMap:StartYZTraj
+	NVAR EndYZTraj		= root:$(df):varsFieldMap:EndYZTraj
+	NVAR StartXTraj 		= root:$(df):varsFieldMap:StartXTraj
+	NVAR EndYZ			= root:$(df):varsFieldMap:EndYZ
+	
+	variable xi, xf, dif
+	string ctrlName = ""
+	variable range = EndYZ - 0.1*Abs(EndYZ)
+	
+	print("Center trajectory:")
+	
+	Analitico_RungeKutta = 2
+	Checkfield = 1
+	EndYZTraj = EndYZ
+			
+	StartYZTraj = 0
+	EntranceAngle = 0
+	StartXTraj = ((maglength/(defangle*pi/180))*(1 - cos((defangle*pi/180)/2)))/2
+	TrajectoriesCalculation(ctrlName)
+	xi = GetTrajPosX(range)
+		
+	StartYZTraj = -range
+	EntranceAngle = defangle/2
+	
+	do
+		StartXTraj = xi
+		TrajectoriesCalculation(ctrlName)
+	
+		xf = GetTrajPosX(range)
+		dif = xf - xi
+		print("xi:"+ num2str(xi))
+		print("xf:"+ num2str(xf))
+		print("dif:" + num2str(dif))
+		xi = xi - f*dif/2		
+					
+	while (abs(dif) > tol)	
+	
+	print("pos(z=0): " + num2str(GetTrajPosX(0)))
+	print("angle(z=0): " + num2str(GetTrajAngleX(0)))
+
+End 
+
+
+Function IntegratedMultipole(k, [skew])
+	variable k
+	variable skew
+	
+	if (ParamIsDefault(skew))
+		skew = 0
+	endif	
+	
+	SetDataFolder root:
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR   FieldMapCount = root:varsCAMTO:FieldMapCount
+	
+	string wn, nwn
+	if (skew)
+		wn = "Mult_Skew_Int"
+	else
+		wn = "Mult_Normal_Int"
+	endif
+	
+	nwn = wn + "_" + num2str(k)	
+	Make/O/N=(FieldmapCount) $nwn 
+	Wave Mult_Int = $nwn
+		
+	variable i
+	string df
+	
+	for (i=0; i<FieldMapCount; i=i+1)
+		df = FieldMapDirs[i]
+		Wave temp = root:$(df):$(wn)
+		if (WaveExists(temp))
+			Mult_Int[i] = temp[k]
+		else
+			Print("Multipoles wave not found for: " + df)
+			break
+		endif
+	endfor
+	
+End
+
+
+
+Function IntegratedDynamicMultipole(k, [skew])
+	variable k
+	variable skew
+	
+	if (ParamIsDefault(skew))
+		skew = 0
+	endif	
+	
+	SetDataFolder root:
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR   FieldMapCount = root:varsCAMTO:FieldMapCount
+	
+	string wn, nwn
+	
+	if (skew)
+		wn = "Dyn_Mult_Skew_Int"
+	else
+		wn = "Dyn_Mult_Normal_Int"
+	endif
+	
+	nwn = wn + "_" + num2str(k)	
+	Make/O/N=(FieldmapCount) $nwn
+	Wave Dyn_Mult_Int = $nwn
+		
+	variable i
+	string df
+	
+	for (i=0; i<FieldMapCount; i=i+1)
+		df = FieldMapDirs[i]
+		Wave temp = root:$(df):$(wn)
+		if (WaveExists(temp))
+			Dyn_Mult_Int[i] = temp[k]
+		else
+			Print("Multipoles wave not found for: " + df)
+			KillWaves/Z Dyn_Mult_Int
+			break
+		endif				
+	endfor
+	
+End
 
 
 // Alterações
