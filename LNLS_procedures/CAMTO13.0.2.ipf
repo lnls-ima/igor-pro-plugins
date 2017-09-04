@@ -8445,6 +8445,8 @@ Function IntegratedMultipole(k, [skew])
 		skew = 0
 	endif	
 	
+	DFREF cf = GetDataFolderDFR()
+	
 	SetDataFolder root:
 		
 	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
@@ -8475,6 +8477,8 @@ Function IntegratedMultipole(k, [skew])
 		endif
 	endfor
 	
+	SetDataFolder cf
+	
 End
 
 
@@ -8486,6 +8490,8 @@ Function IntegratedDynamicMultipole(k, [skew])
 	if (ParamIsDefault(skew))
 		skew = 0
 	endif	
+	
+	DFREF cf = GetDataFolderDFR()
 	
 	SetDataFolder root:
 		
@@ -8518,6 +8524,8 @@ Function IntegratedDynamicMultipole(k, [skew])
 			break
 		endif				
 	endfor
+	
+	SetDataFolder cf
 	
 End
 
