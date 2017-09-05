@@ -8375,18 +8375,13 @@ Function DipoleIntegratedField(intfn, x0, [f, tol])
  
  End 
 
-Function CenterTrajectory(maglength, defangle, [f, tol])
+
+Function CenterTrajectory(maglength, [tol])
 	variable maglength
-	variable defangle
-	variable f
 	variable tol
 	
-	if (ParamIsDefault(f))
-		f = 1
-	endif
-	
 	if (ParamIsDefault(tol))
-		tol = 1e-3
+		tol = 1e-4
 	endif
 	
 	SVAR df = root:varsCAMTO:FieldMapDir
@@ -8399,42 +8394,37 @@ Function CenterTrajectory(maglength, defangle, [f, tol])
 	NVAR StartXTraj 		= root:$(df):varsFieldMap:StartXTraj
 	NVAR EndYZ			= root:$(df):varsFieldMap:EndYZ
 	
-	variable xi, xf, dif
+	variable xi, nxi, xf, dif
 	string ctrlName = ""
-	variable range = EndYZ - 0.1*Abs(EndYZ)
 	
 	print("Center trajectory:")
 	
 	Analitico_RungeKutta = 2
 	Checkfield = 1
 	EndYZTraj = EndYZ
-			
 	StartYZTraj = 0
 	EntranceAngle = 0
-	StartXTraj = ((maglength/(defangle*pi/180))*(1 - cos((defangle*pi/180)/2)))/2
-	TrajectoriesCalculation(ctrlName)
-	xi = GetTrajPosX(range)
-		
-	StartYZTraj = -range
-	EntranceAngle = defangle/2
-	
+	xi = 0
+			
 	do
 		StartXTraj = xi
 		TrajectoriesCalculation(ctrlName)
 	
-		xf = GetTrajPosX(range)
-		dif = xf - xi
+		xf = GetTrajPosX(maglength/2)
+		nxi = (xi - xf)/2
+		dif = nxi - xi
+		
 		print("xi:"+ num2str(xi))
-		print("xf:"+ num2str(xf))
+		print("nxi:"+ num2str(nxi))
 		print("dif:" + num2str(dif))
-		xi = xi - f*dif/2		
-					
+		
+		xi = nxi
+		
 	while (abs(dif) > tol)	
 	
 	print("pos(z=0): " + num2str(GetTrajPosX(0)))
-	print("angle(z=0): " + num2str(GetTrajAngleX(0)))
 
-End 
+End  
 
 
 Function IntegratedMultipole(k, [skew])
