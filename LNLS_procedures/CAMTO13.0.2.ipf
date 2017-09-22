@@ -2393,6 +2393,29 @@ Function IntegralsCalculation()
 End
 
 
+Function EquallySpaced(w)
+	Wave w
+	
+	variable i, tol
+	variable step, prev_step, eq_step
+	
+	tol = 1e-10
+	eq_step = 1
+	prev_step = w(1) - w(0)
+	
+	for(i=1; i<numpnts(w)-1; i=i+1)
+		step = w(i+1) - w(i)
+		if (Abs(step - prev_step) > tol)
+			eq_step = 0
+			break
+		endif
+		prev_step = step
+	endfor
+	
+	return eq_step
+End
+
+
 #if Exists("Calc2DSplineInterpolant")
 
 	Function CalcFieldmapInterpolant()
@@ -2410,6 +2433,17 @@ End
 		variable calc_interpolant_flag
 		string nome
 		variable i, j, k
+	
+		Wave C_PosX
+		Wave C_PosYZ
+		
+		if (EquallySpaced(C_PosX) == 0)
+			return 0
+		endif
+		
+		if (EquallySpaced(C_PosYZ) == 0)
+			return 0
+		endif
 	
 		Make/O/N=(NPointsX*NPointsYZ) NewWave0, NewWave1, NewWave2, NewWave3, NewWave4, NewWave5
 		
