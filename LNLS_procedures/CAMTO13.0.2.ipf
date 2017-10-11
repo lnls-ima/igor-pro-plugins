@@ -435,7 +435,7 @@ Window Load_Field_Data() : Panel
 		Killwindow Load_Field_Data
 	endif
 		
-	NewPanel /K=1 /W=(740,60,1166,508)
+	NewPanel /K=1 /W=(740,60,1166,568)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 5,3,421,62
@@ -450,7 +450,9 @@ Window Load_Field_Data() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 284,240,421,394
 	SetDrawEnv fillpat= 0
-	DrawRect 5,394,421,444
+	DrawRect 5,394,421,445
+	SetDrawEnv fillpat= 0
+	DrawRect 5,445,421,504
 		
 	TitleBox FMdir,      pos={12,12},size={80,40},title="\t Select \r Directory ",fSize=14,fStyle=1,frame=0
 	CheckBox NewDir     ,pos={100,12},size={110,16},title=" New Directory: "     ,value=1,mode=1,proc=SelectDirectory
@@ -510,13 +512,17 @@ Window Load_Field_Data() : Panel
 	ValDisplay steps_z,pos={298,361},size={109,14},title="Steps"
 	ValDisplay steps_z,disable=2,limits={0,0,0},barmisc={0,1000}
 	
-	Button loadfield,pos={12,400},size={168,41},proc=Carrega_Resultados,title="Load Magnetic Field"
+	Button loadfield,pos={15,400},size={190,41},proc=Carrega_Resultados,title="Load Magnetic Field"
 	Button loadfield,disable=2,fStyle=1
-	Button exportfield,pos={190,400},size={110,41},proc=ExportField,title="Export Field"
-	Button exportfield,disable=2,fStyle=1
-	Button clearfield,pos={310,400},size={105,41},proc=ClearField,title="Clear Field"
+	Button clearfield,pos={220,400},size={190,41},proc=ClearField,title="Clear Field"
 	Button clearfield,disable=2,fStyle=1
-		
+
+	TitleBox title8,pos={15,464},size={52,16},title="Export Field:",fSize=14,frame=0
+	Button exportfield,pos={120,455},size={140,41},proc=ExportField,title="MagNet Format"
+	Button exportfield,disable=2,fStyle=1
+	Button exportfieldspectra,pos={270,455},size={140,41},proc=ExportFieldSpectra,title="Spectra Format"
+	Button exportfieldspectra,disable=2,fStyle=1
+			
 	if (strlen(root:varsCAMTO:FieldMapDir) > 0 && cmpstr(root:varsCAMTO:FieldMapDir, "_none_")!=0)
 		FindValue/Text=root:varsCAMTO:FieldMapDir/TXOP=4 root:wavesCAMTO:FieldMapDirs
 		PopupMenu FieldMapDir,mode=(V_value+1)	
@@ -632,11 +638,13 @@ Function UpdateLoadDataPanel()
 		
 		Button loadfield,win=Load_Field_Data,   disable=0
 		Button exportfield,win=Load_Field_Data, disable=0
+		Button exportfieldspectra,win=Load_Field_Data,disable=0
 		Button clearfield,win=Load_Field_Data, disable=0
 		
 	else
 		Button loadfield,win=Load_Field_Data,   disable=2
 		Button exportfield,win=Load_Field_Data, disable=2
+		Button exportfieldspectra,win=Load_Field_Data,disable=2
 		Button clearfield,win=Load_Field_Data,  disable=2
 		PopupMenu BeamDirection,win=Load_Field_Data,disable=2
 		PopupMenu StaticTransient,win=Load_Field_Data,disable=2
@@ -721,6 +729,7 @@ Function SelectDirectory(cb) : CheckBoxControl
 			Button CreateDir,win=Load_Field_Data,disable=0
 			Button loadfield,win=Load_Field_Data,disable=2
 			Button exportfield,win=Load_Field_Data,disable=2
+			Button exportfieldspectra,win=Load_Field_Data,disable=2
 			Button clearfield,win=Load_Field_Data,disable=2
 			
 			if (FieldMapCount == 0)
@@ -740,6 +749,7 @@ Function SelectDirectory(cb) : CheckBoxControl
 			if (strlen(df) > 0 && cmpstr(df, "_none_")!=0)
 				Button loadfield, disable=0
 				Button exportfield, disable=0
+				Button exportfieldspectra, disable=0
 				Button clearfield, disable=0
 			endif
 			
@@ -1533,6 +1543,86 @@ Function Export_Full_Data()
 End
 
 
+Function ExportFieldSpectra(ctrlName) : ButtonControl
+	String ctrlName
+	
+	if (CheckDataFolder() == -1)
+		return -1
+	endif
+	
+	NVAR BeamDirection = :varsFieldMap:BeamDirection
+
+	NVAR StartX    = :varsFieldMap:StartX
+	NVAR EndX      = :varsFieldMap:EndX
+	NVAR StepsX    = :varsFieldMap:StepsX
+	NVAR NPointsX  = :varsFieldMap:NPointsX
+
+	NVAR StartYZ   = :varsFieldMap:StartYZ
+	NVAR EndYZ     = :varsFieldMap:EndYZ
+	NVAR StepsYZ   = :varsFieldMap:StepsYZ
+	NVAR NPointsYZ = :varsFieldMap:NPointsYZ	
+	
+	SVAR FMPath 		= :varsFieldMap:FMPath
+	
+	string nome
+	variable i, j, k
+	
+	make/o/n=(NPointsX*NPointsYZ) Exportwave0
+	make/o/n=(NPointsX*NPointsYZ) Exportwave3
+	make/o/n=(NPointsX*NPointsYZ) Exportwave4
+	make/o/n=(NPointsX*NPointsYZ) Exportwave5
+	
+	k=0
+	for (j=0;j<NpointsX;j=j+1)
+		for (i=0;i<NPointsYZ;i=i+1)
+
+			Exportwave0[k] = StartX + j*StepsX		
+			
+			nome = "RaiaBx_X" + num2str(Exportwave0[k]/1000)
+			Wave Tmp = $nome
+			Exportwave3[k] = Tmp[i]
+
+			nome = "RaiaBy_X" + num2str(Exportwave0[k]/1000)
+			Wave Tmp = $nome
+			Exportwave4[k] = Tmp[i]
+
+			nome = "RaiaBz_X" + num2str(Exportwave0[k]/1000)
+			Wave Tmp = $nome
+			Exportwave5[k] = Tmp[i]
+			
+			k = k + 1
+		endfor
+	endfor
+	
+	Edit/N=CompleteTable Exportwave3,Exportwave4,Exportwave5
+	ModifyTable sigDigits(Exportwave3)=16,sigDigits(Exportwave4)=16,sigDigits(Exportwave5)=16
+
+	string NewFMFilename = GetDefaultFilename(Spectra=1)	
+	string header_str
+	sprintf header_str, "%g\t%g\t%g\t%g\t%g\t%g", StepsX, 0, StepsYZ, NPointsX, 1, NPointsYZ
+
+	Make/O/T/N=1 SpectraHeaderLines
+	SpectraHeaderLines[0] = header_str
+		
+	Open/D TablePath as FMPath+NewFMFilename
+	if (!stringmatch(S_fileName,""))
+		Edit/N=Header SpectraHeaderLines
+		SaveTableCopy/A=0/O/T=1/W=Header0/N=0 as S_fileName
+		SaveTableCopy/A=2/O/T=1/W=CompleteTable/N=0 as S_fileName
+	endif
+	Close/A
+		
+	KillWindow CompleteTable
+	KillWindow Header0
+	KillWaves/Z HeaderLines	
+	Killwaves/Z Exportwave0
+	Killwaves/Z Exportwave3
+	Killwaves/Z Exportwave4
+	Killwaves/Z Exportwave5	
+
+End
+
+
 Function/S year()
 	return StringFromList(0, Secs2Date(DateTime, -2), "-")
 End
@@ -1588,7 +1678,12 @@ Function/S second()
 End
 
 
-Function/S GetDefaultFilename()
+Function/S GetDefaultFilename([Spectra])
+	variable Spectra
+	
+	if (ParamIsDefault(Spectra))
+		Spectra = 0
+	endif	
 	
 	SVAR FMFilename = :varsFieldMap:FMFilename
 	
@@ -1645,6 +1740,13 @@ Function/S GetDefaultFilename()
 	if (V_flag == 3)
 		string newtimestamp = year() + "-" + month() + "-" + day()
 		newfilename = ReplaceString(oldtimestamp, newfilename, newtimestamp)
+	endif
+	
+	if (Spectra)
+		SplitString/E=".*\." newfilename
+		string tmp = S_value[0, strlen(S_value)-2] + "_spectra"
+		SplitString/E="\..*" newfilename
+		newfilename = tmp + S_value
 	endif
 	
 	return newfilename
