@@ -15,6 +15,7 @@ Menu "CAMTO"
 	"Trajectories", Execute "Trajectories()"
 	"Dynamic Multipoles", Execute "Dynamic_Multipoles()"
 	"Find Peaks", Execute "Find_Peaks()"
+	"Phase Error", Execute "Phase_Error()"
 	"Results", Execute "Results()"
 	"Compare Results", Execute "Compare_Results()"
 	"Help", Execute "Help()"
@@ -124,9 +125,9 @@ Function Initialize_CAMTO()
 	SetDataFolder root:wavesCAMTO:
 	
 	Make/T FieldMapDirs
-	Make/N=(1, 2) NormalMultipoles
-	Make/N=(0, 2) SkewMultipoles
-	Make/N=(10,5) MultipoleErrors
+	Make/D/N=(1, 2) NormalMultipoles
+	Make/D/N=(0, 2) SkewMultipoles
+	Make/D/N=(10,5) MultipoleErrors
 	
 	SetDataFolder root:
 End
@@ -276,9 +277,15 @@ Function InitializeFieldMapVariables()
 	
 	variable/G GraphAppend = 1
 
-	variable/G FieldAxisPeak = 3
-	variable/G PeaksPosNeg = 1 
+	string/G   FieldAxisPeakStr = "By"
+	variable/G FieldAxisPeak = 2
+	variable/G PeaksPosNeg = 3 
 	variable/G NAmplPeaks = 5
+	variable/G StepsYZPeaks = 1
+	variable/G AvgPeriodPeaks = 0
+	
+	variable/G IDCutPeriods = 0
+	variable/G IDPhaseError = 0
 	
 	string/G FMFilename = ""
 	string/G FMPath = ""
@@ -435,7 +442,7 @@ Window Load_Field_Data() : Panel
 		Killwindow Load_Field_Data
 	endif
 		
-	NewPanel /K=1 /W=(740,60,1166,568)
+	NewPanel /K=1 /W=(740,60,1166,592)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 5,3,421,62
@@ -450,9 +457,9 @@ Window Load_Field_Data() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 284,240,421,394
 	SetDrawEnv fillpat= 0
-	DrawRect 5,394,421,445
+	DrawRect 5,394,421,457
 	SetDrawEnv fillpat= 0
-	DrawRect 5,445,421,504
+	DrawRect 5,457,421,527
 		
 	TitleBox FMdir,      pos={12,12},size={80,40},title="\t Select \r Directory ",fSize=14,fStyle=1,frame=0
 	CheckBox NewDir     ,pos={100,12},size={110,16},title=" New Directory: "     ,value=1,mode=1,proc=SelectDirectory
@@ -464,12 +471,9 @@ Window Load_Field_Data() : Panel
 	
 	PopupMenu FieldMapDir,pos={225,37},size={155,18},bodyWidth=150,mode=0,proc=ChangeDirectory,title=" "
 	
-	TitleBox title7,pos={180,100},size={81,16},title="Symmetries",fSize=14,frame=0
-	TitleBox title7,fStyle=1
-	TitleBox title8,pos={66,160},size={52,16},title="Plane 1",fSize=14,frame=0
-	TitleBox title8,fStyle=1
-	TitleBox title9,pos={271,160},size={52,16},title="Plane 2",fSize=14,frame=0
-	TitleBox title9,fStyle=1
+	TitleBox title7,pos={180,100},size={81,16},title="Symmetries",fSize=14,frame=0,fStyle=1
+	TitleBox title8,pos={66,160},size={52,16},title="Plane 1",fSize=14,frame=0,fStyle=1
+	TitleBox title9,pos={271,160},size={52,16},title="Plane 2",fSize=14,frame=0,fStyle=1
 	TitleBox LXAxis,pos={39,250},size={63,24},title="X - axis",fSize=20,frame=0
 	TitleBox LYAxis,pos={181,250},size={61,24},disable=2,title="Y - axis",fSize=20,frame=0
 	TitleBox LZAxis,pos={318,250},size={61,24},title="Z - axis",fSize=20,frame=0
@@ -512,15 +516,15 @@ Window Load_Field_Data() : Panel
 	ValDisplay steps_z,pos={298,361},size={109,14},title="Steps"
 	ValDisplay steps_z,disable=2,limits={0,0,0},barmisc={0,1000}
 	
-	Button loadfield,pos={15,400},size={190,41},proc=Carrega_Resultados,title="Load Magnetic Field"
+	Button loadfield,pos={15,405},size={190,41},proc=Carrega_Resultados,title="Load Magnetic Field"
 	Button loadfield,disable=2,fStyle=1
-	Button clearfield,pos={220,400},size={190,41},proc=ClearField,title="Clear Field"
+	Button clearfield,pos={220,405},size={190,41},proc=ClearField,title="Clear Field"
 	Button clearfield,disable=2,fStyle=1
-
-	TitleBox title8,pos={15,464},size={52,16},title="Export Field:",fSize=14,frame=0
-	Button exportfield,pos={120,455},size={140,41},proc=ExportField,title="MagNet Format"
+	
+	TitleBox title10,pos={170,462},size={81,16},title="Export Field:",fSize=14,frame=0,fStyle=1
+	Button exportfield,pos={15,485},size={190,36},proc=ExportField,title="MagNet Format"
 	Button exportfield,disable=2,fStyle=1
-	Button exportfieldspectra,pos={270,455},size={140,41},proc=ExportFieldSpectra,title="Spectra Format"
+	Button exportfieldspectra,pos={220,485},size={190,36},proc=ExportFieldSpectra,title="Spectra Format"
 	Button exportfieldspectra,disable=2,fStyle=1
 			
 	if (strlen(root:varsCAMTO:FieldMapDir) > 0 && cmpstr(root:varsCAMTO:FieldMapDir, "_none_")!=0)
@@ -852,6 +856,7 @@ Function UpdatePanels()
 	UpdateFindPeaksPanel()
 	UpdateResultsPanel()
 	UpdateCompareResultsPanel()
+	UpdatePhaseErrorPanel()
 End
 
 
@@ -1320,7 +1325,7 @@ Function Carrega_Resultados(ctrlName) : ButtonControl
 		for(j=1;j<NPointsX;j+=1)
 			Raia = "RaiaBx_X" + num2str(C_PosX[j])
 			RaiaAux = "RaiaBx_X-" + num2str(C_PosX[j])
-			make/O $RaiaAux
+			make/D/O $RaiaAux
 			Wave Tmp = $RaiaAux
 			Duplicate/D/O $Raia, Tmp
 			if (SymmetryBxX == 3)
@@ -1329,7 +1334,7 @@ Function Carrega_Resultados(ctrlName) : ButtonControl
 			
 			Raia = "RaiaBy_X" + num2str(C_PosX[j])
 			RaiaAux = "RaiaBy_X-" + num2str(C_PosX[j])
-			make/O $RaiaAux
+			make/D/O $RaiaAux
 			Wave Tmp = $RaiaAux
 			Duplicate/D/O $Raia, Tmp
 			if (SymmetryByX == 3)
@@ -1338,7 +1343,7 @@ Function Carrega_Resultados(ctrlName) : ButtonControl
 			
 			Raia = "RaiaBz_X" + num2str(C_PosX[j])
 			RaiaAux = "RaiaBz_X-" + num2str(C_PosX[j])
-			make/O $RaiaAux
+			make/D/O $RaiaAux
 			Wave Tmp = $RaiaAux
 			Duplicate/D/O $Raia, Tmp
 			if (SymmetryBzX == 3)
@@ -1419,12 +1424,16 @@ Function UpdateVariables()
 	NVAR GridMin     = :varsFieldMap:GridMin
 	NVAR GridMax 	 = :varsFieldMap:GridMax
 	NVAR StartYZTraj = :varsFieldMap:StartYZTraj
-	NVAR EndYZTraj   = :varsFieldMap:EndYZTraj  
+	NVAR EndYZTraj   = :varsFieldMap:EndYZTraj 
+	
+	NVAR StepsYZ      = :varsFieldMap:StepsYZ
+	NVAR StepsYZPeaks = :varsFieldMap:StepsYZPeaks 
 	
 	GridMin = StartX
 	GridMax = EndX
 	StartYZTraj = StartYZ
 	EndYZTraj   = EndYZ
+	StepsYZPeaks = StepsYZ
 	
 End
 
@@ -1483,12 +1492,12 @@ Function Export_Full_Data()
 	string nome
 	variable i, j, k
 	
-	make/o/n=(NPointsX*NPointsYZ) Exportwave0
-	make/o/n=(NPointsX*NPointsYZ) Exportwave1
-	make/o/n=(NPointsX*NPointsYZ) Exportwave2
-	make/o/n=(NPointsX*NPointsYZ) Exportwave3
-	make/o/n=(NPointsX*NPointsYZ) Exportwave4
-	make/o/n=(NPointsX*NPointsYZ) Exportwave5
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave0
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave1
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave2
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave3
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave4
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave5
 	
 	k =0
 	for (i=0;i<NPointsYZ;i=i+1)
@@ -1567,10 +1576,10 @@ Function ExportFieldSpectra(ctrlName) : ButtonControl
 	string nome
 	variable i, j, k
 	
-	make/o/n=(NPointsX*NPointsYZ) Exportwave0
-	make/o/n=(NPointsX*NPointsYZ) Exportwave3
-	make/o/n=(NPointsX*NPointsYZ) Exportwave4
-	make/o/n=(NPointsX*NPointsYZ) Exportwave5
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave0
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave3
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave4
+	make/D/o/n=(NPointsX*NPointsYZ) Exportwave5
 	
 	k=0
 	for (j=0;j<NpointsX;j=j+1)
@@ -1744,7 +1753,7 @@ Function/S GetDefaultFilename([Spectra])
 	
 	if (Spectra)
 		SplitString/E=".*\." newfilename
-		string tmp = S_value[0, strlen(S_value)-2] + "_spectra"
+		string tmp = S_value[0, strlen(S_value)-2] + "_spectra_format"
 		SplitString/E="\..*" newfilename
 		newfilename = tmp + S_value
 	endif
@@ -2547,7 +2556,7 @@ End
 			return 0
 		endif
 	
-		Make/O/N=(NPointsX*NPointsYZ) NewWave0, NewWave1, NewWave2, NewWave3, NewWave4, NewWave5
+		Make/D/O/N=(NPointsX*NPointsYZ) NewWave0, NewWave1, NewWave2, NewWave3, NewWave4, NewWave5
 		
 		k =0
 		for (i=0;i<NPointsYZ;i=i+1)
@@ -2600,7 +2609,7 @@ End
 		Variable index, DeflectionAngle, PosX, PosYZ
 		Wave GridX
 		
-		Make/O/N=3 MagField
+		Make/D/O/N=3 MagField
 		variable RotX, RotYZ
 		
 		RotX   = PosX   + GridX[index]*cos(DeflectionAngle)
@@ -2623,7 +2632,7 @@ End
 	ThreadSafe Function/Wave GetPerpendicularField(index, DeflectionAngle, PosX, PosYZ, GridX)
 		Variable index, DeflectionAngle, PosX, PosYZ
 		Wave GridX
-		Make/O/N=3 MagField
+		Make/D/O/N=3 MagField
 		return MagField	
 	End
 
@@ -2638,7 +2647,7 @@ Function/Wave GetPerpendicularFieldST(index, DeflectionAngle, PosX, PosYZ, GridX
 	NVAR FieldY = :varsFieldMap:FieldY
 	NVAR FieldZ = :varsFieldMap:FieldZ
 	
-	Make/O/N=3 MagField
+	Make/D/O/N=3 MagField
 	variable RotX, RotYZ
 	
 	RotX   = PosX   + GridX[index]*cos(DeflectionAngle)
@@ -4127,7 +4136,7 @@ Function IntegralMultipoles_Traj([ReloadField])
 	endif
 	PosNrpts = round(numpnts(TrajX)/f)
 	
-	Make/O/N=(GridNrpts,3) Field_Perp	
+	Make/D/O/N=(GridNrpts,3) Field_Perp	
 	Make/O/D/N=(PosNrpts) Dyn_Mult_Ang , Dyn_Mult_Pos, Dyn_Mult_PosX, Dyn_Mult_PosYZ, Temp
 	Make/O/D/N=(PosNrpts, FittingOrder) Dyn_Mult_Normal, Dyn_Mult_Skew
 	Make/O/D/N=(FittingOrder) W_coef, W_sigma
@@ -4348,7 +4357,7 @@ Window Find_Peaks() : Panel
 		Killwindow Find_Peaks
 	endif	
 
-	NewPanel/K=1/W=(1380,60,1703,286)
+	NewPanel/K=1/W=(1380,60,1703,365)
 	
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
@@ -4356,13 +4365,11 @@ Window Find_Peaks() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 4,30,319,70
 	SetDrawEnv fillpat= 0
-	DrawRect 4,70,319,110
+	DrawRect 4,70,319,235
 	SetDrawEnv fillpat= 0
-	DrawRect 4,110,319,150
+	DrawRect 4,235,319,275
 	SetDrawEnv fillpat= 0
-	DrawRect 4,150,319,190
-	SetDrawEnv fillpat= 0
-	DrawRect 4,190,319,220
+	DrawRect 4,275,319,300
 	
 	TitleBox LXAxis,pos={115,4},size={63,22},title="Find Peaks",fSize=19,frame=0,fStyle=1
 	
@@ -4370,23 +4377,27 @@ Window Find_Peaks() : Panel
 		
 	PopupMenu FieldAxisPeak, title = "Field Axis :", pos={200,40},size={106,21},proc=FieldAxisPeak
 	PopupMenu FieldAxisPeak,disable=2,value= #"\"Bx;By;Bz\""
-	
-	SetVariable NAmplPeaks,pos={10,80},size={305,18},title="Peak amplitude related to the maximum[%] :"
-	SetVariable NAmplPeaks,limits={0,100,1}
 
-	PopupMenu PosNegPeak, pos={10,120},size={106,21},proc=PosNegPeaks,title = "Peaks :"
+	PopupMenu PosNegPeak, pos={10,80},size={150,21},proc=PosNegPeaks,title = "Peaks :"
 	PopupMenu PosNegPeak,disable=2,value= #"\"Positive Peaks;Negative Peaks;Both Peaks\""
 
-	Button PeaksProc,pos={185,119},size={120,24},proc=FindPeaksProc,title="Find Peaks"
-	Button PeaksProc,fStyle=1,disable=2
+	SetVariable StepsYZPeaks,pos={10,110},size={220,18},title="Interpolation Step [mm] :"
+	
+	SetVariable NAmplPeaks,pos={10,140},size={305,18},title="Peak amplitude related to the maximum [%] :"
+	SetVariable NAmplPeaks,limits={0,100,1}
 
-	Button PeaksGraph,pos={20,160},size={170,24},proc=GraphPeaksProc,title="Show Peaks"
+	Button PeaksProc,pos={10,175},size={150,55},fSize=14,proc=FindPeaksProc,title="Find Peaks"
+	Button PeaksProc,fStyle=1,disable=2
+	TitleBox    avg_period_label,pos={180,175},size={120,18},frame=0,title="Average Period [mm]: "
+	ValDisplay  avg_period,pos={180,200},size={120,18}
+	
+	Button PeaksGraph,pos={15,243},size={140,24},proc=GraphPeaksProc,title="Show Peaks"
 	Button PeaksGraph,fStyle=1,disable=2
 	
-	Button PeaksTable,pos={200,160},size={100,24},proc=TablePeaksProc,title="Show Table"
+	Button PeaksTable,pos={170,243},size={140,24},proc=TablePeaksProc,title="Show Table"
 	Button PeaksTable,fStyle=1,disable=2
 	
-	SetVariable fieldmapdir,pos={20,195},size={280,18},fStyle=1,title="FieldMap directory: "
+	SetVariable fieldmapdir,pos={17,280},size={290,18},title="FieldMap directory: "
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
 	
 	UpdateFieldMapDirs()
@@ -4416,7 +4427,10 @@ Function UpdateFindPeaksPanel()
 		SetVariable PosXPeaks, win=Find_Peaks,limits={StartX, EndX, StepsX}
 		PopupMenu FieldAxisPeak, win=Find_Peaks,disable=0, mode=FieldAxisPeak
 		SetVariable NAmplPeaks, win=Find_Peaks,value= root:$(df):varsFieldMap:NAmplPeaks
+		SetVariable StepsYZPeaks, win=Find_Peaks,value= root:$(df):varsFieldMap:StepsYZPeaks
+		SetVariable StepsYZPeaks, win=Find_Peaks,limits={0,inf,0}
 		PopupMenu PosNegPeak, win=Find_Peaks,disable=0, mode=PeaksPosNeg
+		ValDisplay  avg_period, win=Find_Peaks, value=#("root:"+ df + ":varsFieldMap:AvgPeriodPeaks" )
 		
 		Button PeaksProc, win=Find_Peaks, disable=0
 		Button PeaksGraph,win=Find_Peaks, disable=0
@@ -4433,17 +4447,21 @@ Function UpdateFindPeaksPanel()
 End
 
 
-Function FindPeaksProc(ctrlName) : ButtonControl
+Function FindPeaksProc(ctrlName)
 	String ctrlName
 
-	NVAR NPointsYZ     = :varsFieldMap:NPointsYZ
-	NVAR PosXAux       = :varsFieldMap:PosXAux
-	NVAR FieldAxisPeak = :varsFieldMap:FieldAxisPeak	
-	NVAR PeaksPosNeg   = :varsFieldMap:PeaksPosNeg
-	NVAR NAmplPeaks    = :varsFieldMap:NAmplPeaks
+	NVAR StartYZ        = :varsFieldMap:StartYZ
+	NVAR EndYZ          = :varsFieldMap:EndYZ
+	NVAR NPointsYZ      = :varsFieldMap:NPointsYZ
+	NVAR PosXAux        = :varsFieldMap:PosXAux
+	NVAR FieldAxisPeak  = :varsFieldMap:FieldAxisPeak	
+	NVAR PeaksPosNeg    = :varsFieldMap:PeaksPosNeg
+	NVAR NAmplPeaks     = :varsFieldMap:NAmplPeaks
+	NVAR StepsYZPeaks   = :varsFieldMap:StepsYZPeaks
+	NVAR AvgPeriodPeaks = :varsFieldMap:AvgPeriodPeaks
 	
-	Wave C_PosYZ
-	
+	variable NPointsYZPeak = ((EndYZ - StartYZ)/StepsYZPeaks) + 1
+		
 	variable i
 	variable ii
 	variable j	
@@ -4453,6 +4471,7 @@ Function FindPeaksProc(ctrlName) : ButtonControl
 	variable Minimum
 	variable Baseline
 	
+	Killwaves/Z PositionPeaksNeg, ValuePeaksNeg, PositionPeaksPos, ValuePeaksPos
 	if (PeaksPosNeg == 1)
 		Make/D/O/N=(1) PositionPeaksPos
 		Make/D/O/N=(1) ValuePeaksPos	
@@ -4465,49 +4484,54 @@ Function FindPeaksProc(ctrlName) : ButtonControl
 		Make/D/O/N=(1) PositionPeaksNeg
 		Make/D/O/N=(1) ValuePeaksNeg		
 	endif
-	
+
 	if (FieldAxisPeak == 1)
 		Name = "RaiaBx_X"+num2str(PosXAux/1000)
-		Wave Tmp = $Name
-
-		//Get Maximum and Minimun
-		Maximum = WaveMax(Tmp)
-		Minimum = WaveMin(Tmp)
 		
 	elseif (FieldAxisPeak == 2)
 		Name = "RaiaBy_X"+num2str(PosXAux/1000)	
-		Wave Tmp = $Name
 
-		//Get Maximum and Minimun
-		Maximum = WaveMax(Tmp)
-		Minimum = WaveMin(Tmp)
-	
 	elseif (FieldAxisPeak == 3)	
 		Name = "RaiaBz_X"+num2str(PosXAux/1000)	
-		Wave Tmp = $Name
 
-		//Get Maximum and Minimun
-		Maximum = WaveMax(Tmp)
-		Minimum = WaveMin(Tmp)
+	endif
+
+	string Interp_Field_Name
+	Interp_Field_Name = "Interp_" + Name
+	
+	Wave C_PosYZ	
+	Wave Field = $Name
+	
+	if (NPointsYZPeak == NPointsYZ)
+		Duplicate/O C_PosYZ, Interp_C_PosYZ
+		Duplicate/O Field, $(Interp_Field_Name)
+		Wave Interp_Field = $(Interp_Field_Name)
+	else
+		Interpolate2/T=2/N=(NPointsYZPeak)/X=Interp_C_PosYZ/Y=$(Interp_Field_Name) C_PosYZ, Field
+		Wave Interp_Field = $(Interp_Field_Name)
 	endif
 	
+	//Get Maximum and Minimun
+	Maximum = WaveMax(Interp_Field)
+	Minimum = WaveMin(Interp_Field)
+	
 	//Baseline
-	if (PeaksPosNeg == 1)
+	if (PeaksPosNeg == 1 || PeaksPosNeg == 3)
 		Baseline = (Maximum - Maximum * (NAmplPeaks/100))
 			
 		valorpeak = Baseline			
 		j = 0
 
 		//Find Peaks
-		for (i=0;i<NPointsYZ;i=i+1)
-			if (Tmp[i] > Baseline)
-				if (valorpeak < Tmp[i])
-					valorpeak = Tmp[i]
-					PositionPeaksPos[j] = C_PosYZ[i]
-					ValuePeaksPos[j] = Tmp[i]
+		for (i=0; i<NPointsYZPeak; i=i+1)
+			if (Interp_Field[i] > Baseline)
+				if (valorpeak < Interp_Field[i])
+					valorpeak = Interp_Field[i]
+					PositionPeaksPos[j] = Interp_C_PosYZ[i]
+					ValuePeaksPos[j] = Interp_Field[i]
 				endif				
 			else
-				if (Tmp[i-1] > Baseline)
+				if (Interp_Field[i-1] > Baseline)
 					valorpeak = Baseline
 					j = j + 1
 					InsertPoints j, 1, PositionPeaksPos
@@ -4525,23 +4549,35 @@ Function FindPeaksProc(ctrlName) : ButtonControl
 		Print("Standard Deviation : " + num2str(V_sdev))	
 		Print("Error : "+ num2str(abs(V_sdev/V_avg*100)) + "%")
 		EraseStatsVariables()	
-						
-	elseif (PeaksPosNeg == 2)
+		
+		Make/O/N=(numpnts(PositionPeaksPos) - 1) PositionPeaksPosDiff
+		
+		for (i=0; i<numpnts(PositionPeaksPosDiff); i=i+1)
+			PositionPeaksPosDiff[i] = PositionPeaksPos[i+1] - PositionPeaksPos[i]
+		endfor
+		
+		variable AvgPeriodPeaksPos = Mean(PositionPeaksPosDiff)
+		
+		Killwaves/Z PositionPeaksPosDiff
+		
+	endif		
+				
+	if (PeaksPosNeg == 2 || PeaksPosNeg == 3)
 		Baseline = (Minimum - Minimum * (NAmplPeaks/100))
 			
 		valorpeak = Baseline			
 		j = 0
 
 		//Find Peaks
-		for (i=0;i<NPointsYZ;i=i+1)
-			if (Tmp[i] < Baseline)
-				if (valorpeak > Tmp[i])
-					valorpeak = Tmp[i]
-					PositionPeaksNeg[j] = C_PosYZ[i]
-					ValuePeaksNeg[j] = Tmp[i]
+		for (i=0; i<NPointsYZPeak; i=i+1)
+			if (Interp_Field[i] < Baseline)
+				if (valorpeak > Interp_Field[i])
+					valorpeak = Interp_Field[i]
+					PositionPeaksNeg[j] = Interp_C_PosYZ[i]
+					ValuePeaksNeg[j] = Interp_Field[i]
 				endif				
 			else
-				if (Tmp[i-1] < Baseline)
+				if (Interp_Field[i-1] < Baseline)
 					valorpeak = Baseline
 					j = j + 1
 					InsertPoints j, 1, PositionPeaksNeg
@@ -4559,77 +4595,112 @@ Function FindPeaksProc(ctrlName) : ButtonControl
 		Print("Standard Deviation : " + num2str(V_sdev))		
 		Print("Error : "+ num2str(abs(V_sdev/V_avg*100)) + "%")
 		EraseStatsVariables()	
-		
-	elseif (PeaksPosNeg == 3)
-		//Positives
-		Baseline = (Maximum - Maximum * (NAmplPeaks/100))
-			
-		valorpeak = Baseline			
-		j = 0
 
-		//Find Peaks
-		for (i=0;i<NPointsYZ;i=i+1)
-			if (Tmp[i] > Baseline)
-				if (valorpeak < Tmp[i])
-					valorpeak = Tmp[i]
-					PositionPeaksPos[j] = C_PosYZ[i]
-					ValuePeaksPos[j] = Tmp[i]
-				endif				
-			else
-				if (Tmp[i-1] > Baseline)
-					valorpeak = Baseline
-					j = j + 1
-					InsertPoints j, 1, PositionPeaksPos
-					InsertPoints j, 1, ValuePeaksPos					
-				endif
-			endif
-		endfor			
-		DeletePoints j, 1, PositionPeaksPos
-		DeletePoints j, 1, ValuePeaksPos	
-		
-		wavestats/Q ValuePeaksPos
-		Print(" ")
-		Print("Positive Peaks")
-		Print("Average : " + num2str(V_avg))
-		Print("Standard Deviation : " + num2str(V_sdev))		
-		Print("Error : "+ num2str(abs(V_sdev/V_avg*100)) + "%")		
-		EraseStatsVariables()			
-		
-		//Negatives
-		Baseline = (Minimum - Minimum * (NAmplPeaks/100))
-			
-		valorpeak = Baseline			
-		j = 0
+		Make/O/N=(numpnts(PositionPeaksNeg) - 1) PositionPeaksNegDiff
+	
+		for (i=0; i<numpnts(PositionPeaksNegDiff); i=i+1)
+			PositionPeaksNegDiff[i] = PositionPeaksNeg[i+1] - PositionPeaksNeg[i]
+		endfor
 
-		//Find Peaks
-		for (i=0;i<NPointsYZ;i=i+1)
-			if (Tmp[i] < Baseline)
-				if (valorpeak > Tmp[i])
-					valorpeak = Tmp[i]
-					PositionPeaksNeg[j] = C_PosYZ[i]
-					ValuePeaksNeg[j] = Tmp[i]
-				endif				
-			else
-				if (Tmp[i-1] < Baseline)
-					valorpeak = Baseline
-					j = j + 1
-					InsertPoints j, 1, PositionPeaksNeg
-					InsertPoints j, 1, ValuePeaksNeg					
-				endif
-			endif
-		endfor			
-		DeletePoints j, 1, PositionPeaksNeg
-		DeletePoints j, 1, ValuePeaksNeg
+		variable AvgPeriodPeaksNeg = Mean(PositionPeaksNegDiff)
+
+		Killwaves/Z PositionPeaksNegDiff
 		
-		wavestats/Q ValuePeaksNeg
-		Print(" ")
-		Print("Negative Peaks")
-		Print("Average : " + num2str(V_avg))
-		Print("Standard Deviation : " + num2str(V_sdev))		
-		Print("Error : "+ num2str(abs(V_sdev/V_avg*100)) + "%")		
-		EraseStatsVariables()				
 	endif
 	
+	if (PeaksPosNeg == 1)
+		AvgPeriodPeaks = 1000*(AvgPeriodPeaksPos)
+		
+	elseif (PeaksPosNeg == 2)
+		AvgPeriodPeaks = 1000*(AvgPeriodPeaksNeg)
+		
+	elseif (PeaksPosNeg == 3)
+		AvgPeriodPeaks = 1000*(AvgPeriodPeaksPos + AvgPeriodPeaksNeg)/2
+		
+	endif
+	
+End
+
+
+Function GetAvgPositivePeaks(Field, Ampl)
+	Wave Field
+	variable Ampl
+	
+	variable i, j
+	variable npts, maximum, minimum, baseline, valorpeak
+	
+	Make/D/O/N=(1)/FREE PeaksValues	
+			
+	//Get Maximum and Minimun
+	maximum = WaveMax(Field)
+	minimum = WaveMin(Field)
+	
+	npts = numpnts(Field)
+	
+	//Baseline
+	baseline = (maximum - maximum * (Ampl/100))
+	valorpeak = baseline			
+	j = 0
+
+	//Find Peaks
+	for (i=0; i<npts; i=i+1)
+		if (Field[i] > baseline)
+			if (valorpeak < Field[i])
+				valorpeak = Field[i]
+				PeaksValues[j] = Field[i]
+			endif				
+		else
+			if (Field[i-1] > baseline)
+				valorpeak = baseline
+				j = j + 1
+				InsertPoints j, 1, PeaksValues					
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, PeaksValues	
+		
+	return Mean(PeaksValues)
+End
+
+
+Function GetAvgNegativePeaks(Field, Ampl)
+	Wave Field
+	variable Ampl
+	
+	variable i, j
+	variable npts, maximum, minimum, baseline, valorpeak
+	
+	Make/D/O/N=(1) PeaksValues	
+			
+	//Get Maximum and Minimun
+	maximum = WaveMax(Field)
+	minimum = WaveMin(Field)
+	
+	npts = numpnts(Field)
+	
+	//Baseline
+	baseline = (minimum - minimum * (Ampl/100))
+	valorpeak = baseline			
+	j = 0
+
+	//Find Peaks
+	for (i=0; i<npts; i=i+1)
+		if (Field[i] < baseline)
+			if (valorpeak > Field[i])
+				valorpeak = Field[i]
+				PeaksValues[j] = Field[i]
+			endif				
+		else
+			if (Field[i-1] < baseline)
+				valorpeak = baseline
+				j = j + 1
+				InsertPoints j, 1, PeaksValues					
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, PeaksValues	
+		
+	return Mean(PeaksValues)
 End
 
 
@@ -4638,6 +4709,23 @@ Function GraphPeaksProc(ctrlName) : ButtonControl
 		
 	NVAR PosXAux       = :varsFieldMap:PosXAux
 	NVAR FieldAxisPeak = :varsFieldMap:FieldAxisPeak	
+	
+	Wave Interp_C_PosYZ
+	
+	string Name
+	
+	if (FieldAxisPeak == 1)
+		Name = "RaiaBx_X"+num2str(PosXAux/1000)
+			
+	elseif (FieldAxisPeak == 2)
+		Name = "RaiaBy_X"+num2str(PosXAux/1000)	
+	
+	elseif (FieldAxisPeak == 3)	
+		Name = "RaiaBz_X"+num2str(PosXAux/1000)	
+	
+	endif
+	
+	Wave Interp_Field = $("Interp_" + Name)
 	
 	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
 	string PanelName
@@ -4672,6 +4760,9 @@ Function GraphPeaksProc(ctrlName) : ButtonControl
 		if (WaveExists(ValuePeaksNeg))
 			ModifyGraph/W=PeaksGraph rgb(ValuePeaksNeg)=(0,9472,39168)
 		endif
+		
+		AppendToGraph/C=(0,0,0) Interp_Field vs Interp_C_PosYZ
+		
 	endif	
 End
 
@@ -4707,8 +4798,18 @@ Function FieldAxisPeak(ctrlName,popNum,popStr) : PopupMenuControl
 	Variable popNum
 	String popStr
 
-	NVAR FieldAxisPeak =  :varsFieldMap:FieldAxisPeak 
+	SVAR FieldAxisPeakStr = :varsFieldMap:FieldAxisPeakStr
+	NVAR FieldAxisPeak    = :varsFieldMap:FieldAxisPeak 
 	FieldAxisPeak = popNum
+	
+	if (FieldAxisPeak == 1)
+		FieldAxisPeakStr = "Bx"
+	elseif (FieldAxisPeak == 2) 
+		FieldAxisPeakStr = "By"
+	elseif (FieldAxisPeak == 3)
+		FieldAxisPeakStr = "Bz"
+	endif
+	
 End
 
 
@@ -4719,6 +4820,459 @@ Function PosNegPeaks(ctrlName,popNum,popStr) : PopupMenuControl
 
 	NVAR PeaksPosNeg = :varsFieldMap:PeaksPosNeg 
 	PeaksPosNeg = popNum
+End
+
+
+Window Phase_Error() : Panel
+	PauseUpdate; Silent 1
+	
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return 
+	endif
+
+	string PanelName
+	PanelName = WinList("Phase_Error",";","")	
+	if (stringmatch(PanelName, "Phase_Error;"))
+		Killwindow Phase_Error
+	endif	
+	
+	NewPanel/K=1/W=(80,260,404,648)
+	SetDrawLayer UserBack
+	SetDrawEnv fillpat= 0
+	DrawRect 3,3,320,75
+	SetDrawEnv fillpat= 0
+	DrawRect 3,75,320,155
+	SetDrawEnv fillpat= 0
+	DrawRect 3,155,320,315	
+	SetDrawEnv fillpat= 0
+	DrawRect 3,315,320,353
+	SetDrawEnv fillpat= 0
+	DrawRect 3,353,320,383
+						
+	TitleBox    traj,pos={10,25},size={90,16},fSize=14,fStyle=1,frame=0,title="Trajectory"
+	ValDisplay  traj_x,pos={110,10},size={200,18},title="Start X [mm]:    "
+	ValDisplay  traj_angle,pos={110,30},size={200,18},title="Angle XY(Z) [°]:"
+	ValDisplay  traj_yz,pos={110,50},size={200,18},title="Start YZ [mm]:  "
+
+	TitleBox    peaks,pos={10,105},size={90,16},fSize=14,fStyle=1,frame=0,title="Field Peaks"
+	SetVariable peaks_axis,pos={110,90},size={200,18},noedit=1,title="Field Component:       "
+	ValDisplay  peaks_x,pos={110,110},size={200,18},title="Position in X [mm]:     "
+	ValDisplay  peaks_period,pos={110,130},size={200,18},title="Average Period [mm]:"
+	
+	TitleBox title,pos={60,160},size={200,24},title="Insertion Device Phase Error",fSize=16,fStyle=1,frame=0
+
+	SetVariable cut_periods,pos={20,200},size={280,16},title="Number of periods to skip at the endings: "
+	Button calc_phase_error,pos={20,235},size={140,70},proc=CalcPhaseError,fSize=14,title="Calculate \nPhase Error"
+	Button calc_phase_error,disable=2,fStyle=1
+	TitleBox    phase_error_label,pos={180,245},size={120,18},frame=0,title="RMS Phase Error [°]: "
+	ValDisplay  phase_error,pos={180,270},size={120,18}
+	
+	Button phase_error_graph,pos={20,322},size={140,24},proc=ShowPhaseError,title="Show Phase Error"
+	Button phase_error_graph,fStyle=1,disable=2
+	
+	Button phase_error_table,pos={170,322},size={140,24},proc=TablePhaseError,title="Show Table"
+	Button phase_error_table,fStyle=1,disable=2
+	
+	SetVariable fieldmapdir,pos={20,360},size={290,18},title="Field Map Directory: "
+	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
+	
+	UpdateFieldMapDirs()
+	UpdatePhaseErrorPanel()
+	
+EndMacro
+
+
+Function UpdatePhaseErrorPanel()
+
+	string PanelName
+	PanelName = WinList("Phase_Error",";","")	
+	if (stringmatch(PanelName, "Phase_Error;")==0)
+		return -1
+	endif
+	
+	SVAR df = root:varsCAMTO:FieldMapDir
+		
+	if (strlen(df) > 0)		
+		ValDisplay traj_x, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:StartXTraj" )
+		ValDisplay traj_angle,win=Phase_Error,value=#("root:"+ df + ":varsFieldMap:EntranceAngle" )
+		ValDisplay traj_yz, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:StartYZTraj" )
+
+		ValDisplay  peaks_x, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:PosXAux" )
+		SetVariable peaks_axis,win=Phase_Error,value=root:$(df):varsFieldMap:FieldAxisPeakStr
+		ValDisplay  peaks_period, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:AvgPeriodPeaks" )
+
+		SetVariable cut_periods, win=Phase_Error, value=root:$(df):varsFieldMap:IDCutPeriods
+		Button calc_phase_error,win=Phase_Error,disable=0
+		ValDisplay phase_error, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:IDPhaseError" )
+		Button phase_error_graph,win=Phase_Error,disable=0
+		Button phase_error_table,win=Phase_Error,disable=0
+
+	else
+		Button calc_phase_error,win=Phase_Error,disable=2
+		Button phase_error_graph,win=Phase_Error,disable=2
+		Button phase_error_table,win=Phase_Error,disable=2
+	endif
+	
+End
+
+
+Function CalcPhaseError(ctrlName) : ButtonControl
+	String ctrlName
+
+   	NVAR Charge     = root:varsCAMTO:Charge
+	NVAR Mass       = root:varsCAMTO:Mass
+	NVAR LightSpeed = root:varsCAMTO:LightSpeed
+	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
+	NVAR TrajShift  = root:varsCAMTO:TrajShift
+
+	NVAR StartXTraj = :varsFieldMap:StartXTraj
+	NVAR BeamDirection = :varsFieldMap:BeamDirection
+	
+	NVAR FieldX = :varsFieldMap:FieldX
+	NVAR FieldY = :varsFieldMap:FieldY
+	NVAR FieldZ = :varsFieldMap:FieldZ
+	
+	NVAR NAmplPeaks     = :varsFieldMap:NAmplPeaks
+	NVAR AvgPeriodPeaks = :varsFieldMap:AvgPeriodPeaks
+	NVAR IDCutPeriods   = :varsFieldMap:IDCutPeriods
+	NVAR IDPhaseError   = :varsFieldMap:IDPhaseError
+	
+	Wave/Z TrajH = $"TrajX"+num2str(StartXTraj/1000)
+	Wave/Z PositionPeaksPos
+	Wave/Z PositionPeaksNeg
+
+	if (WaveExists(TrajH) == 0)
+		DoAlert 0,"Trajectory not found."
+		return -1	
+	endif
+
+	if (WaveExists(PositionPeaksPos) == 0)
+		DoAlert 0,"Positive peak positions not found."
+		return -1	
+	endif
+
+	if (WaveExists(PositionPeaksNeg) == 0)
+		DoAlert 0,"Negative peak positions not found."
+		return -1	
+	endif
+
+	if (BeamDirection == 1)
+		Wave/Z TrajL = $"TrajY"+num2str(StartXTraj/1000)
+		Wave/Z TrajV = $"TrajZ"+num2str(StartXTraj/1000)
+	else
+		Wave/Z TrajV = $"TrajY"+num2str(StartXTraj/1000)
+		Wave/Z TrajL = $"TrajZ"+num2str(StartXTraj/1000)	
+	endif
+	
+	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
+	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
+	variable Bt = ChargeVel/LightSpeed 
+
+	variable i, j, n, s, ci, hi, vi, ce, he, ve, nsp
+	variable AvgPos, AvgNeg, AvgBx, AvgBy, AvgBz
+	variable pos_init, prev_pos, pos
+	variable Kv, Kh, K
+	variable Lambda
+
+	//Get semi-period positions
+	Concatenate/O/NP {PositionPeaksPos, PositionPeaksNeg}, PositionPeaks
+
+	Wave PositionPeaks
+	Sort PositionPeaks, PositionPeaks
+
+	if (numpnts(PositionPeaks) > 4*IDCutPeriods+1)
+		DeletePoints 0, 2*IDCutPeriods, PositionPeaks
+		DeletePoints numpnts(PositionPeaks)-2*IDCutPeriods, 2*IDCutPeriods, PositionPeaks		
+	endif
+
+	Duplicate/O PositionPeaks ID_SemiPeriod_Pos 
+
+	nsp = numpnts(ID_SemiPeriod_Pos)
+
+	for (i=1; i<nsp; i=i+1)
+		ID_SemiPeriod_Pos[i] = PositionPeaks[0] + i*(AvgPeriodPeaks/2/1000)
+	endfor
+
+	// Calculate ID deflection parameter	
+	Wave Bx = $("VetorCampoX" + num2str(StartXTraj/1000))
+	AvgPos = GetAvgPositivePeaks(Bx, NAmplPeaks)
+	AvgNeg = GetAvgNegativePeaks(Bx, NAmplPeaks)
+	AvgBx = (Abs(AvgPos) + Abs(AvgNeg))/2
+	Kv = 0.0934*AvgBx*AvgPeriodPeaks
+	
+	if (BeamDirection == 1)
+		Wave Bz = $("VetorCampoZ" + num2str(StartXTraj/1000))
+		AvgPos = GetAvgPositivePeaks(Bz, NAmplPeaks)
+		AvgNeg = GetAvgNegativePeaks(Bz, NAmplPeaks)
+		AvgBz = (Abs(AvgPos) + Abs(AvgNeg))/2	
+		Kh = 0.0934*AvgBz*AvgPeriodPeaks
+		
+	else
+		Wave By = $("VetorCampoY" + num2str(StartXTraj/1000))
+		AvgPos = GetAvgPositivePeaks(By, NAmplPeaks)
+		AvgNeg = GetAvgNegativePeaks(By, NAmplPeaks)
+		AvgBy = (Abs(AvgPos) + Abs(AvgNeg))/2	
+		Kh = 0.0934*AvgBy*AvgPeriodPeaks
+		
+	endif
+	K = sqrt(Kv^2 + Kh^2)
+	
+	// Calculate first radiation harmonic
+	Lambda = (AvgPeriodPeaks/(2*(Gama^2)))*(1 + (K^2)/2) //[mm]
+
+	// Get trajectory length in each semi-period
+	Make/O/D/N=(nsp-1) ID_TrajLength = 0
+	Make/O/D/N=(nsp-1) ID_TrajDeviation = 0
+	Make/O/D/N=(nsp-1) ID_TrajDeviationSqr = 0
+	Make/O/D/N=(nsp-1) Local_IDPhaseError = 0
+
+	j = 1	
+	for (i=0; i< nsp - 1; i=i+1)
+		prev_pos = ID_SemiPeriod_Pos[i]
+		pos = ID_SemiPeriod_Pos[i+1]
+		s = 0
+				
+		do 
+			if (TrajL[j] > prev_pos)
+				break
+			endif
+			j = j + 1
+		while (1)
+		
+		n = j
+		do 
+			if (TrajL[n] > pos)
+				break
+			endif
+			n = n + 1
+		while (1)
+		
+		ci = (prev_pos - TrajL[j-1])/(TrajL[j] - TrajL[j-1])
+		hi = TrajH[j-1]*(1 - ci) + TrajH[j]*ci
+		vi = TrajV[j-1]*(1 - ci) + TrajV[j]*ci
+		s = s + sqrt((hi - TrajH[j])^2 + (vi - TrajV[j])^2 + (prev_pos - TrajL[j])^2)
+		
+		do
+			if (j > n-2)
+				break
+			endif
+			s = s + sqrt((TrajH[j+1] - TrajH[j])^2 + (TrajV[j+1] - TrajV[j])^2 + (TrajL[j+1] - TrajL[j])^2)
+			j = j +1
+		while (1)
+		
+		ce = (pos - TrajL[n-2])/(TrajL[n-1] - TrajL[n-2])
+		he = TrajH[n-2]*(1 - ce) + TrajH[n-1]*ce
+		ve = TrajV[n-2]*(1 - ce) + TrajV[n-1]*ce
+		s = s + sqrt((he - TrajH[n-1])^2 + (ve - TrajV[n-1])^2 + (pos - TrajL[n-1])^2)
+		
+		ID_TrajLength[i] = 1000*s //[mm]
+	endfor
+		
+	ID_TrajDeviation = ID_TrajLength - Mean(ID_TrajLength)
+	ID_TrajDeviationSqr = ID_TrajDeviation*ID_TrajDeviation
+		
+	//Calculate phase error
+	Local_IDPhaseError = (2*Pi/Bt)*(1/Lambda)*ID_TrajDeviation*180/Pi
+	InsertPoints	0, 1, Local_IDPhaseError
+	
+	IDPhaseError = (2*Pi/Bt)*(1/Lambda)*Sqrt(Sum(ID_TrajDeviationSqr)/(nsp-1))*180/Pi 	
+	
+	print "Insertion device phase error [°]: ", IDPhaseError
+		
+	Killwaves/Z PositionPeaks, ID_TrajLength, ID_TrajDeviation, ID_TrajDeviationSqr
+	
+End
+
+
+Function ShowPhaseError(ctrlName) : ButtonControl
+	String ctrlName
+	
+	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
+	string PanelName
+	PanelName = WinList("LocalPhaseError",";","")	
+	if (stringmatch(PanelName, "LocalPhaseError;"))
+		Killwindow LocalPhaseError
+	endif
+	
+	Wave Local_IDPhaseError
+	Wave ID_SemiPeriod_Pos
+
+	Display/N=LocalPhaseError/K=1 Local_IDPhaseError vs ID_SemiPeriod_Pos
+	Label bottom "\\Z12Longitudinal Position [m]"
+	Label left "\\Z12Local Phase Error [°]"	
+	
+End
+
+
+Function TablePhaseError(ctrlName) : ButtonControl
+	String ctrlName
+		
+	Wave Local_IDPhaseError
+	Wave ID_SemiPeriod_Pos
+	Edit/K=1 ID_SemiPeriod_Pos, Local_IDPhaseError
+	
+End
+
+
+Function CalcPhaseErrorNominalValues(Period, NrPeriods, LongitudinalCenter)
+	variable Period
+	variable NrPeriods
+	variable LongitudinalCenter
+
+   	NVAR Charge     = root:varsCAMTO:Charge
+	NVAR Mass       = root:varsCAMTO:Mass
+	NVAR LightSpeed = root:varsCAMTO:LightSpeed
+	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
+	NVAR TrajShift  = root:varsCAMTO:TrajShift
+
+	NVAR StartXTraj = :varsFieldMap:StartXTraj
+	NVAR BeamDirection = :varsFieldMap:BeamDirection
+	
+	NVAR FieldX = :varsFieldMap:FieldX
+	NVAR FieldY = :varsFieldMap:FieldY
+	NVAR FieldZ = :varsFieldMap:FieldZ
+	
+	Wave/Z TrajH = $"TrajX"+num2str(StartXTraj/1000)
+
+	if (WaveExists(TrajH) == 0)
+		DoAlert 0,"Trajectory not found."
+		return -1	
+	endif
+
+	if (Period == 0)
+		DoAlert 0, "Invalid period value."
+		return -1	
+	endif
+
+	if (NrPeriods == 0)
+		DoAlert 0, "Invalid number of periods."
+		return -1	
+	endif
+
+	if (BeamDirection == 1)
+		Wave/Z TrajL = $"TrajY"+num2str(StartXTraj/1000)
+		Wave/Z TrajV = $"TrajZ"+num2str(StartXTraj/1000)
+	else
+		Wave/Z TrajV = $"TrajY"+num2str(StartXTraj/1000)
+		Wave/Z TrajL = $"TrajZ"+num2str(StartXTraj/1000)	
+	endif
+
+	
+	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
+	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
+	variable Bt = ChargeVel/LightSpeed 
+
+	variable i, j, n, s, ci, hi, vi, ce, he, ve, cp
+	variable pos_init, prev_pos, pos
+	variable bx_peak, by_peak, bz_peak
+	variable Kv, Kh, K
+	variable Lambda
+
+	bx_peak = 0
+	by_peak = 0
+	bz_peak = 0
+	for (i=0; i<numpnts(TrajL); i=i+1)
+		Campo_Espaco(0, TrajL[i])
+		
+		if (abs(FieldX) > bx_peak)
+			bx_peak = abs(FieldX)
+		endif
+
+		if (abs(FieldY) > by_peak)
+			by_peak = abs(FieldY)
+		endif
+
+		if (abs(FieldZ) > bz_peak)
+			bz_peak = abs(FieldZ)
+		endif
+		
+	endfor
+	
+	if (BeamDirection == 1)
+		Kv = 0.0934*bx_peak*Period 
+		Kh = 0.0934*bz_peak*Period
+	else
+		Kv = 0.0934*bx_peak*Period 
+		Kh = 0.0934*by_peak*Period
+	endif
+	K = sqrt(Kv^2 + Kh^2)
+	
+	Lambda = (Period/(2*(Gama^2)))*(1 + (K^2)/2) //[mm]
+
+	Make/O/D/N=(NrPeriods*2 + 1) ID_SemiPeriod_Pos = 0
+
+	pos_init = (LongitudinalCenter - (NrPeriods/2)*Period)/1000	
+	for (i=0; i<=NrPeriods*2; i=i+1)
+		ID_SemiPeriod_Pos[i] = pos_init + i*(Period/2)/1000
+	endfor
+
+	cp = 2
+	if (numpnts(ID_SemiPeriod_Pos) > 4*cp+1)
+		DeletePoints 0, 2*cp, ID_SemiPeriod_Pos
+		DeletePoints numpnts(ID_SemiPeriod_Pos)-2*cp, 2*cp, ID_SemiPeriod_Pos		
+	endif
+
+	Make/O/D/N=(numpnts(ID_SemiPeriod_Pos)-1) ID_TrajLength = 0
+
+	j = 1	
+	for (i=0; i< numpnts(ID_SemiPeriod_Pos) - 1; i=i+1)
+		prev_pos = ID_SemiPeriod_Pos[i]
+		pos = ID_SemiPeriod_Pos[i+1]
+		s = 0
+				
+		do 
+			if (TrajL[j] > prev_pos)
+				break
+			endif
+			j = j + 1
+		while (1)
+		
+		n = j
+		do 
+			if (TrajL[n] > pos)
+				break
+			endif
+			n = n + 1
+		while (1)
+		
+		ci = (prev_pos - TrajL[j-1])/(TrajL[j] - TrajL[j-1])
+		hi = TrajH[j-1]*(1 - ci) + TrajH[j]*ci
+		vi = TrajV[j-1]*(1 - ci) + TrajV[j]*ci
+		s = s + sqrt((hi - TrajH[j])^2 + (vi - TrajV[j])^2 + (prev_pos - TrajL[j])^2)
+		
+		do
+			if (j > n-2)
+				break
+			endif
+			s = s + sqrt((TrajH[j+1] - TrajH[j])^2 + (TrajV[j+1] - TrajV[j])^2 + (TrajL[j+1] - TrajL[j])^2)
+			j = j +1
+		while (1)
+		
+		ce = (pos - TrajL[n-2])/(TrajL[n-1] - TrajL[n-2])
+		he = TrajH[n-2]*(1 - ce) + TrajH[n-1]*ce
+		ve = TrajV[n-2]*(1 - ce) + TrajV[n-1]*ce
+		s = s + sqrt((he - TrajH[n-1])^2 + (ve - TrajV[n-1])^2 + (pos - TrajL[n-1])^2)
+		
+		ID_TrajLength[i] = 1000*s //[mm]
+	endfor
+	
+	Display/K=1 ID_TrajLength
+
+	Make/O/D/N=(numpnts(ID_TrajLength)) ID_TrajDeviation = 0
+	ID_TrajDeviation = ID_TrajLength - Mean(ID_TrajLength)
+	ID_TrajDeviation = (ID_TrajDeviation*ID_TrajDeviation)
+	
+	variable PhaseError = (2*Pi/Bt)*(1/Lambda)*Sqrt(Sum(ID_TrajDeviation)/numpnts(ID_TrajDeviation))*180/Pi 	
+
+	Killwaves/Z ID_SemiPeriod_Pos, ID_TrajLength, ID_TrajDeviation 
+	
+	print "Insertion device phase error [°]: ", PhaseError
+		
+	return PhaseError
+	
 End
 
 
@@ -5461,14 +6015,14 @@ Function ShowMultipoleProfile(ctrlName) : ButtonControl
 		graphlabel = num2str(2*(K +1))+ "-polar field"
 	endif
 	
-	Make/O/N=(numpnts(C_PosYZ)) $name_normal
+	Make/D/O/N=(numpnts(C_PosYZ)) $name_normal
 	Wave Tmp_Normal = $name_normal
 	Tmp_Normal[] = Mult_Normal[p][K]
 	Display/N=Mult_Normal/K=1 Tmp_Normal vs C_PosYZ
 	Label bottom "\\Z12Longitudinal Position YZ [m]"
 	Label left  "\\Z12Normal " + graphlabel
 
-	Make/O/N=(numpnts(C_PosYZ)) $name_skew
+	Make/D/O/N=(numpnts(C_PosYZ)) $name_skew
 	Wave Tmp_Skew = $name_skew
 	Tmp_Skew[] = Mult_Skew[p][K]
 	Display/N=Mult_Skew/K=1 Tmp_Skew vs C_PosYZ
@@ -5724,14 +6278,14 @@ Function ShowDynMultipoleProfile(ctrlName) : ButtonControl
 		graphlabel = num2str(2*(K +1))+ "-polar field"
 	endif
 	
-	Make/O/N=(numpnts(Dyn_Mult_PosYZ)) $name_normal
+	Make/D/O/N=(numpnts(Dyn_Mult_PosYZ)) $name_normal
 	Wave Tmp_Normal = $name_normal
 	Tmp_Normal[] = Dyn_Mult_Normal[p][K]
 	Display/N=Dyn_Mult_Normal/K=1 Tmp_Normal vs Dyn_Mult_PosYZ
 	Label bottom "\\Z12Longitudinal Position YZ [m]"
 	Label left  "\\Z12Normal " + graphlabel
 
-	Make/O/N=(numpnts(Dyn_Mult_PosYZ)) $name_skew
+	Make/D/O/N=(numpnts(Dyn_Mult_PosYZ)) $name_skew
 	Wave Tmp_Skew = $name_skew
 	Tmp_Skew[] = Dyn_Mult_Skew[p][K]
 	Display/N=Dyn_Mult_Skew/K=1 Tmp_Skew vs Dyn_Mult_PosYZ
@@ -6143,7 +6697,7 @@ Function CalcResFieldSpec()
 	variable grid_nrpts = 101
 	variable i
 	
-	Make/O/N=(grid_nrpts) trans_pos_residue
+	Make/D/O/N=(grid_nrpts) trans_pos_residue
 
 	for (i=0; i<grid_nrpts; i=i+1)
 		trans_pos_residue[i] = grid_min/1000 + i*(grid_max/1000 - grid_min/1000)/(grid_nrpts-1)
@@ -6152,13 +6706,13 @@ Function CalcResFieldSpec()
 	variable size =	DimSize(MultipoleErrors, 0)
 	
 	Make/O/N=(size) normal_sys_monomials
-	Make/O/N=(size) normal_sys_multipoles
+	Make/D/O/N=(size) normal_sys_multipoles
 	Make/O/N=(size) normal_rms_monomials
-	Make/O/N=(size) normal_rms_multipoles
+	Make/D/O/N=(size) normal_rms_multipoles
 	Make/O/N=(size) skew_sys_monomials
-	Make/O/N=(size) skew_sys_multipoles
+	Make/D/O/N=(size) skew_sys_multipoles
 	Make/O/N=(size) skew_rms_monomials
-	Make/O/N=(size) skew_rms_multipoles
+	Make/D/O/N=(size) skew_rms_multipoles
 	
 	variable size_normal_sys = 0
 	variable size_normal_rms = 0
@@ -6226,9 +6780,9 @@ Function CalcResFieldSpecAux(graph_label, main_k, r0, vec_pos, sys_monomials, sy
 	variable gauss_trunc = 1
 	variable nx = numpnts(vec_pos)
 	
-	Make/O/N=(nx) sys_residue 
-	Make/O/N=(nx) rms_residue 
-	Make/O/N=(nx) residue_field
+	Make/D/O/N=(nx) sys_residue 
+	Make/D/O/N=(nx) rms_residue 
+	Make/D/O/N=(nx) residue_field
 	
 	sys_residue[] = 0
 	rms_residue[] = 0
@@ -6242,7 +6796,7 @@ Function CalcResFieldSpecAux(graph_label, main_k, r0, vec_pos, sys_monomials, sy
 	variable nm   = numpnts(rms_relative_multipoles)
 	variable size = nm*nr_samples
 	
-	Make/O/N=(size) rnd_grid 
+	Make/D/O/N=(size) rnd_grid 
 	variable randomgauss
 	
 	variable count = 0
@@ -6259,8 +6813,8 @@ Function CalcResFieldSpecAux(graph_label, main_k, r0, vec_pos, sys_monomials, sy
 	Duplicate/O sys_residue max_residue 
 	Duplicate/O sys_residue min_residue
 	
-	Make/O/N=(nm) rnd_vector
-	Make/O/N=(nm) rnd_relative_rms
+	Make/D/O/N=(nm) rnd_vector
+	Make/D/O/N=(nm) rnd_relative_rms
 
 	variable j
 
@@ -8360,6 +8914,7 @@ Function Add_Table(TableWave, [ColWave, RowWave, Title, RowTitle, Spacing])
 End
 
 
+
 Function GetTrajPosX(PosYZ)
 	variable PosYZ
 	
@@ -8586,7 +9141,7 @@ Function IntegratedMultipole(k, [skew])
 	endif
 	
 	nwn = wn + "_" + num2str(k)	
-	Make/O/N=(FieldmapCount) $nwn 
+	Make/D/O/N=(FieldmapCount) $nwn 
 	Wave Mult_Int = $nwn
 		
 	variable i
@@ -8633,7 +9188,7 @@ Function IntegratedDynamicMultipole(k, [skew])
 	endif
 	
 	nwn = wn + "_" + num2str(k)	
-	Make/O/N=(FieldmapCount) $nwn
+	Make/D/O/N=(FieldmapCount) $nwn
 	Wave Dyn_Mult_Int = $nwn
 		
 	variable i
@@ -8654,6 +9209,7 @@ Function IntegratedDynamicMultipole(k, [skew])
 	SetDataFolder cf
 	
 End
+
 
 
 // Alterações
