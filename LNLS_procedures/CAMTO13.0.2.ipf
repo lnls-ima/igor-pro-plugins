@@ -1,5 +1,5 @@
 // Code for Analysis of Multipoles, Trajectories and Others.
-// Last Upgrade: 22/05/2017
+// Last Upgrade: 11/06/2018
 
 #pragma rtGlobals = 1	
 #pragma version = 13.0.2
@@ -39,7 +39,7 @@ Function Header()
 	Print(" ")
 	Print("CAMTO - Code for Analysis of Multipoles, Trajectories and Others.")
 	Print("Version 13.0.2")
-	Print("Last Upgrade: May, 22th 2017")	
+	Print("Last Upgrade: June, 11th 2018")	
 	Print("Creator: James Citadini")	
 	Print("Co-Creators: Giancarlo Tosin, Priscila Palma Sanchez, Tiago Reis and Luana Vilela")
 	Print("Acknowlegments to: Ximenes Rocha Resende and Liu Lin")
@@ -4862,7 +4862,7 @@ Window Phase_Error() : Panel
 	
 	TitleBox title,pos={60,160},size={200,24},title="Insertion Device Phase Error",fSize=16,fStyle=1,frame=0
 
-	SetVariable cut_periods,pos={20,200},size={280,16},title="Number of periods to skip at the endings: "
+	SetVariable cut_periods,pos={20,200},size={280,16},title="Number of periods to skip at the endings: ", limits={0,1000,1}
 	Button calc_phase_error,pos={20,235},size={140,70},proc=CalcPhaseError,fSize=14,title="Calculate \nPhase Error"
 	Button calc_phase_error,disable=2,fStyle=1
 	TitleBox    phase_error_label,pos={180,245},size={120,18},frame=0,title="RMS Phase Error [°]: "
@@ -4970,7 +4970,7 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
 	variable Bt = ChargeVel/LightSpeed 
 
-	variable i, j, n, s, ci, hi, vi, ce, he, ve, nsp
+	variable i, j, n, idx, s, ci, hi, vi, li, ce, he, ve, le, nsp
 	variable AvgPos, AvgNeg, AvgBx, AvgBy, AvgBz
 	variable pos_init, prev_pos, pos
 	variable Kv, Kh, K
@@ -5017,8 +5017,9 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 		Kh = 0.0934*AvgBy*AvgPeriodPeaks
 		
 	endif
-	K = sqrt(Kv^2 + Kh^2)
 	
+	K = sqrt(Kv^2 + Kh^2)
+
 	// Calculate first radiation harmonic
 	Lambda = (AvgPeriodPeaks/(2*(Gama^2)))*(1 + (K^2)/2) //[mm]
 
@@ -5029,13 +5030,9 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 	Make/O/D/N=(nsp-1) Local_IDPhaseError = 0
 
 	j = 1	
-	for (i=0; i< nsp - 1; i=i+1)
-		prev_pos = ID_SemiPeriod_Pos[i]
-		pos = ID_SemiPeriod_Pos[i+1]
-		s = 0
-				
+	for (i=0; i < nsp - 1; i=i+1)			
 		do 
-			if (TrajL[j] > prev_pos)
+			if (TrajL[j] > ID_SemiPeriod_Pos[i])
 				break
 			endif
 			j = j + 1
@@ -5043,43 +5040,68 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 		
 		n = j
 		do 
-			if (TrajL[n] > pos)
+			if (TrajL[n] > ID_SemiPeriod_Pos[i+1])
 				break
 			endif
 			n = n + 1
 		while (1)
 		
-		ci = (prev_pos - TrajL[j-1])/(TrajL[j] - TrajL[j-1])
+		ci = (ID_SemiPeriod_Pos[i] - TrajL[j-1])/(TrajL[j] - TrajL[j-1])
 		hi = TrajH[j-1]*(1 - ci) + TrajH[j]*ci
 		vi = TrajV[j-1]*(1 - ci) + TrajV[j]*ci
-		s = s + sqrt((hi - TrajH[j])^2 + (vi - TrajV[j])^2 + (prev_pos - TrajL[j])^2)
+		li = ID_SemiPeriod_Pos[i]
 		
-		do
-			if (j > n-2)
-				break
-			endif
-			s = s + sqrt((TrajH[j+1] - TrajH[j])^2 + (TrajV[j+1] - TrajV[j])^2 + (TrajL[j+1] - TrajL[j])^2)
-			j = j +1
-		while (1)
-		
-		ce = (pos - TrajL[n-2])/(TrajL[n-1] - TrajL[n-2])
+		ce = (ID_SemiPeriod_Pos[i+1] - TrajL[n-2])/(TrajL[n-1] - TrajL[n-2])
 		he = TrajH[n-2]*(1 - ce) + TrajH[n-1]*ce
 		ve = TrajV[n-2]*(1 - ce) + TrajV[n-1]*ce
-		s = s + sqrt((he - TrajH[n-1])^2 + (ve - TrajV[n-1])^2 + (pos - TrajL[n-1])^2)
+		le = ID_SemiPeriod_Pos[i+1]
 		
-		ID_TrajLength[i] = 1000*s //[mm]
+		Duplicate/O/R=[j, n-1] TrajH, TrajHPer
+		Duplicate/O/R=[j, n-1] TrajV, TrajVPer
+		Duplicate/O/R=[j, n-1] TrajL, TrajLPer
+			
+		InsertPoints 0, 1, TrajHPer
+		InsertPoints 0, 1, TrajVPer
+		InsertPoints 0, 1, TrajLPer
+		
+		TrajHPer[0] = hi
+		TrajVPer[0] = vi
+		TrajLPer[0] = li
+	
+		InsertPoints numpnts(TrajHPer), 1, TrajHPer
+		InsertPoints numpnts(TrajVPer), 1, TrajVPer
+		InsertPoints numpnts(TrajLPer), 1, TrajLPer
+			
+		TrajHPer[numpnts(TrajHPer)] = he
+		TrajVPer[numpnts(TrajVPer)] = ve
+		TrajLPer[numpnts(TrajLPer)] = le
+		
+		TrajHPer = TrajHPer*1000 //[mm]
+		TrajVPer = TrajVPer*1000 //[mm]
+		TrajLPer = TrajLPer*1000 //[mm]
+		
+		s = 0
+		for (idx=0; idx < numpnts(TrajLPer); idx=idx+1)	
+			s = s + sqrt((TrajHPer[idx+1] - TrajHPer[idx])^2 + (TrajVPer[idx+1] - TrajVPer[idx])^2 + (TrajLPer[idx+1] - TrajLPer[idx])^2)
+		endfor	
+		ID_TrajLength[i] = s
+		
+		Killwaves/Z TrajHPer, TrajVPer, TrajLPer
 	endfor
 		
-	ID_TrajDeviation = ID_TrajLength - Mean(ID_TrajLength)
+	ID_TrajDeviation = (ID_TrajLength - Mean(ID_TrajLength))/Lambda
+		
 	ID_TrajDeviationSqr = ID_TrajDeviation*ID_TrajDeviation
 		
 	//Calculate phase error
-	Local_IDPhaseError = (2*Pi/Bt)*(1/Lambda)*ID_TrajDeviation*180/Pi
-	InsertPoints	0, 1, Local_IDPhaseError
+	Local_IDPhaseError = (2*Pi/Bt)*ID_TrajDeviation*180/Pi
 	
-	IDPhaseError = (2*Pi/Bt)*(1/Lambda)*Sqrt(Sum(ID_TrajDeviationSqr)/(nsp-1))*180/Pi 	
+	IDPhaseError = (2*Pi/Bt)*Sqrt(Sum(ID_TrajDeviationSqr)/numpnts(ID_TrajDeviationSqr))*180/Pi 	
 	
 	print "Insertion device phase error [°]: ", IDPhaseError
+
+	Duplicate/O ID_SemiPeriod_Pos, Local_IDPhaseErrorPos
+	DeletePoints 0, 1, Local_IDPhaseErrorPos
 		
 	Killwaves/Z PositionPeaks, ID_TrajLength, ID_TrajDeviation, ID_TrajDeviationSqr
 	
@@ -5095,14 +5117,40 @@ Function ShowPhaseError(ctrlName) : ButtonControl
 	if (stringmatch(PanelName, "LocalPhaseError;"))
 		Killwindow LocalPhaseError
 	endif
+
+	NVAR PosXAux       = :varsFieldMap:PosXAux
+	NVAR FieldAxisPeak = :varsFieldMap:FieldAxisPeak	
 	
 	Wave Local_IDPhaseError
-	Wave ID_SemiPeriod_Pos
+	Wave Local_IDPhaseErrorPos
 
-	Display/N=LocalPhaseError/K=1 Local_IDPhaseError vs ID_SemiPeriod_Pos
-	Label bottom "\\Z12Longitudinal Position [m]"
+	Display/N=LocalPhaseError/K=1 Local_IDPhaseError vs Local_IDPhaseErrorPos
+	ModifyGraph lsize=1.5
+	Label bottom "\\Z12Longitudinal Position YZ [m]"
 	Label left "\\Z12Local Phase Error [°]"	
 	
+	string Name
+	
+	if (FieldAxisPeak == 1)
+		Name = "RaiaBx_X"+num2str(PosXAux/1000)
+	elseif (FieldAxisPeak == 2)
+		Name = "RaiaBy_X"+num2str(PosXAux/1000)	
+	elseif (FieldAxisPeak == 3)	
+		Name = "RaiaBz_X"+num2str(PosXAux/1000)	
+	endif
+	
+	Wave Interp_C_PosYZ
+	Wave Interp_Field = $("Interp_" + Name)
+	AppendToGraph/C=(0,0,0)/R Interp_Field vs Interp_C_PosYZ
+
+	if (FieldAxisPeak == 1)
+		Label right "\\Z1Field Bx [T]"
+	elseif (FieldAxisPeak == 2)
+		Label right "\\Z12Field By [T]"
+	elseif (FieldAxisPeak == 3)
+		Label right "\\Z12Field Bz [T]"
+	endif
+		
 End
 
 
@@ -5110,8 +5158,8 @@ Function TablePhaseError(ctrlName) : ButtonControl
 	String ctrlName
 		
 	Wave Local_IDPhaseError
-	Wave ID_SemiPeriod_Pos
-	Edit/K=1 ID_SemiPeriod_Pos, Local_IDPhaseError
+	Wave Local_IDPhaseErrorPos
+	Edit/K=1 Local_IDPhaseErrorPos, Local_IDPhaseError
 	
 End
 
