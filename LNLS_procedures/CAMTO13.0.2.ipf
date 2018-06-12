@@ -5120,15 +5120,7 @@ Function ShowPhaseError(ctrlName) : ButtonControl
 
 	NVAR PosXAux       = :varsFieldMap:PosXAux
 	NVAR FieldAxisPeak = :varsFieldMap:FieldAxisPeak	
-	
-	Wave Local_IDPhaseError
-	Wave Local_IDPhaseErrorPos
 
-	Display/N=LocalPhaseError/K=1 Local_IDPhaseError vs Local_IDPhaseErrorPos
-	ModifyGraph lsize=1.5
-	Label bottom "\\Z12Longitudinal Position YZ [m]"
-	Label left "\\Z12Local Phase Error [°]"	
-	
 	string Name
 	
 	if (FieldAxisPeak == 1)
@@ -5141,7 +5133,8 @@ Function ShowPhaseError(ctrlName) : ButtonControl
 	
 	Wave Interp_C_PosYZ
 	Wave Interp_Field = $("Interp_" + Name)
-	AppendToGraph/C=(0,0,0)/R Interp_Field vs Interp_C_PosYZ
+	Display/N=LocalPhaseError/K=1/R Interp_Field vs Interp_C_PosYZ
+	ModifyGraph rgb=(43000, 43000, 43000)
 
 	if (FieldAxisPeak == 1)
 		Label right "\\Z1Field Bx [T]"
@@ -5150,6 +5143,14 @@ Function ShowPhaseError(ctrlName) : ButtonControl
 	elseif (FieldAxisPeak == 3)
 		Label right "\\Z12Field Bz [T]"
 	endif
+	
+	Wave Local_IDPhaseError
+	Wave Local_IDPhaseErrorPos
+
+	AppendToGraph Local_IDPhaseError vs Local_IDPhaseErrorPos
+	ModifyGraph lsize(Local_IDPhaseError)=1.5
+	Label bottom "\\Z12Longitudinal Position YZ [m]"
+	Label left "\\Z12Local Phase Error [°]"	
 		
 End
 
