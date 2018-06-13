@@ -1,5 +1,5 @@
 // Code for Analysis of Multipoles, Trajectories and Others.
-// Last Upgrade: 11/06/2018
+// Last Upgrade: 13/06/2018
 
 #pragma rtGlobals = 1	
 #pragma version = 13.0.2
@@ -14,7 +14,7 @@ Menu "CAMTO"
 	"Integrals and Multipoles", Execute "Integrals_Multipoles()"
 	"Trajectories", Execute "Trajectories()"
 	"Dynamic Multipoles", Execute "Dynamic_Multipoles()"
-	"Find Peaks", Execute "Find_Peaks()"
+	"Find Peaks and Zeros", Execute "Find_Peaks()"
 	"Phase Error", Execute "Phase_Error()"
 	"Results", Execute "Results()"
 	"Compare Results", Execute "Compare_Results()"
@@ -39,7 +39,7 @@ Function Header()
 	Print(" ")
 	Print("CAMTO - Code for Analysis of Multipoles, Trajectories and Others.")
 	Print("Version 13.0.2")
-	Print("Last Upgrade: June, 11th 2018")	
+	Print("Last Upgrade: June, 13th 2018")	
 	Print("Creator: James Citadini")	
 	Print("Co-Creators: Giancarlo Tosin, Priscila Palma Sanchez, Tiago Reis and Luana Vilela")
 	Print("Acknowlegments to: Ximenes Rocha Resende and Liu Lin")
@@ -281,9 +281,16 @@ Function InitializeFieldMapVariables()
 	variable/G FieldAxisPeak = 2
 	variable/G PeaksPosNeg = 3 
 	variable/G NAmplPeaks = 5
+	variable/G NAmplZeros = 5
 	variable/G StepsYZPeaks = 1
 	variable/G AvgPeriodPeaks = 0
-	
+	variable/G AvgPeriodZeros = 0
+	variable/G PeaksSelected = 0
+
+	variable/G SemiPeriodsPeaksZeros = 2	
+	variable/G PeriodPeaksZerosNominal = 1
+	variable/G IDPeriodNominal = 0
+	variable/G IDPeriod = 0
 	variable/G IDCutPeriods = 0
 	variable/G IDPhaseError = 0
 	
@@ -856,6 +863,7 @@ Function UpdatePanels()
 	UpdateFindPeaksPanel()
 	UpdateResultsPanel()
 	UpdateCompareResultsPanel()
+	UpdateFindPeaksPanel()
 	UpdatePhaseErrorPanel()
 End
 
@@ -2166,7 +2174,7 @@ Window Integrals_Multipoles() : Panel
 		Killwindow Integrals_Multipoles
 	endif	
 
-	NewPanel/K=1/W=(80,250,407,722)
+	NewPanel/K=1/W=(80,250,407,762)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,4,322,185
@@ -2175,9 +2183,9 @@ Window Integrals_Multipoles() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 3,260,322,335
 	SetDrawEnv fillpat= 0
-	DrawRect 3,335,322,380
+	DrawRect 3,335,322,420
 	SetDrawEnv fillpat= 0
-	DrawRect 3,380,322,468
+	DrawRect 3,420,322,508
 
 					
 	TitleBox title,pos={60,10},size={127,16},fSize=14,fStyle=1,frame=0, title="Field Integrals and Multipoles"
@@ -2203,14 +2211,16 @@ Window Integrals_Multipoles() : Panel
 	SetVariable res_norm_ks,pos={20,285},size={285,16},title="Normal - Ks to Use:"
 	SetVariable res_skew_ks,pos={20,310},size={285,16},title="\t Skew - Ks to Use:"
 
-	Button mult_button,pos={12,340},size={300,34},proc=CalcIntegralsMultipoles,title="Calculate Field Integrals and Multipoles"
+	Button int_button,pos={12,340},size={300,34},proc=CalcIntegrals,title="Calculate Field Integrals"
+	Button int_button,fSize=15,fStyle=1
+	Button mult_button,pos={12,380},size={300,34},proc=CalcMultipoles,title="Calculate Multipoles"
 	Button mult_button,fSize=15,fStyle=1
 
-	SetVariable fieldmap_dir,pos={10,385},size={300,18},title="Field Map Directory: "
+	SetVariable fieldmap_dir,pos={10,425},size={300,18},title="Field Map Directory: "
 	SetVariable fieldmap_dir,noedit=1,value=root:varsCAMTO:FieldMapDir
-	TitleBox copy_title,pos={10,412},size={150,18},frame=0,title="Copy Configuration from:"
-	PopupMenu copy_dir,pos={160,410},size={150,18},bodyWidth=145,mode=0,proc=CopyMultipolesConfig,title=" "
-	Button apply_to_all,pos={10,436},size={300,25},fStyle=1,proc=CalcIntegralsMultipolesToAll,title="Calculate Integrals and Multipoles for All Field Maps"
+	TitleBox copy_title,pos={10,452},size={150,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={160,450},size={150,18},bodyWidth=145,mode=0,proc=CopyMultipolesConfig,title=" "
+	Button apply_to_all,pos={10,476},size={300,25},fStyle=1,proc=CalcIntegralsMultipolesToAll,title="Calculate Integrals and Multipoles for All Field Maps"
 	
 	UpdateFieldMapDirs()
 	UpdateIntegralsMultipolesPanel()
@@ -2414,14 +2424,29 @@ Function PopupMultComponent(ctrlName,popNum,popStr) : PopupMenuControl
 End
 
 
-Function CalcIntegralsMultipoles(ctrlName) : ButtonControl
+Function CalcIntegrals(ctrlName) : ButtonControl
 	String ctrlName
-	print ("Calculating Field Integrals and Multipoles")
+	print ("Calculating Field Integrals")
 
 	variable timerRefNum, calc_time
 	timerRefNum = StartMSTimer
 
 	IntegralsCalculation()
+	UpdateResultsPanel()
+	
+	calc_time = StopMSTimer(timerRefNum)
+	Print "Elapsed time :", calc_time*(10^(-6)), " seconds"
+	
+End
+
+
+Function CalcMultipoles(ctrlName) : ButtonControl
+	String ctrlName
+	print ("Calculating Field Multipoles")
+
+	variable timerRefNum, calc_time
+	timerRefNum = StartMSTimer
+
 	MultipolarFitting()
 	ResidualMultipolesCalc()
 	UpdateResultsPanel()
@@ -2924,7 +2949,8 @@ Function CalcIntegralsMultipolesToAll(ctrlName) : ButtonControl
 		SetDataFolder root:$(tdf)
 		CopyMultipolesConfig_(dfc)
 		Print("Calculating Integrals and Multipoles for " + tdf + ":")
-		CalcIntegralsMultipoles(empty)
+		CalcIntegrals(empty)
+		CalcMultipoles(empty)
 	endfor
 
 	SetDataFolder df
@@ -4357,47 +4383,65 @@ Window Find_Peaks() : Panel
 		Killwindow Find_Peaks
 	endif	
 
-	NewPanel/K=1/W=(1380,60,1703,365)
+	NewPanel/K=1/W=(1380,60,1703,527)
 	
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 4,3,319,30
 	SetDrawEnv fillpat= 0
-	DrawRect 4,30,319,70
+	DrawRect 4,30,319,100
 	SetDrawEnv fillpat= 0
-	DrawRect 4,70,319,235
+	DrawRect 4,100,319,270
 	SetDrawEnv fillpat= 0
-	DrawRect 4,235,319,275
+	DrawRect 4,270,319,435
 	SetDrawEnv fillpat= 0
-	DrawRect 4,275,319,300
+	DrawRect 4,435,319,462
 	
-	TitleBox LXAxis,pos={115,4},size={63,22},title="Find Peaks",fSize=19,frame=0,fStyle=1
+	TitleBox LXAxis,pos={65,4},size={63,22},title="Find Peaks and Zeros",fSize=19,frame=0,fStyle=1
 	
 	SetVariable PosXPeaks,pos={10,40},size={170,18},title="Position in X [mm] :"
 		
 	PopupMenu FieldAxisPeak, title = "Field Axis :", pos={200,40},size={106,21},proc=FieldAxisPeak
 	PopupMenu FieldAxisPeak,disable=2,value= #"\"Bx;By;Bz\""
 
-	PopupMenu PosNegPeak, pos={10,80},size={150,21},proc=PosNegPeaks,title = "Peaks :"
-	PopupMenu PosNegPeak,disable=2,value= #"\"Positive Peaks;Negative Peaks;Both Peaks\""
+	SetVariable StepsYZPeaks,pos={10,70},size={280,18},title="Interpolation Step [mm] :"
 
-	SetVariable StepsYZPeaks,pos={10,110},size={220,18},title="Interpolation Step [mm] :"
+	CheckBox CheckBoxPeaks, pos={10,113}, title="",mode=1,proc=SelectPeaksZeros
+
+	PopupMenu PosNegPeak, pos={30,110},size={150,21},proc=PosNegPeaks,title = "Peaks :"
+	PopupMenu PosNegPeak,disable=2,value= #"\"Positive Peaks;Negative Peaks;Both Peaks\""
 	
 	SetVariable NAmplPeaks,pos={10,140},size={305,18},title="Peak amplitude related to the maximum [%] :"
 	SetVariable NAmplPeaks,limits={0,100,1}
 
-	Button PeaksProc,pos={10,175},size={150,55},fSize=14,proc=FindPeaksProc,title="Find Peaks"
+	Button PeaksProc,pos={10,170},size={150,55},fSize=14,proc=FindPeaksProc,title="Find Peaks"
 	Button PeaksProc,fStyle=1,disable=2
-	TitleBox    avg_period_label,pos={180,175},size={120,18},frame=0,title="Average Period [mm]: "
-	ValDisplay  avg_period,pos={180,200},size={120,18}
+	TitleBox    AvgPeriodPeaksLabel,pos={180,170},size={120,18},frame=0,title="Average Period [mm]: "
+	ValDisplay  AvgPeriodPeaks,pos={180,195},size={120,18}
 	
-	Button PeaksGraph,pos={15,243},size={140,24},proc=GraphPeaksProc,title="Show Peaks"
+	Button PeaksGraph,pos={15,235},size={140,24},proc=GraphPeaksProc,title="Show Peaks"
 	Button PeaksGraph,fStyle=1,disable=2
 	
-	Button PeaksTable,pos={170,243},size={140,24},proc=TablePeaksProc,title="Show Table"
+	Button PeaksTable,pos={170,235},size={140,24},proc=TablePeaksProc,title="Show Table"
 	Button PeaksTable,fStyle=1,disable=2
+
+	CheckBox CheckBoxZeros, pos={10,278}, title="\tZeros:",mode=1,proc=SelectPeaksZeros
+
+	SetVariable NAmplZeros,pos={10,305},size={305,18},title="Stop the search for amplitude lower than [%] :"
+	SetVariable NAmplZeros,limits={0,100,1}
+
+	Button ZerosProc,pos={10,335},size={150,55},fSize=14,proc=FindZerosProc,title="Find Zeros"
+	Button ZerosProc,fStyle=1,disable=2
+	TitleBox    AvgPeriodZerosLabel,pos={180,335},size={120,18},frame=0,title="Average Period [mm]: "
+	ValDisplay  AvgPeriodZeros,pos={180,360},size={120,18}
 	
-	SetVariable fieldmapdir,pos={17,280},size={290,18},title="FieldMap directory: "
+	Button ZerosGraph,pos={15,400},size={140,24},proc=GraphZerosProc,title="Show Zeros"
+	Button ZerosGraph,fStyle=1,disable=2
+	
+	Button ZerosTable,pos={170,400},size={140,24},proc=TableZerosProc,title="Show Table"
+	Button ZerosTable,fStyle=1,disable=2
+		
+	SetVariable fieldmapdir,pos={17,440},size={290,18},title="FieldMap directory: "
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
 	
 	UpdateFieldMapDirs()
@@ -4422,28 +4466,134 @@ Function UpdateFindPeaksPanel()
 		NVAR StepsX = root:$(df):varsFieldMap:StepsX
 		NVAR FieldAxisPeak = root:$(df):varsFieldMap:FieldAxisPeak
 		NVAR PeaksPosNeg = root:$(df):varsFieldMap:PeaksPosNeg
+		NVAR PeaksSelected = root:$(df):varsFieldMap:PeaksSelected
 	
 		SetVariable PosXPeaks, win=Find_Peaks, value= root:$(df):varsFieldMap:PosXAux
 		SetVariable PosXPeaks, win=Find_Peaks,limits={StartX, EndX, StepsX}
 		PopupMenu FieldAxisPeak, win=Find_Peaks,disable=0, mode=FieldAxisPeak
-		SetVariable NAmplPeaks, win=Find_Peaks,value= root:$(df):varsFieldMap:NAmplPeaks
 		SetVariable StepsYZPeaks, win=Find_Peaks,value= root:$(df):varsFieldMap:StepsYZPeaks
 		SetVariable StepsYZPeaks, win=Find_Peaks,limits={0,inf,0}
-		PopupMenu PosNegPeak, win=Find_Peaks,disable=0, mode=PeaksPosNeg
-		ValDisplay  avg_period, win=Find_Peaks, value=#("root:"+ df + ":varsFieldMap:AvgPeriodPeaks" )
+
+		PopupMenu PosNegPeak, win=Find_Peaks, mode=PeaksPosNeg		
+		SetVariable NAmplPeaks, win=Find_Peaks,value= root:$(df):varsFieldMap:NAmplPeaks
+		SetVariable NAmplZeros, win=Find_Peaks,value= root:$(df):varsFieldMap:NAmplZeros
+		ValDisplay  AvgPeriodPeaks, win=Find_Peaks, value=#("root:"+ df + ":varsFieldMap:AvgPeriodPeaks" )
+		ValDisplay  AvgPeriodZeros, win=Find_Peaks, value=#("root:"+ df + ":varsFieldMap:AvgPeriodZeros" )
 		
-		Button PeaksProc, win=Find_Peaks, disable=0
-		Button PeaksGraph,win=Find_Peaks, disable=0
-		Button PeaksTable,win=Find_Peaks, disable=0
+		CheckBox CheckBoxPeaks, win=Find_Peaks, disable=0, value=0
+		CheckBox CheckBoxZeros, win=Find_Peaks, disable=0, value=0
+		
+		if (PeaksSelected == 1)
+			CheckBox CheckBoxPeaks, win=Find_Peaks, value=1		
+			SetPeaksDisable(0)
+			SetZerosDisable(2)
+		else
+			CheckBox CheckBoxZeros, win=Find_Peaks, value=1
+			SetPeaksDisable(2)
+			SetZerosDisable(0)
+		endif
 		
 	else
-		PopupMenu FieldAxisPeak,win=Find_Peaks, disable=2
-		PopupMenu PosNegPeak,win=Find_Peaks, disable=2
-		Button PeaksProc, win=Find_Peaks, disable=2
-		Button PeaksGraph,win=Find_Peaks, disable=2
-		Button PeaksTable,win=Find_Peaks, disable=2
+		CheckBox CheckBoxPeaks, win=Find_Peaks, disable=2
+		CheckBox CheckBoxZeros, win=Find_Peaks, disable=2
+		SetPeaksDisable(2)
+		SetZerosDisable(2)	
 	endif
 	
+End
+
+
+Function SelectPeaksZeros(cb) : CheckBoxControl
+	STRUCT WMCheckboxAction& cb
+	
+	SVAR df = root:varsCAMTO:FieldMapDir
+		
+	if (cb.eventCode == -1)
+		return 0
+	endif
+			
+	strswitch (cb.ctrlName)
+		case "CheckBoxPeaks":
+			CheckBox CheckBoxZeros,win=Find_Peaks,value=0
+			SetZerosDisable(2)
+			
+			if (strlen(df) > 0)
+				NVAR PeaksSelected = root:$(df):varsFieldMap:PeaksSelected
+				PeaksSelected = 1
+				SetPeaksDisable(0)
+			else
+				SetPeaksDisable(2)
+			endif
+					
+			break
+		case "CheckBoxZeros":
+			CheckBox CheckBoxPeaks,win=Find_Peaks,value=0
+			SetPeaksDisable(2)
+				
+			if (strlen(df) > 0)
+				NVAR PeaksSelected = root:$(df):varsFieldMap:PeaksSelected
+				PeaksSelected = 0
+				SetZerosDisable(0)
+			else
+				SetZerosDisable(2)
+			endif
+								
+			break
+	endswitch
+	return 0
+End
+
+
+Function SetPeaksDisable(disable)
+	variable disable
+	PopupMenu PosNegPeak,win=Find_Peaks,disable=disable
+	SetVariable NAmplPeaks,win=Find_Peaks,disable=disable
+	ValDisplay AvgPeriodPeaks,win=Find_Peaks,disable=disable
+	TitleBox AvgPeriodPeaksLabel,win=Find_Peaks,disable=disable
+	Button PeaksProc, win=Find_Peaks, disable=disable
+	Button PeaksGraph,win=Find_Peaks, disable=disable
+	Button PeaksTable,win=Find_Peaks, disable=disable
+End	
+
+
+Function SetZerosDisable(disable)
+	variable disable
+	ValDisplay AvgPeriodZeros,win=Find_Peaks,disable=disable
+	SetVariable NAmplZeros,win=Find_Peaks,disable=disable
+	TitleBox AvgPeriodZerosLabel,win=Find_Peaks,disable=disable
+	Button ZerosProc, win=Find_Peaks, disable=disable
+	Button ZerosGraph,win=Find_Peaks, disable=disable
+	Button ZerosTable,win=Find_Peaks, disable=disable
+End
+
+
+Function FieldAxisPeak(ctrlName,popNum,popStr) : PopupMenuControl
+	String ctrlName
+	Variable popNum
+	String popStr
+
+	SVAR FieldAxisPeakStr = :varsFieldMap:FieldAxisPeakStr
+	NVAR FieldAxisPeak    = :varsFieldMap:FieldAxisPeak 
+	FieldAxisPeak = popNum
+	
+	if (FieldAxisPeak == 1)
+		FieldAxisPeakStr = "Bx"
+	elseif (FieldAxisPeak == 2) 
+		FieldAxisPeakStr = "By"
+	elseif (FieldAxisPeak == 3)
+		FieldAxisPeakStr = "Bz"
+	endif
+	
+End
+
+
+Function PosNegPeaks(ctrlName,popNum,popStr) : PopupMenuControl
+	String ctrlName
+	Variable popNum
+	String popStr
+
+	NVAR PeaksPosNeg = :varsFieldMap:PeaksPosNeg 
+	PeaksPosNeg = popNum
 End
 
 
@@ -4727,7 +4877,6 @@ Function GraphPeaksProc(ctrlName) : ButtonControl
 	
 	Wave Interp_Field = $("Interp_" + Name)
 	
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
 	string PanelName
 	PanelName = WinList("PeaksGraph",";","")	
 	if (stringmatch(PanelName, "PeaksGraph;"))
@@ -4746,11 +4895,11 @@ Function GraphPeaksProc(ctrlName) : ButtonControl
 		
 		Label bottom "\\Z12Longitudinal Position YZ [m]"
 		if (FieldAxisPeak == 1)
-			Label left "\\Z12PeakFieldBx [T]"
+			Label left "\\Z12Field Bx [T]"
 		elseif (FieldAxisPeak == 2)
-			Label left "\\Z12PeakFieldBy [T]"
+			Label left "\\Z12Field By [T]"
 		elseif (FieldAxisPeak == 3)
-			Label left "\\Z12PeakFieldBz [T]"
+			Label left "\\Z12Field Bz [T]"
 		endif
 		
 		TextBox/W=PeaksGraph/C/N=text0/A=MC "PosX [mm] = "+ num2str(PosXAux)
@@ -4770,15 +4919,11 @@ End
 Function TablePeaksProc(ctrlName) : ButtonControl
 	String ctrlName
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
 	string PanelName
 	PanelName = WinList("PeaksTable",";","")	
 	if (stringmatch(PanelName, "PeaksTable;"))
 		Killwindow PeaksTable
 	endif
-	
-	NVAR PosXAux       = :varsFieldMap:PosXAux
-	NVAR FieldAxisPeak = :varsFieldMap:FieldAxisPeak	
 	
 	if ((WaveExists(ValuePeaksPos)) || (WaveExists(ValuePeaksNeg)))	
 		if (WaveExists(ValuePeaksPos))
@@ -4793,33 +4938,168 @@ Function TablePeaksProc(ctrlName) : ButtonControl
 End
 
 
-Function FieldAxisPeak(ctrlName,popNum,popStr) : PopupMenuControl
+Function FindZerosProc(ctrlName)
 	String ctrlName
-	Variable popNum
-	String popStr
 
-	SVAR FieldAxisPeakStr = :varsFieldMap:FieldAxisPeakStr
-	NVAR FieldAxisPeak    = :varsFieldMap:FieldAxisPeak 
-	FieldAxisPeak = popNum
+	NVAR StartYZ        = :varsFieldMap:StartYZ
+	NVAR EndYZ          = :varsFieldMap:EndYZ
+	NVAR NPointsYZ      = :varsFieldMap:NPointsYZ
+	NVAR PosXAux        = :varsFieldMap:PosXAux
+	NVAR FieldAxisPeak  = :varsFieldMap:FieldAxisPeak	
+	NVAR StepsYZPeaks   = :varsFieldMap:StepsYZPeaks
+	NVAR NAmplZeros     = :varsFieldMap:NAmplZeros
+	NVAR AvgPeriodZeros = :varsFieldMap:AvgPeriodZeros
+	
+	variable NPointsYZPeak = ((EndYZ - StartYZ)/StepsYZPeaks) + 1
+	
+	string Name
+	variable i, idx0, idx1 
+	variable Baseline, startx, endx
+	variable pos0, pos1, field0, field1
 	
 	if (FieldAxisPeak == 1)
-		FieldAxisPeakStr = "Bx"
-	elseif (FieldAxisPeak == 2) 
-		FieldAxisPeakStr = "By"
-	elseif (FieldAxisPeak == 3)
-		FieldAxisPeakStr = "Bz"
+		Name = "RaiaBx_X"+num2str(PosXAux/1000)
+		
+	elseif (FieldAxisPeak == 2)
+		Name = "RaiaBy_X"+num2str(PosXAux/1000)	
+
+	elseif (FieldAxisPeak == 3)	
+		Name = "RaiaBz_X"+num2str(PosXAux/1000)	
+
 	endif
+
+	string Interp_Field_Name
+	Interp_Field_Name = "Interp_" + Name
+	
+	Wave C_PosYZ	
+	Wave Field = $Name
+	
+	if (NPointsYZPeak == NPointsYZ)
+		Duplicate/O C_PosYZ, Interp_C_PosYZ
+		Duplicate/O Field, $(Interp_Field_Name)
+		Wave Interp_Field = $(Interp_Field_Name)
+	else
+		Interpolate2/T=2/N=(NPointsYZPeak)/X=Interp_C_PosYZ/Y=$(Interp_Field_Name) C_PosYZ, Field
+		Wave Interp_Field = $(Interp_Field_Name)
+	endif
+
+	Duplicate/O Interp_Field, Interp_Field_Abs
+	for (i=0; i<NPointsYZPeak; i=i+1)
+		Interp_Field_Abs[i] = Abs(Interp_Field_Abs[i])
+	endfor
+	
+	// Search range
+	Baseline = (NAmplZeros/100)*WaveMax(Interp_Field_Abs)
+	FindLevels/EDGE=0/P/Q Interp_Field_Abs, Baseline
+	Wave W_FindLevels
+	if (numpnts(W_FindLevels) > 1)
+		startx = Floor(W_FindLevels[0])
+		endx = Ceil(W_FindLevels[numpnts(W_FindLevels)-1])
+	else
+		startx = 0
+		endx = NPointsYZPeak-1
+	endif
+	Killwaves/Z W_FindLevels
+		
+	// Search for zeros
+	FindLevels/EDGE=0/P/Q/R=(startx,endx) Interp_Field, 0
+	Print(" ")
+	Print("Find Zeros")
+	Print("Number of zeros found : " + num2str(V_LevelsFound))
+	
+	Wave W_FindLevels
+	Make/D/O/N=(numpnts(W_FindLevels)) PositionZeros	
+	Make/D/O/N=(numpnts(W_FindLevels)) ValueZeros	
+	
+	for (i=0; i<numpnts(W_FindLevels); i=i+1)
+		idx0 = Floor(W_FindLevels[i])
+		idx1 = Ceil(W_FindLevels[i])
+		pos0 = Interp_C_PosYZ[idx0]
+		pos1 = Interp_C_PosYZ[idx1]
+		field0 = Interp_Field[idx0]
+		field1 = Interp_Field[idx1]
+		PositionZeros[i] = pos0*(1 - (W_FindLevels[i] - idx0)/(idx1 -idx0)) + pos1*((W_FindLevels[i] - idx0)/(idx1 -idx0))
+		ValueZeros[i] = field0*(1 - (W_FindLevels[i] - idx0)/(idx1 -idx0)) + field1*((W_FindLevels[i] - idx0)/(idx1 -idx0))
+	endfor
+	
+	Killwaves/Z W_FindLevels
+	
+	Make/O/N=(numpnts(PositionZeros) - 1) PositionZerosDiff
+	for (i=0; i<numpnts(PositionZerosDiff); i=i+1)
+		PositionZerosDiff[i] = PositionZeros[i+1] - PositionZeros[i]
+	endfor
+	variable AvgPeriod = Mean(PositionZerosDiff)
+
+	AvgPeriodZeros = 2*AvgPeriod*1000
+
+	Killwaves/Z PositionZerosDiff
 	
 End
 
 
-Function PosNegPeaks(ctrlName,popNum,popStr) : PopupMenuControl
+Function GraphZerosProc(ctrlName) : ButtonControl
 	String ctrlName
-	Variable popNum
-	String popStr
+		
+	NVAR PosXAux       = :varsFieldMap:PosXAux
+	NVAR FieldAxisPeak = :varsFieldMap:FieldAxisPeak	
+	
+	Wave Interp_C_PosYZ
+	
+	string Name
+	
+	if (FieldAxisPeak == 1)
+		Name = "RaiaBx_X"+num2str(PosXAux/1000)
+			
+	elseif (FieldAxisPeak == 2)
+		Name = "RaiaBy_X"+num2str(PosXAux/1000)	
+	
+	elseif (FieldAxisPeak == 3)	
+		Name = "RaiaBz_X"+num2str(PosXAux/1000)	
+	
+	endif
+	
+	Wave Interp_Field = $("Interp_" + Name)
+	
+	string PanelName
+	PanelName = WinList("ZerosGraph",";","")	
+	if (stringmatch(PanelName, "ZerosGraph;"))
+		Killwindow ZerosGraph
+	endif
+		
+	if ((WaveExists(ValueZeros)) || (WaveExists(PositionZeros)))	
+		Display/N=ZerosGraph/K=1 ValueZeros vs PositionZeros
+		
+		Label bottom "\\Z12Longitudinal Position YZ [m]"
+		if (FieldAxisPeak == 1)
+			Label left "\\Z12Field Bx [T]"
+		elseif (FieldAxisPeak == 2)
+			Label left "\\Z12Field By [T]"
+		elseif (FieldAxisPeak == 3)
+			Label left "\\Z12Field Bz [T]"
+		endif
+		
+		TextBox/W=ZerosGraph/C/N=text0/A=MC "PosX [mm] = "+ num2str(PosXAux)
+		
+		ModifyGraph/W=ZerosGraph mode=3,marker=19,msize=1.5
+			
+		AppendToGraph/C=(0,0,0) Interp_Field vs Interp_C_PosYZ
+		
+	endif	
+End
 
-	NVAR PeaksPosNeg = :varsFieldMap:PeaksPosNeg 
-	PeaksPosNeg = popNum
+
+Function TableZerosProc(ctrlName) : ButtonControl
+	String ctrlName
+
+	string PanelName
+	PanelName = WinList("ZerosTable",";","")	
+	if (stringmatch(PanelName, "ZerosTable;"))
+		Killwindow ZerosTable
+	endif
+	
+	if ((WaveExists(ValueZeros)) || (WaveExists(PositionZeros)))	
+		Edit/N=ZerosTable/K=1 PositionZeros, ValueZeros
+	endif
 End
 
 
@@ -4855,14 +5135,22 @@ Window Phase_Error() : Panel
 	ValDisplay  traj_angle,pos={110,30},size={200,18},title="Angle XY(Z) [°]:"
 	ValDisplay  traj_yz,pos={110,50},size={200,18},title="Start YZ [mm]:  "
 
-	TitleBox    peaks,pos={10,105},size={90,16},fSize=14,fStyle=1,frame=0,title="Field Peaks"
-	SetVariable peaks_axis,pos={110,90},size={200,18},noedit=1,title="Field Component:       "
-	ValDisplay  peaks_x,pos={110,110},size={200,18},title="Position in X [mm]:     "
-	ValDisplay  peaks_period,pos={110,130},size={200,18},title="Average Period [mm]:"
+	TitleBox    period,pos={10,105},size={90,16},fSize=14,fStyle=1,frame=0,title="ID Period"
+	CheckBox    chb_period_peaks,pos={90,88}, title="",mode=1,proc=SelectIDPeriod
+	ValDisplay  period_peaks,pos={110,88},size={200,18},title="Avg. from peaks [mm]:"
+	CheckBox    chb_period_zeros,pos={90,108}, title="",mode=1,proc=SelectIDPeriod
+	ValDisplay  period_zeros,pos={110,108},size={200,18},title="Avg. from  zeros [mm]:"
+	CheckBox    chb_period_nominal,pos={90,128}, title="",mode=1,proc=SelectIDPeriod
+	SetVariable period_nominal,pos={110,128},size={200,18},title="Nominal value [mm]:"
+	SetVariable period_nominal, limits={0,inf,1}
 	
 	TitleBox title,pos={60,160},size={200,24},title="Insertion Device Phase Error",fSize=16,fStyle=1,frame=0
 
-	SetVariable cut_periods,pos={20,200},size={280,16},title="Number of periods to skip at the endings: ", limits={0,1000,1}
+	SetVariable cut_periods,pos={20,185},size={280,16},title="Number of periods to skip at the endings: ", limits={0,1000,1}
+	
+	PopupMenu semi_period_pos,pos={20,210},size={100,20},proc=PopupSemiPeriodPos,title="Get semi-period positions from: "
+	PopupMenu semi_period_pos,value= #"\"Peaks;Zeros\""
+	
 	Button calc_phase_error,pos={20,235},size={140,70},proc=CalcPhaseError,fSize=14,title="Calculate \nPhase Error"
 	Button calc_phase_error,disable=2,fStyle=1
 	TitleBox    phase_error_label,pos={180,245},size={120,18},frame=0,title="RMS Phase Error [°]: "
@@ -4893,29 +5181,132 @@ Function UpdatePhaseErrorPanel()
 	
 	SVAR df = root:varsCAMTO:FieldMapDir
 		
-	if (strlen(df) > 0)		
+	if (strlen(df) > 0)
+		NVAR PeriodPeaksZerosNominal = root:$(df):varsFieldMap:PeriodPeaksZerosNominal
+		NVAR SemiPeriodsPeaksZeros = root:$(df):varsFieldMap:SemiPeriodsPeaksZeros
+				
 		ValDisplay traj_x, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:StartXTraj" )
 		ValDisplay traj_angle,win=Phase_Error,value=#("root:"+ df + ":varsFieldMap:EntranceAngle" )
 		ValDisplay traj_yz, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:StartYZTraj" )
 
-		ValDisplay  peaks_x, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:PosXAux" )
-		SetVariable peaks_axis,win=Phase_Error,value=root:$(df):varsFieldMap:FieldAxisPeakStr
-		ValDisplay  peaks_period, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:AvgPeriodPeaks" )
+		ValDisplay  period_peaks, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:AvgPeriodPeaks" )
+		ValDisplay  period_zeros, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:AvgPeriodZeros" )
+		SetVariable period_nominal, win=Phase_Error, value=root:$(df):varsFieldMap:IDPeriodNominal
+
+		CheckBox chb_period_peaks,win=Phase_Error,disable=0
+		CheckBox chb_period_zeros,win=Phase_Error,disable=0
+		CheckBox chb_period_nominal,win=Phase_Error,disable=0
 
 		SetVariable cut_periods, win=Phase_Error, value=root:$(df):varsFieldMap:IDCutPeriods
+		PopupMenu semi_period_pos,win=Phase_Error,disable=0, mode=SemiPeriodsPeaksZeros
+		
 		Button calc_phase_error,win=Phase_Error,disable=0
 		ValDisplay phase_error, win=Phase_Error, value=#("root:"+ df + ":varsFieldMap:IDPhaseError" )
 		Button phase_error_graph,win=Phase_Error,disable=0
 		Button phase_error_table,win=Phase_Error,disable=0
 
+		if (PeriodPeaksZerosNominal == 0)
+			CheckBox chb_period_peaks,win=Phase_Error,value=1
+			CheckBox chb_period_zeros,win=Phase_Error,value=0
+			CheckBox chb_period_nominal,win=Phase_Error,value=0
+			ValDisplay  period_peaks, win=Phase_Error, disable=0
+			ValDisplay  period_zeros, win=Phase_Error, disable=2
+			SetVariable period_nominal, win=Phase_Error, disable=2
+		elseif (PeriodPeaksZerosNominal == 1)
+			CheckBox chb_period_peaks,win=Phase_Error,value=0
+			CheckBox chb_period_zeros,win=Phase_Error,value=1
+			CheckBox chb_period_nominal,win=Phase_Error,value=0
+			ValDisplay  period_peaks, win=Phase_Error, disable=2
+			ValDisplay  period_zeros, win=Phase_Error, disable=0
+			SetVariable period_nominal, win=Phase_Error, disable=2
+		else
+			CheckBox chb_period_peaks,win=Phase_Error,value=0
+			CheckBox chb_period_zeros,win=Phase_Error,value=0
+			CheckBox chb_period_nominal,win=Phase_Error,value=1
+			ValDisplay  period_peaks, win=Phase_Error, disable=2
+			ValDisplay  period_zeros, win=Phase_Error, disable=2
+			SetVariable period_nominal, win=Phase_Error, disable=0		
+		endif
+
 	else
+		PopupMenu semi_period_pos,win=Phase_Error,disable=2
 		Button calc_phase_error,win=Phase_Error,disable=2
 		Button phase_error_graph,win=Phase_Error,disable=2
 		Button phase_error_table,win=Phase_Error,disable=2
+		CheckBox chb_period_peaks,win=Phase_Error,disable=2
+		CheckBox chb_period_zeros,win=Phase_Error,disable=2
+		CheckBox chb_period_nominal,win=Phase_Error,disable=2
+		ValDisplay  period_peaks, win=Phase_Error, disable=2
+		ValDisplay  period_zeros, win=Phase_Error, disable=2
+		SetVariable period_nominal, win=Phase_Error, disable=2		
 	endif
 	
 End
 
+
+Function SelectIDPeriod(cb) : CheckBoxControl
+	STRUCT WMCheckboxAction& cb
+	
+	SVAR df = root:varsCAMTO:FieldMapDir
+		
+	if (cb.eventCode == -1)
+		return 0
+	endif
+			
+	strswitch (cb.ctrlName)
+		case "chb_period_peaks":
+			CheckBox chb_period_zeros,win=Phase_Error,value=0
+			CheckBox chb_period_nominal,win=Phase_Error,value=0
+			ValDisplay  period_peaks, win=Phase_Error, disable=0
+			ValDisplay  period_zeros, win=Phase_Error, disable=2
+			SetVariable period_nominal, win=Phase_Error, disable=2
+			
+			if (strlen(df) > 0)
+				NVAR PeriodPeaksZerosNominal = root:$(df):varsFieldMap:PeriodPeaksZerosNominal
+				PeriodPeaksZerosNominal = 0
+			endif
+					
+			break
+		case "chb_period_zeros":
+			CheckBox chb_period_peaks,win=Phase_Error,value=0
+			CheckBox chb_period_nominal,win=Phase_Error,value=0
+			ValDisplay  period_peaks, win=Phase_Error, disable=2
+			ValDisplay  period_zeros, win=Phase_Error, disable=0
+			SetVariable period_nominal, win=Phase_Error, disable=2
+					
+			if (strlen(df) > 0)
+				NVAR PeriodPeaksZerosNominal = root:$(df):varsFieldMap:PeriodPeaksZerosNominal
+				PeriodPeaksZerosNominal = 1
+			endif
+								
+			break
+		case "chb_period_nominal":
+			CheckBox chb_period_peaks,win=Phase_Error,value=0
+			CheckBox chb_period_zeros,win=Phase_Error,value=0
+			ValDisplay  period_peaks, win=Phase_Error, disable=2
+			ValDisplay  period_zeros, win=Phase_Error, disable=2
+			SetVariable period_nominal, win=Phase_Error, disable=0
+					
+			if (strlen(df) > 0)
+				NVAR PeriodPeaksZerosNominal = root:$(df):varsFieldMap:PeriodPeaksZerosNominal
+				PeriodPeaksZerosNominal = 2
+			endif
+								
+			break
+	endswitch
+	return 0
+End
+
+
+Function PopupSemiPeriodPos(ctrlName,popNum,popStr) : PopupMenuControl
+	String ctrlName
+	Variable popNum
+	String popStr
+
+	NVAR SemiPeriodsPeaksZeros = :varsFieldMap:SemiPeriodsPeaksZeros
+	SemiPeriodsPeaksZeros = popNum
+	
+End
 
 Function CalcPhaseError(ctrlName) : ButtonControl
 	String ctrlName
@@ -4934,7 +5325,15 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 	NVAR FieldZ = :varsFieldMap:FieldZ
 	
 	NVAR NAmplPeaks     = :varsFieldMap:NAmplPeaks
+	NVAR NAmplZeros     = :varsFieldMap:NAmplZeros
+
+	NVAR SemiPeriodsPeaksZeros = :varsFieldMap:SemiPeriodsPeaksZeros	
+	NVAR PeriodPeaksZerosNominal = :varsFieldMap:PeriodPeaksZerosNominal
 	NVAR AvgPeriodPeaks = :varsFieldMap:AvgPeriodPeaks
+	NVAR AvgPeriodZeros = :varsFieldMap:AvgPeriodZeros
+	NVAR IDPeriodNominal = :varsFieldMap:IDPeriodNominal
+	
+	NVAR IDPeriod       = :varsFieldMap:IDPeriod
 	NVAR IDCutPeriods   = :varsFieldMap:IDCutPeriods
 	NVAR IDPhaseError   = :varsFieldMap:IDPhaseError
 	
@@ -4947,13 +5346,16 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 		return -1	
 	endif
 
-	if (WaveExists(PositionPeaksPos) == 0)
-		DoAlert 0,"Positive peak positions not found."
-		return -1	
+	if (PeriodPeaksZerosNominal == 0)
+		IDPeriod = AvgPeriodPeaks
+	elseif (PeriodPeaksZerosNominal == 1)
+		IDPeriod = AvgPeriodZeros
+	else
+		IDPeriod = IDPeriodNominal
 	endif
 
-	if (WaveExists(PositionPeaksNeg) == 0)
-		DoAlert 0,"Negative peak positions not found."
+	if (IDPeriod == 0)
+		DoAlert 0,"ID Period must be a non-zero positive value."
 		return -1	
 	endif
 
@@ -4977,22 +5379,60 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 	variable Lambda
 
 	//Get semi-period positions
-	Concatenate/O/NP {PositionPeaksPos, PositionPeaksNeg}, PositionPeaks
+	if (SemiPeriodsPeaksZeros == 1)
+		if (WaveExists(PositionPeaksPos) && WaveExists(PositionPeaksNeg))
+			Concatenate/O/NP {PositionPeaksPos, PositionPeaksNeg}, PositionPeaks
+			Wave PositionPeaks
+			Sort PositionPeaks, PositionPeaks
+		
+			Duplicate/O PositionPeaks, PositionPeaksCut
+		
+			if (numpnts(PositionPeaksCut) > 4*IDCutPeriods+1)
+				DeletePoints 0, 2*IDCutPeriods, PositionPeaksCut
+				DeletePoints numpnts(PositionPeaksCut)-2*IDCutPeriods, 2*IDCutPeriods, PositionPeaksCut		
+			endif
+		
+			Duplicate/O PositionPeaksCut, ID_SemiPeriod_Pos 
+		
+			for (i=1; i<numpnts(ID_SemiPeriod_Pos); i=i+1)
+				ID_SemiPeriod_Pos[i] = PositionPeaksCut[0] + i*(IDPeriod/2/1000)
+			endfor
+			
+			Killwaves/Z PositionPeaks, PositionPeaksCut
+		else
+			DoAlert 0,"Peak positions not found."
+			return -1			
+		endif
 
-	Wave PositionPeaks
-	Sort PositionPeaks, PositionPeaks
-
-	if (numpnts(PositionPeaks) > 4*IDCutPeriods+1)
-		DeletePoints 0, 2*IDCutPeriods, PositionPeaks
-		DeletePoints numpnts(PositionPeaks)-2*IDCutPeriods, 2*IDCutPeriods, PositionPeaks		
+	else
+		if (WaveExists(PositionZeros))
+			Duplicate/O PositionZeros, PositionZerosCut
+			
+			if (numpnts(PositionZerosCut) > 4*IDCutPeriods+1)
+				DeletePoints 0, 2*IDCutPeriods, PositionZerosCut
+				DeletePoints numpnts(PositionZerosCut)-2*IDCutPeriods, 2*IDCutPeriods, PositionZerosCut		
+			endif
+			
+			Duplicate/O PositionZerosCut, ID_SemiPeriod_Pos 
+			
+			for (i=1; i<numpnts(ID_SemiPeriod_Pos); i=i+1)
+				ID_SemiPeriod_Pos[i] = PositionZerosCut[0] + i*(IDPeriod/2/1000)
+			endfor
+					
+			Killwaves/Z PositionZerosCut
+			
+		else
+			DoAlert 0,"Zero positions not found."
+			return -1			
+		endif
+	
 	endif
-
-	Duplicate/O PositionPeaks ID_SemiPeriod_Pos 
-
+	
 	nsp = numpnts(ID_SemiPeriod_Pos)
 
-	for (i=1; i<nsp; i=i+1)
-		ID_SemiPeriod_Pos[i] = PositionPeaks[0] + i*(AvgPeriodPeaks/2/1000)
+	Make/O/N=(nsp-1) Local_IDPhaseErrorPos
+	for (i=0; i<numpnts(Local_IDPhaseErrorPos); i++)
+		Local_IDPhaseErrorPos[i] = (ID_SemiPeriod_Pos[i+1] + ID_SemiPeriod_Pos[i])/2
 	endfor
 
 	// Calculate ID deflection parameter	
@@ -5000,28 +5440,28 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 	AvgPos = GetAvgPositivePeaks(Bx, NAmplPeaks)
 	AvgNeg = GetAvgNegativePeaks(Bx, NAmplPeaks)
 	AvgBx = (Abs(AvgPos) + Abs(AvgNeg))/2
-	Kv = 0.0934*AvgBx*AvgPeriodPeaks
+	Kv = 0.0934*AvgBx*IDPeriod
 	
 	if (BeamDirection == 1)
 		Wave Bz = $("VetorCampoZ" + num2str(StartXTraj/1000))
 		AvgPos = GetAvgPositivePeaks(Bz, NAmplPeaks)
 		AvgNeg = GetAvgNegativePeaks(Bz, NAmplPeaks)
 		AvgBz = (Abs(AvgPos) + Abs(AvgNeg))/2	
-		Kh = 0.0934*AvgBz*AvgPeriodPeaks
+		Kh = 0.0934*AvgBz*IDPeriod
 		
 	else
 		Wave By = $("VetorCampoY" + num2str(StartXTraj/1000))
 		AvgPos = GetAvgPositivePeaks(By, NAmplPeaks)
 		AvgNeg = GetAvgNegativePeaks(By, NAmplPeaks)
 		AvgBy = (Abs(AvgPos) + Abs(AvgNeg))/2	
-		Kh = 0.0934*AvgBy*AvgPeriodPeaks
+		Kh = 0.0934*AvgBy*IDPeriod
 		
 	endif
 	
 	K = sqrt(Kv^2 + Kh^2)
 
 	// Calculate first radiation harmonic
-	Lambda = (AvgPeriodPeaks/(2*(Gama^2)))*(1 + (K^2)/2) //[mm]
+	Lambda = (IDPeriod/(2*(Gama^2)))*(1 + (K^2)/2) //[mm]
 
 	// Get trajectory length in each semi-period
 	Make/O/D/N=(nsp-1) ID_TrajLength = 0
@@ -5099,9 +5539,6 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 	IDPhaseError = (2*Pi/Bt)*Sqrt(Sum(ID_TrajDeviationSqr)/numpnts(ID_TrajDeviationSqr))*180/Pi 	
 	
 	print "Insertion device phase error [°]: ", IDPhaseError
-
-	Duplicate/O ID_SemiPeriod_Pos, Local_IDPhaseErrorPos
-	DeletePoints 0, 1, Local_IDPhaseErrorPos
 		
 	Killwaves/Z PositionPeaks, ID_TrajLength, ID_TrajDeviation, ID_TrajDeviationSqr
 	
@@ -6386,7 +6823,7 @@ Window Field_Specification() : Panel
 		Killwindow Field_Specification
 	endif	
 	
-	NewPanel/K=1/W=(240,60,615,590)
+	NewPanel/K=1/W=(240,60,615,550)
 
 	TabControl MyTabControl,pos={5,5},size={370,440},tabLabel(0)="Main Parameters",value=0
 	TabControl MyTabControl,proc=TabActionProc,tabLabel(1)="Multipole Errors"
@@ -7308,6 +7745,7 @@ Function UpdateCompareResultsPanel()
 	
 	UpdateFieldControls()
 	UpdateMultipolesControls()
+	UpdateTrajectoryControls()
 	UpdateDynMultipolesControls()
 	UpdateMagnetReportControls()
 
@@ -7371,6 +7809,44 @@ Function UpdateMultipolesControls()
 End
 
 
+Function UpdateTrajectoryControls()
+
+	SVAR dfA = root:varsCAMTO:FieldMapA
+	SVAR dfB = root:varsCAMTO:FieldMapB
+
+	NVAR/Z StartXTraj_A = root:$(dfA):varsFieldMap:StartXTraj	
+	NVAR/Z StartXTraj_B = root:$(dfB):varsFieldMap:StartXTraj	
+	Wave/Z TrajA = root:$(dfA):$("TrajX" + num2str(StartXTraj_A/1000))
+	Wave/Z TrajB = root:$(dfB):$("TrajX" + num2str(StartXTraj_B/1000))
+		
+	variable disable
+	if (WaveExists(TrajA) || WaveExists(TrajB))
+		if (strlen(dfA) > 0 && cmpstr(dfA, "_none_")!=0 && strlen(dfB) > 0 && cmpstr(dfB, "_none_")!=0)
+			disable = 0 
+		else
+			disable = 2
+		endif
+	else
+		disable = 2
+	endif
+
+	TitleBox trajectory_title,win=Compare_Results, disable=disable
+	
+	TitleBox trajA_title,win=Compare_Results, disable=disable
+	ValDisplay trajstartx_A,win=Compare_Results, disable=disable
+	ValDisplay trajstartangx_A,win=Compare_Results, disable=disable
+	ValDisplay trajstartyz_A,win=Compare_Results, disable=disable
+
+	TitleBox trajB_title,win=Compare_Results, disable=disable
+	ValDisplay trajstartx_B,win=Compare_Results, disable=disable
+	ValDisplay trajstartangx_B,win=Compare_Results, disable=disable
+	ValDisplay trajstartyz_B,win=Compare_Results, disable=disable
+	
+	Button show_trajectories,win=Compare_Results, disable=disable
+	
+End
+
+
 Function UpdateDynMultipolesControls()
 
 	SVAR dfA = root:varsCAMTO:FieldMapA
@@ -7389,21 +7865,7 @@ Function UpdateDynMultipolesControls()
 	else
 		disable = 2
 	endif
-		
-	TitleBox trajectory_title,win=Compare_Results, disable=disable
-	
-	TitleBox trajA_title,win=Compare_Results, disable=disable
-	ValDisplay trajstartx_A,win=Compare_Results, disable=disable
-	ValDisplay trajstartangx_A,win=Compare_Results, disable=disable
-	ValDisplay trajstartyz_A,win=Compare_Results, disable=disable
 
-	TitleBox trajB_title,win=Compare_Results, disable=disable
-	ValDisplay trajstartx_B,win=Compare_Results, disable=disable
-	ValDisplay trajstartangx_B,win=Compare_Results, disable=disable
-	ValDisplay trajstartyz_B,win=Compare_Results, disable=disable
-	
-	Button show_trajectories,win=Compare_Results, disable=disable
-	
 	Button show_dynmultipoles,win=Compare_Results, disable=disable
 	Button show_dynmultipoleprofile,win=Compare_Results, disable=disable
 	SetVariable dynmnumber,win=Compare_Results, disable=disable
@@ -8219,6 +8681,7 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 		PanelName = WinList("CompareTrajectoriesX",";","")	
 		if (stringmatch(PanelName, "CompareTrajectoriesX;"))
 			AppendToGraph/W=CompareTrajectoriesX/C=(0,0,65535) TmpY vs TmpX
+			Legend/W=CompareTrajectoriesX/K/N=text0
 			Legend/W=CompareTrajectoriesX "\s(#0) "+ dfA + " \r\s(#1) " + dfB		
 		else
 			Display/N=CompareTrajectoriesX/K=1 TmpY vs TmpX
@@ -8244,6 +8707,7 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 		PanelName = WinList("CompareTrajectoriesYZ",";","")	
 		if (stringmatch(PanelName, "CompareTrajectoriesYZ;"))
 			AppendToGraph/W=CompareTrajectoriesYZ/C=(0,0,65535) TmpY vs TmpX
+			Legend/W=CompareTrajectoriesYZ/K/N=text0
 			Legend/W=CompareTrajectoriesYZ "\s(#0) "+ dfA + " \r\s(#1) " + dfB
 		else
 			Display/N=CompareTrajectoriesYZ/K=1 TmpY vs TmpX
