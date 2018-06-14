@@ -1,5 +1,5 @@
 // Code for Analysis of Multipoles, Trajectories and Others.
-// Last Upgrade: 13/06/2018
+// Last Upgrade: 14/06/2018
 
 #pragma rtGlobals = 1	
 #pragma version = 13.0.2
@@ -39,7 +39,7 @@ Function Header()
 	Print(" ")
 	Print("CAMTO - Code for Analysis of Multipoles, Trajectories and Others.")
 	Print("Version 13.0.2")
-	Print("Last Upgrade: June, 13th 2018")	
+	Print("Last Upgrade: June, 14th 2018")	
 	Print("Creator: James Citadini")	
 	Print("Co-Creators: Giancarlo Tosin, Priscila Palma Sanchez, Tiago Reis and Luana Vilela")
 	Print("Acknowlegments to: Ximenes Rocha Resende and Liu Lin")
@@ -1549,7 +1549,7 @@ Function Export_Full_Data()
 	endif
 	Close/A
 		
-	KillWindow CompleteTable
+	KillWindow/Z CompleteTable
 	
 	Killwaves/Z Exportwave0
 	Killwaves/Z Exportwave1
@@ -1582,41 +1582,69 @@ Function ExportFieldSpectra(ctrlName) : ButtonControl
 	SVAR FMPath 		= :varsFieldMap:FMPath
 	
 	string nome
-	variable i, j, k
+	variable i, j, l, k, xpos
 	
-	make/D/o/n=(NPointsX*NPointsYZ) Exportwave0
-	make/D/o/n=(NPointsX*NPointsYZ) Exportwave3
-	make/D/o/n=(NPointsX*NPointsYZ) Exportwave4
-	make/D/o/n=(NPointsX*NPointsYZ) Exportwave5
+	if (NPointsYZ < 4)
+		DoAlert 0, "The number of points in the longitudinal direction must be greater than 4."
+		return -1
+	endif
+		
+	variable CorNpointsX, CorStepsX
+	variable NpointsV = 2
+	variable StepsV = 1
+	
+	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave0
+	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave1
+	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave2
 	
 	k=0
-	for (j=0;j<NpointsX;j=j+1)
-		for (i=0;i<NPointsYZ;i=i+1)
-
-			Exportwave0[k] = StartX + j*StepsX		
+	for (j=0; j<NpointsX; j=j+1)
+		xpos = StartX + j*StepsX		
+		
+		for (l=0; l<NpointsV; l=l+1)
 			
-			nome = "RaiaBx_X" + num2str(Exportwave0[k]/1000)
-			Wave Tmp = $nome
-			Exportwave3[k] = Tmp[i]
-
-			nome = "RaiaBy_X" + num2str(Exportwave0[k]/1000)
-			Wave Tmp = $nome
-			Exportwave4[k] = Tmp[i]
-
-			nome = "RaiaBz_X" + num2str(Exportwave0[k]/1000)
-			Wave Tmp = $nome
-			Exportwave5[k] = Tmp[i]
+			for (i=0; i<NPointsYZ; i=i+1)
+						
+				nome = "RaiaBx_X" + num2str(xpos/1000)
+				Wave Tmp = $nome
+				Exportwave0[k] = Tmp[i]
+	
+				nome = "RaiaBy_X" + num2str(xpos/1000)
+				Wave Tmp = $nome
+				Exportwave1[k] = Tmp[i]
+	
+				nome = "RaiaBz_X" + num2str(xpos/1000)
+				Wave Tmp = $nome
+				Exportwave2[k] = Tmp[i]
+				
+				k = k + 1
 			
-			k = k + 1
+			endfor
+		
 		endfor
+	
 	endfor
 	
-	Edit/N=CompleteTable Exportwave3,Exportwave4,Exportwave5
-	ModifyTable sigDigits(Exportwave3)=16,sigDigits(Exportwave4)=16,sigDigits(Exportwave5)=16
-
+	if (NpointsX == 1)
+		CorNpointsX = 2
+		CorStepsX = 1
+		Concatenate/O/NP {Exportwave0, Exportwave0}, ConcatExportwave0
+		Concatenate/O/NP {Exportwave1, Exportwave1}, ConcatExportwave1
+		Concatenate/O/NP {Exportwave2, Exportwave2}, ConcatExportwave2
+		Edit/N=CompleteTable ConcatExportwave0, ConcatExportwave1, ConcatExportwave2
+		ModifyTable sigDigits(ConcatExportwave0)=16, sigDigits(ConcatExportwave1)=16, sigDigits(ConcatExportwave2)=16
+		
+	else
+		CorNpointsX = NpointsX
+		CorStepsX = StepsX
+		Edit/N=CompleteTable Exportwave0, Exportwave1, Exportwave2
+		ModifyTable sigDigits(Exportwave0)=16, sigDigits(Exportwave1)=16, sigDigits(Exportwave2)=16
+	
+	endif
+	
 	string NewFMFilename = GetDefaultFilename(Spectra=1)	
 	string header_str
-	sprintf header_str, "%g\t%g\t%g\t%g\t%g\t%g", StepsX, 0, StepsYZ, NPointsX, 1, NPointsYZ
+	sprintf header_str, "%g\t%g\t%g\t%g\t%g\t%g", CorStepsX, StepsV, StepsYZ, CorNpointsX, NpointsV, NPointsYZ
 
 	Make/O/T/N=1 SpectraHeaderLines
 	SpectraHeaderLines[0] = header_str
@@ -1629,13 +1657,11 @@ Function ExportFieldSpectra(ctrlName) : ButtonControl
 	endif
 	Close/A
 		
-	KillWindow CompleteTable
-	KillWindow Header0
+	KillWindow/Z CompleteTable
+	KillWindow/Z Header0
 	KillWaves/Z HeaderLines	
-	Killwaves/Z Exportwave0
-	Killwaves/Z Exportwave3
-	Killwaves/Z Exportwave4
-	Killwaves/Z Exportwave5	
+	Killwaves/Z Exportwave0, Exportwave1, Exportwave2
+	Killwaves/Z ConcatExportwave0, ConcatExportwave1, ConcatExportwave2
 
 End
 
