@@ -17,6 +17,7 @@ Menu "CAMTO"
 	"Find Peaks and Zeros", Execute "Find_Peaks()"
 	"Phase Error", Execute "Phase_Error()"
 	"Results", Execute "Results()"
+	"ID Results", Execute "ID_Results()"
 	"Compare Results", Execute "Compare_Results()"
 	"Help", Execute "Help()"
 End
@@ -292,7 +293,10 @@ Function InitializeFieldMapVariables()
 	variable/G IDPeriodNominal = 0
 	variable/G IDPeriod = 0
 	variable/G IDCutPeriods = 0
-	variable/G IDPhaseError = 0
+	variable/G IDPhaseError = inf
+	
+	variable/G IDFirstIntegral = inf
+	variable/G IDSecondIntegral = inf
 	
 	string/G FMFilename = ""
 	string/G FMPath = ""
@@ -7551,6 +7555,99 @@ Function InitializeSpecVariables()
 End
 
 
+Window ID_Results() : Panel
+	PauseUpdate; Silent 1
+	
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return 
+	endif
+
+	string PanelName
+	PanelName = WinList("ID_Results",";","")	
+	if (stringmatch(PanelName, "ID_Results;"))
+		Killwindow ID_Results
+	endif	
+	
+	NewPanel/K=1/W=(380,260,704,475)
+	SetDrawLayer UserBack
+	SetDrawEnv fillpat= 0
+	DrawRect 3,3,320,132
+	SetDrawEnv fillpat= 0
+	DrawRect 3,132,320,178	
+	SetDrawEnv fillpat= 0
+	DrawRect 3,178,320,210	
+							
+	TitleBox    id_label,pos={80,10},size={100,20},fSize=14,fStyle=1,frame=0,title="Insertion Devices Results"
+	ValDisplay  first_int,pos={10,40},size={300,20},title="First Integral (x=0mm) [G.cm]:    "
+	ValDisplay  second_int,pos={10,70},size={300,20},title="Second Integral (x=0mm) [kG.cm²]:"
+	ValDisplay  phase_error,pos={10,100},size={300,20},title="RMS Phase Error [°]:  "
+	
+	Button update,pos={11,140},size={300,30},fSize=15,fStyle=1,proc=UpdateIDResultsProc,title="Update"
+	
+	SetVariable fieldmapdir,pos={20,185},size={290,18},title="Field Map Directory: "
+	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
+	
+	UpdateFieldMapDirs()
+	UpdateIDResultsPanel()
+	
+EndMacro
+
+
+Function UpdateIDResultsPanel()
+
+	string PanelName
+	PanelName = WinList("ID_Results",";","")	
+	if (stringmatch(PanelName, "ID_Results;")==0)
+		return -1
+	endif
+	
+	SVAR df = root:varsCAMTO:FieldMapDir
+		
+	if (strlen(df) > 0)			
+		ValDisplay first_int, win=ID_Results, value=#("root:"+ df + ":varsFieldMap:IDFirstIntegral" )
+		ValDisplay second_int,win=ID_Results,value=#("root:"+ df + ":varsFieldMap:IDSecondIntegral" )
+		ValDisplay phase_error, win=ID_Results, value=#("root:"+ df + ":varsFieldMap:IDPhaseError" )
+		Button update,win=ID_Results,disable=0
+
+		if (WaveExists(C_PosX))
+			NVAR IDFirstIntegral = root:$(df):varsFieldMap:IDFirstIntegral
+			NVAR IDSecondIntegral = root:$(df):varsFieldMap:IDSecondIntegral
+			NVAR IDPhaseError = root:$(df):varsFieldMap:IDPhaseError
+			
+			IntegralsCalculation()
+		
+			Wave C_PosX		
+			Wave IntBy_X
+			Wave Int2By_X
+
+			FindValue/T=1e-10/V=0 C_PosX
+			if (V_value == -1)
+				DoAlert 0, "Position x = 0 not found."
+				return -1
+			endif
+			
+			IDFirstIntegral = IntBy_X[V_value]*1e6
+			IDSecondIntegral = Int2By_X[V_Value]*1e5
+
+		endif
+	
+	else
+		ValDisplay first_int, win=ID_Results, disable=2
+		ValDisplay second_int,win=ID_Results, disable=2
+		ValDisplay phase_error, win=ID_Results, disable=2	
+		Button update,win=ID_Results,disable=2	
+	endif
+	
+End
+
+
+Function UpdateIDResultsProc(ctrlName) : ButtonControl
+	String ctrlName
+	UpdateIDResultsPanel()
+End
+
+
 Window Compare_Results() : Panel
 	PauseUpdate; Silent 1		
 
@@ -7580,8 +7677,10 @@ Window Compare_Results() : Panel
 	DrawRect 3,300,320,565
 	SetDrawEnv fillpat= 0
 	DrawRect 3,565,320,645
-				
-	TitleBox TitleA,pos={10,12},size={70,18},frame=0,fStyle=1,title="FieldMap A: "
+	
+	Display
+	
+	TitleBox TitleA,pos={10,12},size={70,18},frame=0,fStyle=1,title="First Integral [G.cm]: "
 	PopupMenu FieldMapDirA,pos={80,10},size={120,18},bodyWidth=115,mode=0,proc=SelectFieldMapA,title=" "
 	CheckBox ReferenceA,pos={210,12},size={100,15},title="Use as reference",value=1,mode=1,proc=SelectReference
 	
