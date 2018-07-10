@@ -7678,9 +7678,7 @@ Window Compare_Results() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 3,565,320,645
 	
-	Display
-	
-	TitleBox TitleA,pos={10,12},size={70,18},frame=0,fStyle=1,title="First Integral [G.cm]: "
+	TitleBox TitleA,pos={10,12},size={70,18},frame=0,fStyle=1,title="FieldMap A: "
 	PopupMenu FieldMapDirA,pos={80,10},size={120,18},bodyWidth=115,mode=0,proc=SelectFieldMapA,title=" "
 	CheckBox ReferenceA,pos={210,12},size={100,15},title="Use as reference",value=1,mode=1,proc=SelectReference
 	
