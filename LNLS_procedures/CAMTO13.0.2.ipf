@@ -3265,9 +3265,15 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 	endfor
 	
 	Make/O/D/N=(iTraj) PosYZTraj
-	for (i=0;i<iTraj;i=i+1)
-	   PosYZTraj[i] = (StartYZTraj/1000 + i*TrajShift)
-	endfor
+	if (StartYZTraj <= EndYZTraj)
+		for (i=0;i<iTraj;i=i+1)
+		   PosYZTraj[i] = (StartYZTraj/1000 + i*TrajShift)
+		endfor
+	else
+		for (i=0;i<iTraj;i=i+1)
+		   PosYZTraj[i] = (StartYZTraj/1000 - i*TrajShift)
+		endfor
+	endif
 	
 	Make/O/D/N=(NPointsXTraj)IntBx_X_Traj = 0
 	Make/O/D/N=(NPointsXTraj)IntBy_X_Traj = 0
@@ -3291,7 +3297,7 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 	
 	for (j=0; j<NPointsXTraj; j+=1)
 		print ("Calculating Trajectory X = " + num2str(PosXTraj[j]))
-		iTraj = ((EndYZTraj-StartYZTraj) / (TrajShift*1000)) + 1	
+		iTraj = Abs(((EndYZTraj-StartYZTraj) / (TrajShift*1000))) + 1	
 
 		Make/O/D/N=(iTraj) TrajX = 0
 		Make/O/D/N=(iTraj) TrajY = 0
@@ -3506,6 +3512,8 @@ Function Runge_Kutta(px, py, pz)
 	NVAR CheckField    = :varsFieldMap:CheckField
 	NVAR StartX        = :varsFieldMap:StartX
 	NVAR EndX          = :varsFieldMap:EndX
+	NVAR StartYZTraj = :varsFieldMap:StartYZTraj 
+	NVAR EndYZTraj   = :varsFieldMap:EndYZTraj 	
 	
 	NVAR Out_of_Matrix_Error = :varsFieldMap:Out_of_Matrix_Error
 		
@@ -3526,7 +3534,12 @@ Function Runge_Kutta(px, py, pz)
 	
 	variable Fx_t, Fy_t, Fz_t	
 	
-	variable t = TrajShift/ChargeVel;
+	variable t
+	if (StartYZTraj <= EndYZTraj)
+		t = TrajShift/ChargeVel
+	else
+		t = -TrajShift/ChargeVel
+	endif
 	
 	Wave C_PosYZ
 		
@@ -3656,6 +3669,8 @@ Function Analitico(px, py, pz)
 	NVAR CheckField    = :varsFieldMap:CheckField
 	NVAR StartX        = :varsFieldMap:StartX
 	NVAR EndX          = :varsFieldMap:EndX 
+	NVAR StartYZTraj = :varsFieldMap:StartYZTraj 
+	NVAR EndYZTraj   = :varsFieldMap:EndYZTraj 	
 	
 	NVAR Out_of_Matrix_Error = :varsFieldMap:Out_of_Matrix_Error
 	
@@ -3682,7 +3697,12 @@ Function Analitico(px, py, pz)
 	
 	variable Fx_t, Fy_t, Fz_t
 	
-	variable t = TrajShift/ChargeVel;
+	variable t
+	if (StartYZTraj <= EndYZTraj)
+		t = TrajShift/ChargeVel
+	else
+		t = -TrajShift/ChargeVel
+	endif
 	
 	Wave C_PosYZ
 		
@@ -9633,127 +9653,6 @@ Function GetTrajAngleX(PosYZ)
 End
 
 
-Function DipoleIntegratedField(intfn, x0, [f, tol])
-	variable intfn
-	variable x0
-	variable f
-	variable tol
-	
-	if (ParamIsDefault(f))
-		f = 50
-	endif
-	
-	if (ParamIsDefault(tol))
-		tol = 1e-3
-	endif
-	
-	SVAR df = root:varsCAMTO:FieldMapDir
-	
-	NVAR Analitico_RungeKutta = root:$(df):varsFieldMap:Analitico_RungeKutta
-	NVAR Checkfield 	 	= root:$(df):varsFieldMap:Checkfield
-	NVAR EntranceAngle	= root:$(df):varsFieldMap:EntranceAngle
-	NVAR StartYZ 		= root:$(df):varsFieldMap:StartYZTraj
-	NVAR StartX 			= root:$(df):varsFieldMap:StartXTraj
-		 
-	Analitico_RungeKutta = 2
-	Checkfield = 1
-	EntranceAngle = 0
-	StartYZ = 0
-		
-	variable x
-	string ctrlName = ""
-	variable intf, dif
-	
-	
-	print ("Reloading Field Data...")
-	variable spline_flag
-	spline_flag = CalcFieldmapInterpolant()
-		
-	if(spline_flag == 1)
-		print("Field data successfully reloaded.")
-	else
-		print("Problem with cubic spline XOP. Using single thread calculation.")
-	endif
-	
-	x = x0
-		
-	do
-		StartX = x
-		TrajectoriesCalculation(ctrlName)
-		IntegralMultipoles_Traj(ReloadField=0)
-	
-		wave Dyn_Mult_Normal_Int
-		intf = 2*Dyn_Mult_Normal_Int[0]
-		dif = intf - intfn
-		
-		print "Integrated field error: ", dif
-		
-		if (dif < 0) 
-			x = x + f*abs(dif/intfn)
-		else
-			x = x - f*abs(dif/intfn)
-		endif			
-					
-	while (abs(dif) > tol)	
-		
-	ResidualDynMultipolesCalc()
- 
- 	print "Value reached! (tolerance: " + num2str(tol) + ")"
- 
- End 
-
-
-Function CenterTrajectory(maglength, [tol])
-	variable maglength
-	variable tol
-	
-	if (ParamIsDefault(tol))
-		tol = 1e-4
-	endif
-	
-	SVAR df = root:varsCAMTO:FieldMapDir
-	
-	NVAR Analitico_RungeKutta = root:$(df):varsFieldMap:Analitico_RungeKutta
-	NVAR Checkfield 	 	= root:$(df):varsFieldMap:Checkfield
-	NVAR EntranceAngle	= root:$(df):varsFieldMap:EntranceAngle
-	NVAR StartYZTraj		= root:$(df):varsFieldMap:StartYZTraj
-	NVAR EndYZTraj		= root:$(df):varsFieldMap:EndYZTraj
-	NVAR StartXTraj 		= root:$(df):varsFieldMap:StartXTraj
-	NVAR EndYZ			= root:$(df):varsFieldMap:EndYZ
-	
-	variable xi, nxi, xf, dif
-	string ctrlName = ""
-	
-	print("Center trajectory:")
-	
-	Analitico_RungeKutta = 2
-	Checkfield = 1
-	EndYZTraj = EndYZ
-	StartYZTraj = 0
-	EntranceAngle = 0
-	xi = 0
-			
-	do
-		StartXTraj = xi
-		TrajectoriesCalculation(ctrlName)
-	
-		xf = GetTrajPosX(maglength/2)
-		nxi = (xi - xf)/2
-		dif = nxi - xi
-		
-		print("xi:"+ num2str(xi))
-		print("nxi:"+ num2str(nxi))
-		print("dif:" + num2str(dif))
-		
-		xi = nxi
-		
-	while (abs(dif) > tol)	
-	
-	print("pos(z=0): " + num2str(GetTrajPosX(0)))
-
-End  
-
-
 Function IntegratedMultipole(k, [skew])
 	variable k
 	variable skew
@@ -9846,6 +9745,43 @@ Function IntegratedDynamicMultipole(k, [skew])
 	
 End
 
+
+Function DipoleTotalDeflection(x0, zmax, tol)
+	variable x0, zmax, tol
+
+	SVAR df = root:varsCAMTO:FieldMapDir
+	
+	NVAR Analitico_RungeKutta = root:$(df):varsFieldMap:Analitico_RungeKutta
+	NVAR Checkfield 	 	= root:$(df):varsFieldMap:Checkfield
+	NVAR EntranceAngle	= root:$(df):varsFieldMap:EntranceAngle
+	NVAR StartYZ 		= root:$(df):varsFieldMap:StartYZTraj
+	NVAR EndYZ 		= root:$(df):varsFieldMap:EndYZTraj
+	NVAR StartX 			= root:$(df):varsFieldMap:StartXTraj
+
+	string ctrlName = ""
+
+	EntranceAngle = 0
+	StartYZ = 0
+	
+	variable td
+	
+	EndYZ = zmax
+	StartX = x0
+	TrajectoriesCalculation(ctrlName)
+
+	wave Deflection_X
+	td = Deflection_X[0]
+
+	EndYZ = -zmax
+	StartX = x0
+	TrajectoriesCalculation(ctrlName)
+
+	wave Deflection_X
+	td = td - Deflection_X[0]
+
+	return td
+
+End
 
 
 // Alterações
