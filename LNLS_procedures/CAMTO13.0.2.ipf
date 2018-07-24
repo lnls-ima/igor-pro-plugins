@@ -247,6 +247,7 @@ Function InitializeFieldMapVariables()
 	variable/G iYZ = 0
 
 	variable/G Checkfield = 1
+	variable/G CheckNegPosTraj = 0
 	
 	variable/G Out_of_Matrix_Error = 0
 	
@@ -3003,7 +3004,7 @@ Window Trajectories() : Panel
 		Killwindow Trajectories
 	endif		
 
-	NewPanel/K=1/W=(440,250,750,670)
+	NewPanel/K=1/W=(440,250,750,700)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 5,2,304,40
@@ -3016,11 +3017,11 @@ Window Trajectories() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 5,201,304,257
 	SetDrawEnv fillpat= 0
-	DrawRect 5,257,304,292
+	DrawRect 5,257,304,318
 	SetDrawEnv fillpat= 0
-	DrawRect 5,292,304,327
+	DrawRect 5,318,304,355
 	SetDrawEnv fillpat= 0
-	DrawRect 5,327,304,415
+	DrawRect 5,355,304,445
 			
 	PopupMenu popupSingleMulti,pos={38,11},size={224,23},proc=PopupSingleMulti,title="Number of Particles:"
 	PopupMenu popupSingleMulti,mode=1,popvalue="Single-Particle",value= #"\"Single-Particle;Multi-Particles\""
@@ -3038,14 +3039,16 @@ Window Trajectories() : Panel
 	PopupMenu popupAnalitico_RungeKutta,pos={38,264},size={220,23},proc=PopupAnalitico_RungeKutta,title="Calculation Method:"
 	PopupMenu popupAnalitico_RungeKutta,mode=2,popvalue="Analytical",value= #"\"Analytical;Runge_Kutta_1º\""
 	
-	Button CalcTraj,pos={27,297},size={250,25},proc=TrajectoriesCalculation,title="Trajectories Calculation"
+	CheckBox check_negpostraj,pos={30,290},size={286,15},title="Calculate negative and positive trajectories"
+	
+	Button CalcTraj,pos={27,325},size={250,25},proc=TrajectoriesCalculationProc,title="Trajectories Calculation"
 	Button CalcTraj,fSize=15,fStyle=1
 			
-	SetVariable fieldmapdir,pos={15,333},size={280,18},title="Field Map Directory: "
+	SetVariable fieldmapdir,pos={15,360},size={280,18},title="Field Map Directory: "
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
-	TitleBox copy_title,pos={15,360},size={145,18},frame=0,title="Copy Configuration from:"
-	PopupMenu copy_dir,pos={160,358},size={135,18},bodyWidth=135,mode=0,proc=CopyTrajectoriesConfig,title=" "
-	Button apply_to_all,pos={15,384},size={280,25},fStyle=1,proc=CalcTrajectoriesToAll,title="Calculate Trajectories for All Field Maps"
+	TitleBox copy_title,pos={15,390},size={145,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={160,388},size={135,18},bodyWidth=135,mode=0,proc=CopyTrajectoriesConfig,title=" "
+	Button apply_to_all,pos={15,414},size={280,25},fStyle=1,proc=CalcTrajectoriesToAll,title="Calculate Trajectories for All Field Maps"
 
 	UpdateFieldMapDirs()
 	UpdateTrajectoriesPanel()
@@ -3077,6 +3080,7 @@ Function UpdateTrajectoriesPanel()
 	
 		NVAR Single_Multi = root:$(df):varsFieldMap:Single_Multi
 		NVAR Checkfield = root:$(df):varsFieldMap:Checkfield
+		NVAR CheckNegPosTraj = root:$(df):varsFieldMap:CheckNegPosTraj
 		NVAR Analitico_RungeKutta = root:$(df):varsFieldMap:Analitico_RungeKutta
 				
 		Button CalcTraj,win=Trajectories,disable=0
@@ -3084,6 +3088,7 @@ Function UpdateTrajectoriesPanel()
 		PopupMenu popupSingleMulti,win=Trajectories,disable=0, mode=Single_Multi
 		
 		CheckBox check_field,win=Trajectories,disable=0, variable=root:$(df):varsFieldMap:Checkfield, value=Checkfield
+		CheckBox check_negpostraj,win=Trajectories,disable=0, variable=root:$(df):varsFieldMap:CheckNegPosTraj, value=CheckNegPosTraj
 		
 		SetVariable trajstartx1,win=Trajectories,value= root:$(df):varsFieldMap:EntranceAngle
 		SetVariable trajstartx,win=Trajectories, value= root:$(df):varsFieldMap:StartXTraj
@@ -3107,6 +3112,7 @@ Function UpdateTrajectoriesPanel()
 	
 		PopupMenu popupSingleMulti,win=Trajectories,disable=2
 		CheckBox check_field,win=Trajectories,disable=2
+		CheckBox check_negpostraj,win=Trajectories,disable=2
 		PopupMenu popupAnalitico_RungeKutta,win=Trajectories,disable=2
 		Button CalcTraj,win=Trajectories,disable=2
 		
@@ -3148,12 +3154,12 @@ Function CopyTrajectoriesConfig_(dfc)
 		NVAR temp_dfc = root:$(dfc):varsFieldMap:Checkfield
 		temp_df = temp_dfc		
 
+		NVAR temp_df  = root:$(df):varsFieldMap:CheckNegPosTraj
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:CheckNegPosTraj
+		temp_df = temp_dfc	
+
 		NVAR temp_df  = root:$(df):varsFieldMap:Analitico_RungeKutta
 		NVAR temp_dfc = root:$(dfc):varsFieldMap:Analitico_RungeKutta
-		temp_df = temp_dfc		
-
-		NVAR temp_df  = root:$(df):varsFieldMap:Checkfield
-		NVAR temp_dfc = root:$(dfc):varsFieldMap:Checkfield
 		temp_df = temp_dfc		
 		
 		NVAR temp_df  = root:$(df):varsFieldMap:EntranceAngle
@@ -3216,9 +3222,216 @@ Function PopupAnalitico_RungeKutta(ctrlName,popNum,popStr) : PopupMenuControl
 End
 
 
-Function TrajectoriesCalculation(ctrlName) : ButtonControl
+Function MakeTrajNamesWave(pos_str)
+	string pos_str
+	
+	Make/O/T/N=(9) TrajNames
+	TrajNames[0] = "TrajX" + pos_str
+	TrajNames[1] = "TrajY" + pos_str
+	TrajNames[2] = "TrajZ" + pos_str
+	TrajNames[3] = "Vel_X" + pos_str
+	TrajNames[4] = "Vel_Y" + pos_str
+	TrajNames[5] = "Vel_Z" + pos_str
+	TrajNames[6] = "VetorCampoX" + pos_str
+	TrajNames[7] = "VetorCampoY" + pos_str	
+	TrajNames[8] = "VetorCampoZ" + pos_str
+				
+End
+
+
+Function TrajectoriesCalculationProc(ctrlName) : ButtonControl
 	String ctrlName
    
+   	NVAR Charge     = root:varsCAMTO:Charge
+	NVAR Mass       = root:varsCAMTO:Mass
+	NVAR LightSpeed = root:varsCAMTO:LightSpeed
+	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
+
+	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
+	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
+   
+   NVAR CheckNegPosTraj = :varsFieldMap:CheckNegPosTraj
+	NVAR Single_Multi  = :varsFieldMap:Single_Multi   
+	NVAR BeamDirection = :varsFieldMap:BeamDirection    	
+	
+	NVAR StartXTraj    = :varsFieldMap:StartXTraj 
+	NVAR EndXTraj      = :varsFieldMap:EndXTraj 
+	NVAR StepsXTraj    = :varsFieldMap:StepsXTraj 
+	NVAR NPointsXTraj  = :varsFieldMap:NPointsXTraj
+
+	NVAR StartYZTraj = :varsFieldMap:StartYZTraj 
+	NVAR EndYZTraj   = :varsFieldMap:EndYZTraj
+	NVAR iTraj       = :varsFieldMap:iTraj 	
+
+	variable i, j, initial_endyz
+	string pos_str, add_str_1, add_str_2
+	string NameTraj, NameTrajInt, NameTrajInt2, NameTrajPos, NameTrajTmp1, NameTrajTmp2
+	
+	initial_endyz = EndYZTraj
+	
+	if (CheckNegPosTraj == 0)
+		TrajectoriesCalculation()
+		wave PosXTraj
+	
+	else
+		if (StartYZTraj != 0)
+			DoAlert 0, "The initial longitudinal position must be zero."
+			return -1
+		endif
+	
+		add_str_1 = "_Tmp1"
+		add_str_2 = "_Tmp2"
+					
+		TrajectoriesCalculation()
+		wave PosXTraj
+
+		for (j=0; j<NPointsXTraj; j+=1)				
+			pos_str = num2str(PosXTraj[j])
+			MakeTrajNamesWave(pos_str)
+			Wave/T TrajNames
+			
+			for (i=0; i<numpnts(TrajNames); i+=1)
+				NameTraj = TrajNames[i]
+				NameTrajTmp1 = NameTraj + add_str_1		
+				if (StartYZTraj > EndYZTraj)
+					Duplicate/D/O/R=(1, numpnts($NameTraj)) $NameTraj $NameTrajTmp1	
+					Reverse $NameTrajTmp1
+				else
+					Duplicate/D/O $NameTraj $NameTrajTmp1	
+				endif
+			endfor
+			
+		endfor
+
+		EndYZTraj = -EndYZTraj
+		TrajectoriesCalculation()
+	
+		for (j=0; j<NPointsXTraj; j+=1)		
+			pos_str = num2str(PosXTraj[j])
+			MakeTrajNamesWave(pos_str)
+			Wave/T TrajNames
+			
+			for (i=0; i<numpnts(TrajNames); i+=1)
+				NameTraj = TrajNames[i]
+				NameTrajTmp2 = NameTraj + add_str_2		
+				if (StartYZTraj > EndYZTraj)
+					Duplicate/D/O/R=(1, numpnts($NameTraj)) $NameTraj $NameTrajTmp2	
+					Reverse $NameTrajTmp2
+				else
+					Duplicate/D/O $NameTraj $NameTrajTmp2
+				endif
+			endfor				
+			
+		endfor
+		
+		for (j=0; j<NPointsXTraj; j+=1)
+			pos_str = num2str(PosXTraj[j])
+			MakeTrajNamesWave(pos_str)
+			Wave/T TrajNames	
+			
+			for (i=0; i<numpnts(TrajNames); i+=1)
+				NameTraj = TrajNames[i]
+				NameTrajTmp1 = NameTraj + add_str_1
+				NameTrajTmp2 = NameTraj + add_str_2
+				if (StartYZTraj > EndYZTraj)
+					Concatenate/NP/KILL/O {$NameTrajTmp2, $NameTrajTmp1}, $NameTraj
+				else
+					Concatenate/NP/KILL/O {$NameTrajTmp1, $NameTrajTmp2}, $NameTraj
+				endif
+			endfor
+		
+		endfor
+		
+		iTraj = 2*iTraj - 1
+	endif
+
+	Make/O/D/N=(NPointsXTraj)IntBx_X_Traj = 0
+	Make/O/D/N=(NPointsXTraj)IntBy_X_Traj = 0
+	Make/O/D/N=(NPointsXTraj)IntBz_X_Traj = 0		
+
+	Make/O/D/N=(NPointsXTraj)Int2Bx_X_Traj = 0
+	Make/O/D/N=(NPointsXTraj)Int2By_X_Traj = 0
+	Make/O/D/N=(NPointsXTraj)Int2Bz_X_Traj = 0
+	
+	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_X = 0
+	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_Y = 0
+	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_Z = 0	
+
+	Make/O/D/N=(NPointsXTraj) Deflection_X = 0
+	Make/O/D/N=(NPointsXTraj) Deflection_Y = 0
+	Make/O/D/N=(NPointsXTraj) Deflection_Z = 0	
+
+	for (j=0; j<NPointsXTraj; j+=1)
+		pos_str = num2str(PosXTraj[j])
+		
+		Wave Vel_X = $("Vel_X" + pos_str)
+		Wave Vel_Y = $("Vel_Y" + pos_str)
+		Wave Vel_Z = $("Vel_Z" + pos_str)
+
+		if (BeamDirection == 1)
+   			NameTrajPos = "TrajY" + pos_str
+   		else
+   			NameTrajPos = "TrajZ" + pos_str
+		endif
+		
+		NameTraj = "VetorCampoX" + pos_str
+		NameTrajInt = NameTraj + "_int"
+		NameTrajInt2 = NameTraj + "_int2"	
+		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
+		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	  
+
+		Wave Tmp =  $NameTrajInt
+		IntBx_X_Traj[j] = Tmp[iTraj]
+		Wave Tmp =  $NameTrajInt2
+		Int2Bx_X_Traj[j] = Tmp[iTraj]
+
+		NameTraj = "VetorCampoY" + pos_str
+		NameTrajInt = NameTraj + "_int"
+		NameTrajInt2 = NameTraj + "_int2"	
+		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
+		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	 
+
+		Wave Tmp =  $NameTrajInt
+		IntBy_X_Traj[j] = Tmp[iTraj]
+		Wave Tmp =  $NameTrajInt2
+		Int2By_X_Traj[j] = Tmp[iTraj]
+		
+		NameTraj = "VetorCampoZ" + pos_str
+		NameTrajInt = NameTraj + "_int"
+		NameTrajInt2 = NameTraj + "_int2"
+		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
+		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	 
+		
+		Wave Tmp =  $NameTrajInt
+		IntBz_X_Traj[j] = Tmp[iTraj]
+		Wave Tmp =  $NameTrajInt2
+		Int2Bz_X_Traj[j] = Tmp[iTraj]			
+		
+		if (BeamDirection == 1)	
+			Deflection_X[j] = atan(Vel_X[iTraj]/Vel_Y[iTraj]) / pi * 180
+			Deflection_Z[j] = atan(Vel_Z[iTraj]/Vel_Y[iTraj]) / pi * 180
+
+			Deflection_IntTraj_X[j] = (atan(Vel_X[iTraj]/Vel_Y[iTraj]) - atan(Vel_X[0]/Vel_Y[0])) / pi * 180
+			Deflection_IntTraj_Z[j] = (atan(Vel_Z[iTraj]/Vel_Y[iTraj]) - atan(Vel_Z[0]/Vel_Y[0]) ) / pi * 180
+		else
+			Deflection_X[j] = atan(Vel_X[iTraj]/Vel_Z[iTraj]) / pi * 180
+			Deflection_Y[j] = atan(Vel_Y[iTraj]/Vel_Z[iTraj]) / pi * 180					
+		
+			Deflection_IntTraj_X[j] = (atan(Vel_X[iTraj]/Vel_Z[iTraj]) - atan(Vel_X[0]/Vel_Z[0])) / pi * 180
+			Deflection_IntTraj_Y[j] = (atan(Vel_Y[iTraj]/Vel_Z[iTraj]) - atan(Vel_Y[0]/Vel_Z[0])) / pi * 180	
+		endif
+
+	endfor		
+
+	EndYZTraj = initial_endyz
+	UpdateResultsPanel()
+
+End
+
+
+Function TrajectoriesCalculation()
+
    	NVAR Charge     = root:varsCAMTO:Charge
 	NVAR Mass       = root:varsCAMTO:Mass
 	NVAR LightSpeed = root:varsCAMTO:LightSpeed
@@ -3237,6 +3450,8 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 	NVAR StepsXTraj    = :varsFieldMap:StepsXTraj 
 	NVAR NPointsXTraj  = :varsFieldMap:NPointsXTraj
 
+	NVAR StartYZ		 = :varsFieldMap:StartYZ 
+	NVAR EndYZ		 = :varsFieldMap:EndYZ	
 	NVAR StartYZTraj = :varsFieldMap:StartYZTraj 
 	NVAR EndYZTraj   = :varsFieldMap:EndYZTraj 	
 	
@@ -3252,6 +3467,16 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 	string NomeTrajInt	
 	string NomeTrajInt2	
 	variable i, j
+
+	if (StartYZTraj < StartYZ || StartYZTraj > EndYZ)
+		DoAlert 0, "Initial longitudinal position out of range."
+		return -1
+	endif
+
+	if (EndYZTraj < StartYZ || EndYZTraj > EndYZ)
+		DoAlert 0, "Final longitudinal position out of range."
+		return -1
+	endif				
 		
 	if (Single_Multi==1)
 		NPointsXTraj = 1
@@ -3274,22 +3499,6 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 		   PosYZTraj[i] = (StartYZTraj/1000 - i*TrajShift)
 		endfor
 	endif
-	
-	Make/O/D/N=(NPointsXTraj)IntBx_X_Traj = 0
-	Make/O/D/N=(NPointsXTraj)IntBy_X_Traj = 0
-	Make/O/D/N=(NPointsXTraj)IntBz_X_Traj = 0		
-
-	Make/O/D/N=(NPointsXTraj)Int2Bx_X_Traj = 0
-	Make/O/D/N=(NPointsXTraj)Int2By_X_Traj = 0
-	Make/O/D/N=(NPointsXTraj)Int2Bz_X_Traj = 0
-	
-	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_X = 0
-	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_Y = 0
-	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_Z = 0	
-
-	Make/O/D/N=(NPointsXTraj) Deflection_X = 0
-	Make/O/D/N=(NPointsXTraj) Deflection_Y = 0
-	Make/O/D/N=(NPointsXTraj) Deflection_Z = 0	
 	
 	Wave C_PosX
 	
@@ -3344,15 +3553,7 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 
 			Out_of_Matrix_Error = 0			
 		endif
-		
-		if (BeamDirection == 1)
-			Deflection_X[j] = atan(Vel_X[iTraj]/Vel_Y[iTraj]) / pi * 180
-			Deflection_Z[j] = atan(Vel_Z[iTraj]/Vel_Y[iTraj]) / pi * 180		
-		else
-			Deflection_X[j] = atan(Vel_X[iTraj]/Vel_Z[iTraj]) / pi * 180
-			Deflection_Y[j] = atan(Vel_Y[iTraj]/Vel_Z[iTraj]) / pi * 180			
-		endif
-		
+			
 		NomeTraj = "TrajX" + num2str(PosXTraj[j])
 		Duplicate/D/O TrajX $NomeTraj
 		
@@ -3371,71 +3572,20 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 		NomeTraj = "Vel_Z" + num2str(PosXTraj[j])
 		Duplicate/D/O Vel_Z $NomeTraj
 		
-		NomeTraj = "VetorCampoX" + num2str(PosXTraj[j])
-		Duplicate/D/O VetorCampoX $NomeTraj		
-	
 		if (BeamDirection == 1)
    			NomeTrajPos = "TrajY" + num2str(PosXTraj[j])
    		else
    			NomeTrajPos = "TrajZ" + num2str(PosXTraj[j])
 		endif
-		NomeTrajInt = NomeTraj + "_int"
-		Integrate/METH=1 $NomeTraj/X=$NomeTrajPos/D=$NomeTrajInt
-		NomeTrajInt2 = NomeTraj + "_int2"		
-		Integrate/METH=1 $NomeTrajInt/X=$NomeTrajPos/D=$NomeTrajInt2
 
-		//Take integral values - Bx
-		Wave Tmp =  $NomeTrajInt
-		IntBx_X_Traj[j] = Tmp[iTraj]
-		Wave Tmp =  $NomeTrajInt2
-		Int2Bx_X_Traj[j] = Tmp[iTraj]
-		
+		NomeTraj = "VetorCampoX" + num2str(PosXTraj[j])
+		Duplicate/D/O VetorCampoX $NomeTraj		
+	
 		NomeTraj = "VetorCampoY" + num2str(PosXTraj[j])
 		Duplicate/D/O VetorCampoY $NomeTraj		
-		if (BeamDirection == 1)
-   			NomeTrajPos = "TrajY" + num2str(PosXTraj[j])	
-   		else
-   			NomeTrajPos = "TrajZ" + num2str(PosXTraj[j])	
-		endif
-		NomeTrajInt = NomeTraj + "_int"
-		Integrate/METH=1 $NomeTraj/X=$NomeTrajPos/D=$NomeTrajInt
-		NomeTrajInt2 = NomeTraj + "_int2"		
-		Integrate/METH=1 $NomeTrajInt/X=$NomeTrajPos/D=$NomeTrajInt2	   						
-
-		Wave Tmp = $NomeTrajInt
-		Deflection_IntTraj_X[j] = 180 / pi * Tmp[iTraj-1] * abs(Charge)/(Gama*ChargeVel*Mass)
-
-		//Take integral values - Byz
-		Wave Tmp =  $NomeTrajInt
-		IntBy_X_Traj[j] = Tmp[iTraj]
-		Wave Tmp =  $NomeTrajInt2
-		Int2By_X_Traj[j] = Tmp[iTraj]
-
+	
 		NomeTraj = "VetorCampoZ" + num2str(PosXTraj[j])
 		Duplicate/D/O VetorCampoZ $NomeTraj		
-		if (BeamDirection == 1)
-   			NomeTrajPos = "TrajY" + num2str(PosXTraj[j])	
-   		else
-   			NomeTrajPos = "TrajZ" + num2str(PosXTraj[j])	
-		endif
-		NomeTrajInt = NomeTraj + "_int"
-		Integrate/METH=1 $NomeTraj/X=$NomeTrajPos/D=$NomeTrajInt
-		NomeTrajInt2 = NomeTraj + "_int2"		
-		Integrate/METH=1 $NomeTrajInt/X=$NomeTrajPos/D=$NomeTrajInt2	   						
-		
-		if (BeamDirection == 1)
-			Wave Tmp = $NomeTrajInt
-			Deflection_IntTraj_Z[j] = 180 / pi * Tmp[iTraj-1] * abs(Charge)/(Gama*ChargeVel*Mass)
-		else
-			Wave Tmp = $NomeTrajInt
-			Deflection_IntTraj_Y[j] = 180 / pi * Tmp[iTraj-1] * abs(Charge)/(Gama*ChargeVel*Mass)
-		endif
-
-		//Take integral values - Bz
-		Wave Tmp =  $NomeTrajInt
-		IntBz_X_Traj[j] = Tmp[iTraj]
-		Wave Tmp =  $NomeTrajInt2
-		Int2Bz_X_Traj[j] = Tmp[iTraj]
 
 		TrajX = 0
 		TrajY = 0
@@ -3459,9 +3609,8 @@ Function TrajectoriesCalculation(ctrlName) : ButtonControl
 	Killwaves VetorCampoX	   
 	Killwaves VetorCampoY	   
 	Killwaves VetorCampoZ	
-	
-	UpdateResultsPanel()
 End
+
 
 
 Function CalcTrajectoriesToAll(ctrlName) : ButtonControl
@@ -3486,7 +3635,7 @@ Function CalcTrajectoriesToAll(ctrlName) : ButtonControl
 		SetDataFolder root:$(tdf)
 		CopyTrajectoriesConfig_(dfc)
 		Print("Calculating Trajectories for " + tdf + ":")
-		TrajectoriesCalculation(empty)
+		TrajectoriesCalculationProc(empty)
 	endfor
 
 	SetDataFolder df
@@ -3578,7 +3727,24 @@ Function Runge_Kutta(px, py, pz)
 	Vel_Y[0] = vy_t
 	Vel_Z[0] = vz_t
 	
-	for (k=1;k<iTraj;k=k+1) 
+	Redimension/N=(2*iTraj) TrajX
+	Redimension/N=(2*iTraj) TrajY
+	Redimension/N=(2*iTraj) TrajZ
+	Redimension/N=(2*iTraj) Vel_X
+	Redimension/N=(2*iTraj) Vel_Y
+	Redimension/N=(2*iTraj) Vel_Z
+	Redimension/N=(2*iTraj) VetorCampoX
+	Redimension/N=(2*iTraj) VetorCampoY
+	Redimension/N=(2*iTraj) VetorCampoZ	
+	
+	variable yz 
+	if (BeamDirection == 1)			
+		yz = y_t
+	else
+		yz = z_t			
+	endif
+			
+	for (k=1;k<2*iTraj;k=k+1) 
 		//Procura o campo nas coordenadas X,Z desejadas.
 		
 		if (CheckField==1)
@@ -3647,7 +3813,32 @@ Function Runge_Kutta(px, py, pz)
 		Vel_X[k] = vx_t
 		Vel_Y[k] = vy_t
 		Vel_Z[k] = vz_t
+		
+		if (BeamDirection == 1)			
+			yz = y_t
+		else
+			yz = z_t			
+		endif
+		
+		if (t >= 0 && yz >= EndYZTraj/1000)
+			break
+		elseif (t < 0 && yz <= EndYZTraj/1000)
+			break
+		endif
+	
 	endfor
+
+	iTraj = k
+	Redimension/N=(iTraj) TrajX
+	Redimension/N=(iTraj) TrajY
+	Redimension/N=(iTraj) TrajZ
+	Redimension/N=(iTraj) Vel_X
+	Redimension/N=(iTraj) Vel_Y
+	Redimension/N=(iTraj) Vel_Z
+	Redimension/N=(iTraj) VetorCampoX
+	Redimension/N=(iTraj) VetorCampoY
+	Redimension/N=(iTraj) VetorCampoZ		
+	
 End
 
 
@@ -3936,6 +4127,7 @@ Function UpdateDynMultipolesPanel()
 	if (strlen(df) > 0)
 		NVAR FittingOrderTraj = root:$(df):varsFieldMap:FittingOrderTraj
 		NVAR DynNormComponent = root:$(df):varsFieldMap:DynNormComponent
+		NVAR CheckNegPosTraj = root:$(df):varsFieldMap:CheckNegPosTraj
 
 		ValDisplay traj_x,    win=Dynamic_Multipoles, value=#("root:"+ df + ":varsFieldMap:StartXTraj" )
 		ValDisplay traj_angle,win=Dynamic_Multipoles,value=#("root:"+ df + ":varsFieldMap:EntranceAngle" )
@@ -3956,6 +4148,16 @@ Function UpdateDynMultipolesPanel()
 				
 		SetVariable res_norm_ks, win=Dynamic_Multipoles, value= root:$(df):varsFieldMap:DynResNormalCoefs
 		SetVariable res_skew_ks, win=Dynamic_Multipoles, value= root:$(df):varsFieldMap:DynResSkewCoefs
+
+		if (CheckNegPosTraj == 1)
+			ValDisplay traj_x,    win=Dynamic_Multipoles, disable=2
+			ValDisplay traj_angle,win=Dynamic_Multipoles, disable=2
+			ValDisplay traj_yz,   win=Dynamic_Multipoles, disable=2
+		else
+			ValDisplay traj_x,    win=Dynamic_Multipoles, disable=0
+			ValDisplay traj_angle,win=Dynamic_Multipoles, disable=0
+			ValDisplay traj_yz,   win=Dynamic_Multipoles, disable=0		
+		endif
 
 		Button mult_button,win=Dynamic_Multipoles, disable=0
 	else
@@ -9584,31 +9786,41 @@ Function GetTrajPosX(PosYZ)
 	wave TrajZ = $"TrajZ"  + num2str(StartXTraj/1000)
 
 	variable horizontal_pos	
-	variable index
+	variable index, diff_up, diff_down
 	
 	if (BeamDirection == 1)
-		FindValue/V=(PosYZ/1000) TrajY
-		if (V_value == -1)
-			FindValue/V=(PosYZ/1000)/T=(TrajShift) TrajY
-		endif
-		if (V_value == -1)
-			return NaN
-		else
-			index = V_value
-			horizontal_pos = TrajX[index]
-		endif
+		Duplicate/O TrajY TrajL
 	else
-		FindValue/V=(PosYZ/1000) TrajZ
-		if (V_value == -1)
-			FindValue/V=(PosYZ/1000)/T=(TrajShift) TrajZ
-		endif
-		if (V_value == -1)
-			return NaN
-		else
-			index = V_value	
-			horizontal_pos = TrajX[index]	
-		endif
+		Duplicate/O TrajZ TrajL
 	endif
+	
+	FindValue/V=(PosYZ/1000) TrajL
+	if (V_value == -1)
+		FindValue/V=(PosYZ/1000)/T=(TrajShift) TrajL
+	endif
+	if (V_value == -1)
+		return NaN
+	else
+		index = V_value
+		
+		if (TrajL[index] != PosYZ/1000)
+			diff_up = Abs(PosYZ/1000 - TrajL[index+1])
+			diff_down = Abs(PosYZ/1000 - TrajL[index-1])
+					
+			if (diff_up < diff_down && index != numpnts(TrajL)-1)
+				horizontal_pos = TrajX[index] + (TrajX[index+1] - TrajX[index])*(PosYZ/1000 - TrajL[index])/(TrajL[index+1] - TrajL[index])
+			else
+				horizontal_pos = TrajX[index-1] + (TrajX[index] - TrajX[index-1])*(PosYZ/1000 - TrajL[index-1])/(TrajL[index] - TrajL[index-1])
+			endif			
+		
+		else
+			horizontal_pos = TrajX[index]
+		
+		endif
+		
+	endif
+	
+	Killwaves/Z TrajSearch
 	
 	return horizontal_pos*1000
 
@@ -9634,8 +9846,7 @@ Function GetTrajAngleX(PosYZ)
 		Wave VelL  = $"Vel_Z"+num2str(StartXTraj/1000)
 	endif
 
-	variable angle
-	variable index
+	variable angle, index, diff_up, diff_down, vx, vl
 	
 	FindValue/V=(PosYZ/1000) TrajL
 	if (V_value == -1)
@@ -9646,7 +9857,26 @@ Function GetTrajAngleX(PosYZ)
 		return NaN
 	else
 		index = V_value
-		angle = atan(VelX[index]/VelL[index])*180/pi
+		
+		if (TrajL[index] != PosYZ/1000)
+			diff_up = Abs(PosYZ/1000 - TrajL[index+1])
+			diff_down = Abs(PosYZ/1000 - TrajL[index-1])
+					
+			if (diff_up < diff_down && index != numpnts(TrajL)-1)
+				vx = VelX[index] + (VelX[index+1] - VelX[index])*(PosYZ/1000 - TrajL[index])/(TrajL[index+1] - TrajL[index])
+				vl = VelL[index] + (VelL[index+1] - VelL[index])*(PosYZ/1000 - TrajL[index])/(TrajL[index+1] - TrajL[index])
+			else
+				vx = VelX[index-1] + (VelX[index] - VelX[index-1])*(PosYZ/1000 - TrajL[index-1])/(TrajL[index] - TrajL[index-1])
+				vl = VelL[index-1] + (VelL[index] - VelL[index-1])*(PosYZ/1000 - TrajL[index-1])/(TrajL[index] - TrajL[index-1])
+			endif			
+		
+		else
+			vx = VelX[index]
+			vl = VelL[index]
+		
+		endif
+		
+		angle = atan(vx/vl)*180/pi
 		return angle
 	endif
 
@@ -9744,45 +9974,6 @@ Function IntegratedDynamicMultipole(k, [skew])
 	SetDataFolder cf
 	
 End
-
-
-Function DipoleTotalDeflection(x0, zmax, tol)
-	variable x0, zmax, tol
-
-	SVAR df = root:varsCAMTO:FieldMapDir
-	
-	NVAR Analitico_RungeKutta = root:$(df):varsFieldMap:Analitico_RungeKutta
-	NVAR Checkfield 	 	= root:$(df):varsFieldMap:Checkfield
-	NVAR EntranceAngle	= root:$(df):varsFieldMap:EntranceAngle
-	NVAR StartYZ 		= root:$(df):varsFieldMap:StartYZTraj
-	NVAR EndYZ 		= root:$(df):varsFieldMap:EndYZTraj
-	NVAR StartX 			= root:$(df):varsFieldMap:StartXTraj
-
-	string ctrlName = ""
-
-	EntranceAngle = 0
-	StartYZ = 0
-	
-	variable td
-	
-	EndYZ = zmax
-	StartX = x0
-	TrajectoriesCalculation(ctrlName)
-
-	wave Deflection_X
-	td = Deflection_X[0]
-
-	EndYZ = -zmax
-	StartX = x0
-	TrajectoriesCalculation(ctrlName)
-
-	wave Deflection_X
-	td = td - Deflection_X[0]
-
-	return td
-
-End
-
 
 // Alterações
 //Versão 12.9.1  - Multipolos Normalizados não são mais expressos por seus módulos (pedido da Priscila)
