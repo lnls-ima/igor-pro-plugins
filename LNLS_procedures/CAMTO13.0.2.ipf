@@ -9632,7 +9632,6 @@ Function Add_Parameters(Dynamic)
 		Add_Calc_Parameters(dfB, Dynamic)
 	endif
 	
-	Notebook Report text="\r"
 	Notebook Report text="\tCAMTO Version : " + CAMTOVersion + "\r"
 		
 End
@@ -9652,13 +9651,18 @@ Function Add_Calc_Parameters(df, Dynamic)
 	Wave/T HeaderLines
 			
 	if (Dynamic)
-		NVAR GridMin         = :varsFieldMap:GridMinTraj
-		NVAR GridMax         = :varsFieldMap:GridMaxTraj
-		NVAR DistCenter		 = :varsFieldMap:DistcenterTraj
+		NVAR GridMin			= :varsFieldMap:GridMinTraj
+		NVAR GridMax			= :varsFieldMap:GridMaxTraj
+		NVAR DistCenter		= :varsFieldMap:DistcenterTraj
+		SVAR NormalCoefs 	= :varsFieldMap:DynNormalCoefs 
+		SVAR SkewCoefs 	 	= :varsFieldMap:DynSkewCoefs
+		
 	else
 		NVAR GridMin        = :varsFieldMap:GridMin
 		NVAR GridMax        = :varsFieldMap:GridMax
 		NVAR Distcenter     = :varsFieldMap:Distcenter
+		SVAR NormalCoefs 	= :varsFieldMap:NormalCoefs 
+		SVAR SkewCoefs 	 	= :varsFieldMap:SkewCoefs		
 	endif
 
 	Notebook Report ruler=TableHeader6, text="\t" + df + ":\r\r"
@@ -9670,7 +9674,7 @@ Function Add_Calc_Parameters(df, Dynamic)
 		sscanf HeaderLines[i], "filename: %s", filename
 		if (strlen(filename) != 0)
 			Notebook Report ruler=Table6,text= "\tFilename:\r" 
-			Notebook Report ruler=Table6,text= "\t"+ FMFilename + "\r\r"
+			Notebook Report ruler=Table6,text= "\t"+ FMFilename + "\r"
 			break
 		endif
 	endfor
@@ -9684,9 +9688,7 @@ Function Add_Calc_Parameters(df, Dynamic)
 			Notebook Report ruler=Table6,text= "\t"+ HeaderLines[i]	
 		endif
 	endfor
-	
-	Notebook Report ruler=Table6,text= "\r"
-	
+		
 	Make/O/T/N=(50, 2) TableWave
 
 	i = 0
@@ -9705,8 +9707,14 @@ Function Add_Calc_Parameters(df, Dynamic)
 
 	TableWave[1+i][0] = "R0 relative multipoles"
 	TableWave[1+i][1] = num2str(Distcenter) + " mm"
+
+	TableWave[2+i][0] = "Normal multipoles:"
+	TableWave[2+i][1] = NormalCoefs + "  (0 - On, 1 - Off)"
+
+	TableWave[3+i][0] = "Skew multipoles:"
+	TableWave[3+i][1] = SkewCoefs
 		
-	Redimension/N=(2+i, 2) TableWave
+	Redimension/N=(4+i, 2) TableWave
 	Add_Table(TableWave, Spacing=6)
 	
 	Killwaves/Z TableWave
@@ -9973,6 +9981,105 @@ Function IntegratedDynamicMultipole(k, [skew])
 	
 	SetDataFolder cf
 	
+End
+
+
+Function FindDipoleX0(nominal_deflection, xa, xb, [tol, nmax])
+	variable nominal_deflection, xa, xb, tol, nmax
+
+	if (ParamIsDefault(tol))
+		tol = 1e-3
+	endif
+
+	if (ParamIsDefault(nmax))
+		nmax = 1000
+	endif
+	
+	NVAR StartYZ = :varsFieldMap:StartYZ 
+	NVAR EndYZ   = :varsFieldMap:EndYZ
+
+	NVAR EntranceAngle = :varsFieldMap:EntranceAngle
+	NVAR StartXTraj    = :varsFieldMap:StartXTraj 
+	NVAR StartYZTraj = :varsFieldMap:StartYZTraj 
+	NVAR EndYZTraj   = :varsFieldMap:EndYZTraj
+	NVAR CheckField    = :varsFieldMap:CheckField
+   NVAR CheckNegPosTraj = :varsFieldMap:CheckNegPosTraj
+	NVAR Single_Multi  = :varsFieldMap:Single_Multi 
+	NVAR Analitico_RungeKutta = :varsFieldMap:Analitico_RungeKutta  
+
+	variable EntranceAngle_init
+	variable StartXTraj_init
+	variable StartYZTraj_init
+	variable EndYZTraj_init
+	variable CheckField_init
+	variable CheckNegPosTraj_init
+	variable Single_Multi_init
+	variable Analitico_RungeKutta_init
+
+	EntranceAngle_init = EntranceAngle
+	StartXTraj_init = StartXTraj
+	StartYZTraj_init = StartYZTraj
+	EndYZTraj_init = EndYZTraj
+	CheckField_init = CheckField
+	CheckNegPosTraj_init = CheckNegPosTraj
+	Single_Multi_init = Single_Multi
+	Analitico_RungeKutta_init = Analitico_RungeKutta
+
+	EntranceAngle = 0
+	StartYZTraj = 0
+	EndYZTraj =  Max(Abs(StartYZ), Abs(EndYZ))
+	CheckField = 1
+	CheckNegPosTraj = 1
+	Single_Multi = 1
+	Analitico_RungeKutta = 2
+
+	variable n, xc, defc, diffc, diffa
+	string xc_str, defc_str
+
+	StartXTraj = xa
+	TrajectoriesCalculationProc("")
+	wave Deflection_IntTraj_X
+	diffa = nominal_deflection - Deflection_IntTraj_X[0]
+	
+	n = 1
+	do
+		xc = (xa + xb)/2
+		StartXTraj = xc
+		TrajectoriesCalculationProc("")
+		wave Deflection_IntTraj_X
+		defc = Deflection_IntTraj_X[0]
+		
+		sprintf xc_str, "%.10f", xc
+		sprintf defc_str, "%.10f", defc
+		Print/D "X0 [mm]: "  + xc_str
+		Print/D "Deflection [°]: " + defc_str
+		Print " "
+		
+		diffc = nominal_deflection - defc
+		if (diffc == 0 || (xb-xa)/2 < tol)
+			break
+		endif
+
+		if (sign(diffc) == sign(diffa))
+			xa = xc
+			diffa = diffc
+		else
+			xb = xc
+		endif 
+
+		n = n+1
+	while (n < nmax)
+
+	EntranceAngle = EntranceAngle_init
+	StartXTraj = StartXTraj_init
+	StartYZTraj = StartYZTraj_init
+	EndYZTraj = EndYZTraj_init
+	CheckField = CheckField_init
+	CheckNegPosTraj = CheckNegPosTraj_init
+	Single_Multi = Single_Multi_init
+	Analitico_RungeKutta = Analitico_RungeKutta_init
+	UpdateTrajectoriesPanel()
+
 End
 
 // Alterações
