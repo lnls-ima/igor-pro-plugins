@@ -10027,7 +10027,7 @@ Function FindDipoleX0(nominal_deflection, xa, xb, [tol, nmax])
 
 	EntranceAngle = 0
 	StartYZTraj = 0
-	EndYZTraj =  Max(Abs(StartYZ), Abs(EndYZ))
+	EndYZTraj =  Min(Abs(StartYZ), Abs(EndYZ))
 	CheckField = 1
 	CheckNegPosTraj = 1
 	Single_Multi = 1
