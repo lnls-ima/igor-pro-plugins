@@ -3270,11 +3270,7 @@ Function TrajectoriesCalculationProc(ctrlName) : ButtonControl
 	
 	initial_endyz = EndYZTraj
 	
-	if (CheckNegPosTraj == 0)
-		TrajectoriesCalculation()
-		wave PosXTraj
-	
-	else
+	if (CheckNegPosTraj == 1)
 		if (StartYZTraj != 0)
 			DoAlert 0, "The initial longitudinal position must be zero."
 			return -1
@@ -3344,6 +3340,9 @@ Function TrajectoriesCalculationProc(ctrlName) : ButtonControl
 		endfor
 		
 		iTraj = 2*iTraj - 1
+	else
+		TrajectoriesCalculation()
+		wave PosXTraj	
 	endif
 
 	Make/O/D/N=(NPointsXTraj)IntBx_X_Traj = 0
