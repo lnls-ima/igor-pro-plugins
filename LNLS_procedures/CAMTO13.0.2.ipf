@@ -10032,7 +10032,7 @@ Function FindDipoleX0(nominal_deflection, xa, xb, [tol, nmax])
 	Single_Multi = 1
 	Analitico_RungeKutta = 2
 
-	variable n, xc, defc, diffc, diffa
+	variable n, xc, defc, diffc, diffa, x0
 	string xc_str, defc_str
 
 	StartXTraj = xa
@@ -10069,6 +10069,8 @@ Function FindDipoleX0(nominal_deflection, xa, xb, [tol, nmax])
 		n = n+1
 	while (n < nmax)
 
+	x0 = StartXTraj
+
 	EntranceAngle = EntranceAngle_init
 	StartXTraj = StartXTraj_init
 	StartYZTraj = StartYZTraj_init
@@ -10078,6 +10080,8 @@ Function FindDipoleX0(nominal_deflection, xa, xb, [tol, nmax])
 	Single_Multi = Single_Multi_init
 	Analitico_RungeKutta = Analitico_RungeKutta_init
 	UpdateTrajectoriesPanel()
+
+	return x0
 
 End
 
