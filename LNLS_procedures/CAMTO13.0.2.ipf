@@ -108,10 +108,11 @@ Function Initialize_CAMTO()
 	
 	variable/G MultipoleK = 0	
 	variable/G DynMultipoleK = 0
-	
+
+	variable/G AddReferenceLines = 0	
 	variable/G CheckDynMultipoles = 0
 	variable/G CheckMultTwo = 0
-	
+
 	variable/G DistCenter = 0
 	variable/G MainK = 0
 	variable/G MainSkew = 1
@@ -278,6 +279,7 @@ Function InitializeFieldMapVariables()
 	variable/G Analitico_RungeKutta = 2
 	
 	variable/G GraphAppend = 1
+	variable/G AddReferenceLines = 0
 
 	string/G   FieldAxisPeakStr = "By"
 	variable/G FieldAxisPeak = 2
@@ -6231,8 +6233,9 @@ Window Results() : Panel
 	
 	TitleBox traj_title1,pos={100,451},size={127,16},fSize=16,fStyle=1,frame=0, title="Particle Trajectory"
 	
-	Button show_trajectories,pos={11,476},size={316,24},proc=ShowTrajectories,title="Show Trajectories"
+	Button show_trajectories,pos={11,476},size={180,24},proc=ShowTrajectories,title="Show Trajectories"
 	Button show_trajectories,fStyle=1
+	CheckBox referencelines,pos={200,482},size={130,24},title=" Add Reference Lines"
 	
 	Button show_deflections,pos={11,506},size={230,24},proc=ShowDeflections,title="Show Deflections"
 	Button show_deflections,fStyle=1
@@ -6369,13 +6372,15 @@ Function UpdateResultsPanel()
 		
 		SetVariable mnumber,win=Results,limits={0,(FittingOrder-1),1},value= root:$(df):varsFieldMap:MultipoleK
 	
+		Button show_trajectories,win=Results, disable=disable_traj
+		Button show_deflections,win=Results, disable=disable_traj
+		Button show_deflections_Table, win=Results,disable=disable_traj
 		Button show_integralstraj,win=Results, disable=disable_traj
 		Button show_integralstraj_Table, win=Results,disable=disable_traj
 		Button show_integrals2traj,win=Results, disable=disable_traj
 		Button show_integrals2traj_Table, win=Results,disable=disable_traj
-		Button show_trajectories,win=Results, disable=disable_traj
-		Button show_deflections,win=Results, disable=disable_traj
-		Button show_deflections_Table, win=Results,disable=disable_traj
+		
+		CheckBox referencelines,win=Results, disable=disable_traj,variable=root:$(df):varsFieldMap:AddReferenceLines
 		
 		Button show_dynmultipoles, win=Results,disable=disable_dynmult
 		Button show_dynmultipoleprofile,win=Results, disable=disable_dynmult
@@ -6410,8 +6415,9 @@ Function UpdateResultsPanel()
 		Button show_integrals2traj,win=Results,disable=2
 		Button show_integrals2traj_Table,win=Results,disable=2
 		Button show_trajectories,win=Results,disable=2
+		CheckBox referencelines,win=Results, disable=2
 		Button show_deflections,win=Results,disable=2
-		Button show_deflections_Table,win=Results,disable=2
+		Button show_deflections_Table,win=Results,disable=2	
 		Button show_dynmultipoles,win=Results,disable=2
 		Button show_dynmultipoleprofile,win=Results,disable=2
 		Button show_residdynmultipoles,win=Results,disable=2
@@ -6858,18 +6864,25 @@ End
 Function ShowTrajectories(ctrlName) : ButtonControl
 	String ctrlName
 
-	NVAR StartXTraj    = :varsFieldMap:StartXTraj
-	NVAR EndXTraj      = :varsFieldMap:EndXTraj	
-	NVAR StepsXTraj	   = :varsFieldMap:StepsXTraj
-	NVAR NPointsXTraj  = :varsFieldMap:NPointsXTraj	
-	NVAR BeamDirection = :varsFieldMap:BeamDirection		
+	NVAR StartXTraj    		= :varsFieldMap:StartXTraj
+	NVAR EndXTraj      		= :varsFieldMap:EndXTraj	
+	NVAR StepsXTraj	   		= :varsFieldMap:StepsXTraj
+	NVAR NPointsXTraj  		= :varsFieldMap:NPointsXTraj	
+	NVAR BeamDirection 		= :varsFieldMap:BeamDirection
+	NVAR AddReferenceLines	= :varsFieldMap:AddReferenceLines		
 	
 	variable i
 	string AxisY
 	string AxisX
 	
+	if (AddReferenceLines==1)
+		CalcRefLinesCrossingPoint()
+		Wave CrossingPointX
+		Wave CrossingPointYZ
+	endif
+	
 	for (i=0;i<NPointsXTraj;i=i+1)
-	// Trajectory X
+		// Trajectory X
 		AxisY = "TrajX" + num2str((StartXTraj + i*StepsXTraj)/1000)
 		Wave TmpY = $AxisY
 
@@ -6893,7 +6906,27 @@ Function ShowTrajectories(ctrlName) : ButtonControl
 			Appendtograph/W=TrajectoriesX TmpY vs TmpX
 		endif
 		
-	// Trajectory YZ
+		if (AddReferenceLines==1)
+			string PosLineName, InitLineName, FinalLineName
+			
+			PosLineName = AxisY + "_PosRefLine"
+			InitLineName = AxisY + "_InitRefLine"
+			FinalLineName = AxisY + "_FinalRefLine"
+			
+			Wave/Z PosLine = $(PosLineName)
+			Wave/Z InitLine = $(InitLineName)
+			Wave/Z FinalLine = $(FinalLineName)
+			
+			if (WaveExists(PosLine) == 1 && WaveExists(InitLine) == 1 && WaveExists(FinalLine) == 1)
+				Appendtograph/W=TrajectoriesX/C=(30000, 30000, 30000) InitLine/TN=$InitLineName vs PosLine
+				Appendtograph/W=TrajectoriesX/C=(30000, 30000, 30000) FinalLine/TN=$FinalLineName vs PosLine
+				ModifyGraph/W=TrajectoriesX lstyle($InitLineName)=3
+				ModifyGraph/W=TrajectoriesX lstyle($FinalLineName)=3 
+			endif
+						
+		endif
+		
+		// Trajectory YZ
 		AxisY = "TrajX" + num2str((StartXTraj + i*StepsXTraj)/1000)
 		Wave TmpY = $AxisY
 
@@ -6920,9 +6953,97 @@ Function ShowTrajectories(ctrlName) : ButtonControl
 			Appendtograph/W=TrajectoriesYZ TmpY vs TmpX
 		endif
 
-	endfor 
+	endfor
+	
+	if (AddReferenceLines==1)
+		string tagtext, yzstr
+		variable xval
+		Appendtograph/W=TrajectoriesX/C=(30000, 30000, 30000) CrossingPointX/TN='CrossingPoint' vs CrossingPointYZ
+		ModifyGraph/W=TrajectoriesX mode('CrossingPoint')=3, marker('CrossingPoint')=19, msize('CrossingPoint')=2
+		
+		for (i=0; i<NPointsXTraj; i=i+1)
+			xval = pnt2x(CrossingPointYZ, i)
+			if (BeamDirection == 1)
+				yzstr = "Y"
+			else
+				yzstr = "Z"
+			endif
+			sprintf tagtext, "X = %.3f mm\n%s = %.3f mm", CrossingPointX[i]*1000, yzstr, CrossingPointYZ[i]*1000
+			Tag/X=20/W=TrajectoriesX/F=2/L=2 'CrossingPoint', xval, tagtext
+		endfor
+		
+	endif
+	
 End
 
+
+Function CalcRefLinesCrossingPoint()
+
+	NVAR StartXTraj    		= :varsFieldMap:StartXTraj
+	NVAR EndXTraj      		= :varsFieldMap:EndXTraj	
+	NVAR StepsXTraj	   		= :varsFieldMap:StepsXTraj
+	NVAR NPointsXTraj  		= :varsFieldMap:NPointsXTraj
+	NVAR BeamDirection 		= :varsFieldMap:BeamDirection
+
+	variable i, npts, ai, bi, af, bf, initial_angle, final_angle
+	string PosName, TrajName, InitLineName, FinalLineName, PosLineName
+
+	Make/O/N=(NPointsXTraj) CrossingPointX
+	Make/O/N=(NPointsXTraj) CrossingPointYZ
+
+	for (i=0;i<NPointsXTraj;i=i+1)
+		TrajName = "TrajX" + num2str((StartXTraj + i*StepsXTraj)/1000)
+		Wave Traj = $TrajName
+
+		if (BeamDirection == 1)
+			PosName = "TrajY" + num2str((StartXTraj + i*StepsXTraj)/1000)
+		else
+			PosName = "TrajZ" + num2str((StartXTraj + i*StepsXTraj)/1000)		
+		endif
+		Wave Pos = $PosName
+		
+		npts = numpnts(Traj)
+		if (npts < 4)
+			DoAlert 0, "Invalid trajectory number of points."
+			return -1
+		endif
+		
+		ai = (Traj[1] - Traj[0])/(Pos[1] - Pos[0])
+		af = (Traj[npts-1] - Traj[npts-2])/(Pos[npts-1] - Pos[npts-2])
+		
+		initial_angle = atan(ai)
+		final_angle = atan(af) 
+	
+		PosLineName  = TrajName + "_PosRefLine"	
+		InitLineName = TrajName + "_InitRefLine"
+		FinalLineName = TrajName + "_FinalRefLine"
+	
+		Make/O/N=2 $(PosLineName)
+		Make/O/N=2 $(InitLineName)
+		Make/O/N=2 $(FinalLineName)
+	
+		Wave PosLine = $PosLineName
+		Wave InitLine = $InitLineName
+		Wave FinalLine = $FinalLineName
+		
+		PosLine[0] = Pos[0]
+		PosLine[1] = Pos[npts-1]
+		
+		InitLine[0] = Traj[0]
+		InitLine[1] = Traj[0] + tan(initial_angle)*(PosLine[1] - PosLine[0])
+	
+		FinalLine[0] = Traj[npts-1] - tan(final_angle)*(PosLine[1] - PosLine[0])
+		FinalLine[1] = Traj[npts-1]
+		
+		bi = InitLine[0] - ai*PosLine[0]
+		bf = FinalLine[0] - af*PosLine[0]
+		
+		CrossingPointYZ[i] = -(bf - bi)/(af-ai)
+		CrossingPointX[i] = -(bf - bi)/(af-ai)*ai + bi
+	
+	endfor
+
+End
 
 Function ShowDeflections(ctrlName) : ButtonControl
 	String ctrlName
@@ -7933,7 +8054,8 @@ Window Compare_Results() : Panel
 	ValDisplay  trajstartangx_B,pos={170,390},size={140,18},title="Angle XY(Z) [°]:"
 	ValDisplay  trajstartyz_B,pos={170,420},size={140,18},title="Start YZ [mm]:  "
 	
-	Button show_trajectories,pos={11,445},size={300,24},fStyle=1,proc=Compare_Trajectories,title="Show Trajectory"
+	Button show_trajectories,pos={11,445},size={160,24},fStyle=1,proc=Compare_Trajectories,title="Show Trajectory"
+	CheckBox reference_lines,pos={180,450},size={120,24},title="Add References Lines"
 		
 	Button show_dynmultipoles,pos={11,475},size={300,24},fStyle=1,proc=Compare_DynMultipoles,title="Show Dynamic Multipoles Tables"
 	Button show_dynmultipoleprofile,pos={11,505},size={240,24},fStyle=1,proc=Compare_DynMultipole_Profile,title="Show Dynamic Multipole Profile: K = "
@@ -7999,6 +8121,7 @@ Function UpdateCompareResultsPanel()
 		NVAR ProfileEndX    = root:varsCAMTO:ProfileEndX
 		NVAR ProfileStartYZ = root:varsCAMTO:ProfilePosYZ
 		
+		NVAR AddReferenceLines  = root:varsCAMTO:AddReferenceLines
 		NVAR CheckDynMultipoles = root:varsCAMTO:CheckDynMultipoles
 		NVAR CheckMultTwo       = root:varsCAMTO:CheckMultTwo
 	
@@ -8062,6 +8185,7 @@ Function UpdateCompareResultsPanel()
 		ValDisplay trajstartangx_B,win=Compare_Results,value= #("root:"+ dfB + ":varsFieldMap:EntranceAngle" )
 		ValDisplay trajstartyz_B,win=Compare_Results,value= #("root:"+ dfB + ":varsFieldMap:StartYZTraj" )
 			
+		CheckBox reference_lines,win=Compare_Results,variable=AddReferenceLines, value=AddReferenceLines
 		CheckBox rep_dynmult,win=Compare_Results,variable=CheckDynMultipoles, value=CheckDynMultipoles
 		CheckBox rep_multtwo,win=Compare_Results,variable=CheckMultTwo, value=CheckMultTwo
 		
@@ -8187,6 +8311,7 @@ Function UpdateTrajectoryControls()
 	ValDisplay trajstartyz_B,win=Compare_Results, disable=disable
 	
 	Button show_trajectories,win=Compare_Results, disable=disable
+	CheckBox reference_lines,win=Compare_Results, disable=disable
 	
 End
 
@@ -8932,12 +9057,20 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 	DFREF df = GetDataFolderDFR()
 	SVAR dfA = root:varsCAMTO:FieldMapA
 	SVAR dfB = root:varsCAMTO:FieldMapB
+	NVAR AddReferenceLines = root:varsCAMTO:AddReferenceLines
 
 	variable i
+	variable xval_A
+	variable xval_B
 	string TrajStart
 	string PanelName
 	string AxisY
 	string AxisX
+	string PosLineName
+	string InitLineName
+	string FinalLineName
+	string tagtext
+	string yzstr
 	
 	variable fieldmapA = 1	
 	if (cmpstr(dfA, "Nominal")==0)
@@ -8975,9 +9108,45 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 		if (stringmatch(PanelName, "CompareTrajectoriesX;"))
 			KillWindow CompareTrajectoriesX
 		endif
-		Display/N=CompareTrajectoriesX/K=1 TmpY vs TmpX
+		Display/N=CompareTrajectoriesX/K=1 TmpY/TN='TrajX_A' vs TmpX
 		Label bottom "\\Z12Longitudinal Position [m]"			
 		Label left "\\Z12Horizontal Trajectory [m]"	
+	
+		if (AddReferenceLines == 1)
+			CalcRefLinesCrossingPoint()
+			Wave CrossingPointX
+			Wave CrossingPointYZ
+			
+			if (numpnts(CrossingPointX) == 1)
+				PosLineName = AxisY + "_PosRefLine"
+				InitLineName = AxisY + "_InitRefLine"
+				FinalLineName = AxisY + "_FinalRefLine"
+				
+				Wave/Z PosLine = $(PosLineName)
+				Wave/Z InitLine = $(InitLineName)
+				Wave/Z FinalLine = $(FinalLineName)
+				
+				if (WaveExists(PosLine) == 1 && WaveExists(InitLine) == 1 && WaveExists(FinalLine) == 1)
+					Appendtograph/W=CompareTrajectoriesX/C=(30000, 30000, 30000) InitLine/TN=$(InitLineName+"_A") vs PosLine
+					Appendtograph/W=CompareTrajectoriesX/C=(30000, 30000, 30000) FinalLine/TN=$(FinalLineName+"_A") vs PosLine
+					ModifyGraph/W=CompareTrajectoriesX lstyle($(InitLineName+"_A"))=3
+					ModifyGraph/W=CompareTrajectoriesX lstyle($(FinalLineName+"_A"))=3 
+				endif			
+				
+				Appendtograph/W=CompareTrajectoriesX/C=(30000, 30000, 30000) CrossingPointX/TN='CrossingPoint_A' vs CrossingPointYZ
+				ModifyGraph/W=CompareTrajectoriesX mode('CrossingPoint_A')=3, marker('CrossingPoint_A')=19, msize('CrossingPoint_A')=2
+				
+				xval_A = pnt2x(CrossingPointYZ, 0)
+				if (BeamDirection_A == 1)
+					yzstr = "Y"
+				else
+					yzstr = "Z"
+				endif
+				sprintf tagtext, "%s:\nX = %.3f mm\n%s = %.3f mm", dfA, CrossingPointX[i]*1000, yzstr, CrossingPointYZ[i]*1000
+				Tag/X=20/W=CompareTrajectoriesX/F=2/L=2 'CrossingPoint_A', xval_A, tagtext
+			endif
+			
+		endif
 	
 		// FieldMap A - Trajectory YZ
 		AxisY = "TrajX" + TrajStart
@@ -8997,8 +9166,7 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 		if (stringmatch(PanelName, "CompareTrajectoriesYZ;"))
 			KillWindow CompareTrajectoriesYZ
 		endif
-		Display/N=CompareTrajectoriesYZ/K=1 TmpY vs TmpX
-		Legend/W=CompareTrajectoriesYZ "\s(#0) "+ dfA		
+		Display/N=CompareTrajectoriesYZ/K=1 TmpY/TN='TrajYZ_A' vs TmpX
 		Label bottom "\\Z12Longitudinal Position [m]"			
 		Label left "\\Z12Vertical Trajectory [m]"
 				
@@ -9024,14 +9192,47 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 		
 		PanelName = WinList("CompareTrajectoriesX",";","")	
 		if (stringmatch(PanelName, "CompareTrajectoriesX;"))
-			AppendToGraph/W=CompareTrajectoriesX/C=(0,0,65535) TmpY vs TmpX
-			Legend/W=CompareTrajectoriesX/K/N=text0
-			Legend/W=CompareTrajectoriesX "\s(#0) "+ dfA + " \r\s(#1) " + dfB		
+			AppendToGraph/W=CompareTrajectoriesX/C=(0,0,65535) TmpY/TN='TrajX_B' vs TmpX	
 		else
-			Display/N=CompareTrajectoriesX/K=1 TmpY vs TmpX
-			Legend/W=CompareTrajectoriesX "\s(#0) " + dfB
+			Display/N=CompareTrajectoriesX/K=1 TmpY/TN='TrajX_B' vs TmpX
 			Label bottom "\\Z12Longitudinal Position [m]"			
 			Label left "\\Z12Horizontal Trajectory [m]"	
+		endif
+
+		if (AddReferenceLines == 1)
+			CalcRefLinesCrossingPoint()
+			Wave CrossingPointX
+			Wave CrossingPointYZ
+			
+			if (numpnts(CrossingPointX) == 1)		
+				PosLineName = AxisY + "_PosRefLine"
+				InitLineName = AxisY + "_InitRefLine"
+				FinalLineName = AxisY + "_FinalRefLine"
+				
+				Wave/Z PosLine = $(PosLineName)
+				Wave/Z InitLine = $(InitLineName)
+				Wave/Z FinalLine = $(FinalLineName)
+				
+				if (WaveExists(PosLine) == 1 && WaveExists(InitLine) == 1 && WaveExists(FinalLine) == 1)
+					Appendtograph/W=CompareTrajectoriesX/C=(30000, 30000, 30000) InitLine/TN=$(InitLineName+"_B") vs PosLine
+					Appendtograph/W=CompareTrajectoriesX/C=(30000, 30000, 30000) FinalLine/TN=$(FinalLineName+"_B") vs PosLine
+					ModifyGraph/W=CompareTrajectoriesX lstyle($(InitLineName+"_B"))=3
+					ModifyGraph/W=CompareTrajectoriesX lstyle($(FinalLineName+"_B"))=3
+				endif
+				
+				Appendtograph/W=CompareTrajectoriesX/C=(30000, 30000, 30000) CrossingPointX/TN='CrossingPoint_B' vs CrossingPointYZ
+				ModifyGraph/W=CompareTrajectoriesX mode('CrossingPoint_B')=3, marker('CrossingPoint_B')=19, msize('CrossingPoint_B')=2
+				
+				xval_B = pnt2x(CrossingPointYZ, 0)
+				if (BeamDirection_B == 1)
+					yzstr = "Y"
+				else
+					yzstr = "Z"
+				endif
+				sprintf tagtext, "%s:\nX = %.3f mm\n%s = %.3f mm", dfB, CrossingPointX[i]*1000, yzstr, CrossingPointYZ[i]*1000
+				Tag/X=20/W=CompareTrajectoriesX/F=2/L=2 'CrossingPoint_B', xval_B, tagtext
+			endif
+			
 		endif
 		
 		// FieldMap B - Trajectory YZ
@@ -9050,16 +9251,24 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 		
 		PanelName = WinList("CompareTrajectoriesYZ",";","")	
 		if (stringmatch(PanelName, "CompareTrajectoriesYZ;"))
-			AppendToGraph/W=CompareTrajectoriesYZ/C=(0,0,65535) TmpY vs TmpX
-			Legend/W=CompareTrajectoriesYZ/K/N=text0
-			Legend/W=CompareTrajectoriesYZ "\s(#0) "+ dfA + " \r\s(#1) " + dfB
+			AppendToGraph/W=CompareTrajectoriesYZ/C=(0,0,65535) TmpY/TN='TrajYZ_B' vs TmpX
 		else
-			Display/N=CompareTrajectoriesYZ/K=1 TmpY vs TmpX
-			Legend/W=CompareTrajectoriesYZ "\s(#0) "+ dfB	
+			Display/N=CompareTrajectoriesYZ/K=1 TmpY/TN='TrajYZ_B' vs TmpX
 			Label bottom "\\Z12Longitudinal Position [m]"			
 			Label left "\\Z12Vertical Trajectory [m]"
 		endif
 		
+	endif
+	
+	if (fieldmapA && fieldmapB)
+		Legend/W=CompareTrajectoriesX "\s('TrajX_A') "+ dfA + " \r\s('TrajX_B') " + dfB
+		Legend/W=CompareTrajectoriesYZ "\s('TrajYZ_A') "+ dfA + " \r\s('TrajYZ_B') " + dfB
+	elseif (fieldmapA)	
+		Legend/W=CompareTrajectoriesX "\s('TrajX_A') " + dfA
+		Legend/W=CompareTrajectoriesYZ "\s('TrajYZ_A') "+ dfA
+	elseif (fieldmapB)
+		Legend/W=CompareTrajectoriesX "\s('TrajX_B') " + dfB
+		Legend/W=CompareTrajectoriesYZ "\s('TrajYZ_B') "+ dfB	
 	endif
 	
 	SetDataFolder df
