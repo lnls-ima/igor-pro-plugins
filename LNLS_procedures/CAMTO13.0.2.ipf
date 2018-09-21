@@ -19,6 +19,7 @@ Menu "CAMTO"
 	"Results", Execute "Results()"
 	"ID Results", Execute "ID_Results()"
 	"Compare Results", Execute "Compare_Results()"
+	"Load Line Scan", Execute "Load_Line_Scan()"
 	"Help", Execute "Help()"
 End
 
@@ -9988,6 +9989,92 @@ Function Add_Table(TableWave, [ColWave, RowWave, Title, RowTitle, Spacing])
 End
 
 
+Window Load_Line_Scan() : Panel
+	PauseUpdate; Silent 1
+
+	string PanelName
+	PanelName = WinList("Load_Line_Scan",";","")	
+	if (stringmatch(PanelName, "Load_Line_Scan;"))
+		Killwindow Load_Line_Scan
+	endif
+	
+	CreateLabelVar()
+		
+	NewPanel /K=1 /W=(1240,60,1500,225)
+	SetDrawLayer UserBack
+	SetDrawEnv fillpat= 0
+	DrawRect 5,3,255,160
+			
+	TitleBox FMdir,      pos={80,12},size={80,40},title="Load Line Scan",fSize=14,fStyle=1,frame=0
+	SetVariable scanlabel, pos={20,60},size={220,18},title="Label:",value=root:ScanLabel
+	Button loadscan,pos={20,100},size={220,41},proc=LoadLineScan,fStyle=1,title="Load"
+				
+EndMacro
+
+
+Function CreateLabelVar()
+	
+	DFREF df = GetDataFolderDFR()
+	
+	SetDataFolder root:
+	string/G ScanLabel=""
+
+	SetDataFolder df
+
+End
+
+Function LoadLineScan(ctrlName) : ButtonControl
+	String ctrlName
+	
+	SVAR ScanLabel = root:ScanLabel
+	
+	DFREF df = GetDataFolderDFR()
+
+	SetDataFolder root:
+	
+	variable i, j
+	LoadWave/H/O/G/D/W/A ""
+
+	if (V_flag==0) 
+		return -1
+	endif
+
+	string sl, fn
+	variable idx
+	
+	fn = S_filename
+	fn = RemoveEnding(fn, ".dat")
+	fn = RemoveEnding(fn, ".txt")
+
+	if (strlen(ScanLabel) == 0)
+		idx = strsearch(fn, "ID=",0)
+		if (idx!=-1) 
+			sl = "_" + fn[idx, strlen(fn)]
+		else
+			sl = ""
+		endif
+	else
+		sl = "_" + ScanLabel
+	endif
+
+	Wave wave0, wave1, wave2, wave3
+	Wave/Z wave4, wave5, wave6
+	
+	Duplicate/O wave0, $("position" + sl)
+	Duplicate/O wave1, $("bx" + sl)
+	Duplicate/O wave2, $("by" + sl)
+	Duplicate/O wave3, $("bz" + sl)
+	
+	if (Waveexists(wave4)==1 && Waveexists(wave5)==1 && Waveexists(wave6)==1)
+		Duplicate/O wave4, $("std_bx" + sl)
+		Duplicate/O wave5, $("std_by" + sl)
+		Duplicate/O wave6, $("std_bz" + sl)
+	endif
+	
+	Killwaves/Z wave0, wave1, wave2, wave3, wave4, wave5, wave6
+	
+	SetDataFolder df
+End
 
 Function GetTrajPosX(PosYZ)
 	variable PosYZ
