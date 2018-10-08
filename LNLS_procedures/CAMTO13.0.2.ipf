@@ -7,18 +7,19 @@
 
 Menu "CAMTO"
 	"Initialize CAMTO", Execute "Initialize_CAMTO()"
-	"Particle Parameters", Execute "Particle_Parameters()"
+	"Global Parameters", Execute "Global_Parameters()"
 	"Field Specification", Execute "Field_Specification()"
 	"Load Field Data", Execute "Load_Field_Data()"
 	"Hall Probe Correction", Execute "Hall_Probe_Error_Correction()"
 	"Integrals and Multipoles", Execute "Integrals_Multipoles()"
+	"Particle Energy", Execute "Particle_Energy()"
 	"Trajectories", Execute "Trajectories()"
 	"Dynamic Multipoles", Execute "Dynamic_Multipoles()"
 	"Find Peaks and Zeros", Execute "Find_Peaks()"
 	"Phase Error", Execute "Phase_Error()"
 	"Results", Execute "Results()"
-	"ID Results", Execute "ID_Results()"
 	"Compare Results", Execute "Compare_Results()"
+	"Insertion Devices Results", Execute "ID_Results()"
 	"Load Line Scan", Execute "Load_Line_Scan()"
 	"Help", Execute "Help()"
 End
@@ -128,6 +129,7 @@ Function Initialize_CAMTO()
 	SetDataFolder root:wavesCAMTO:
 	
 	Make/T FieldMapDirs
+	Make/D EnergiesGeV
 	Make/D/N=(1, 2) NormalMultipoles
 	Make/D/N=(0, 2) SkewMultipoles
 	Make/D/N=(10,5) MultipoleErrors
@@ -343,7 +345,7 @@ Function KillFieldMapDirs()
 End
 
 
-Window Particle_Parameters() : Panel
+Window Global_Parameters() : Panel
 	PauseUpdate; Silent 1		// building window...
 	
 	if (DataFolderExists("root:varsCAMTO")==0)
@@ -357,9 +359,9 @@ Window Particle_Parameters() : Panel
 	
 	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
 	string PanelName
-	PanelName = WinList("Particle_Parameters",";","")	
-	if (stringmatch(PanelName, "Particle_Parameters;"))
-		Killwindow Particle_Parameters
+	PanelName = WinList("Global_Parameters",";","")	
+	if (stringmatch(PanelName, "Global_Parameters;"))
+		Killwindow Global_Parameters
 	endif	
 	
 	NewPanel/K=1/W=(80,60,404,266)
@@ -374,7 +376,7 @@ Window Particle_Parameters() : Panel
 	
 	Button ParTraj,pos={175,171},size={100,26},proc=continue_ElecPar,title="change"
 	Button ParTraj,fSize=15,fStyle=1
-	TitleBox title3,pos={75,9},size={161,24},title="Particle Parameters",fSize=18,fStyle=1
+	TitleBox title3,pos={75,9},size={161,24},title="Global Parameters",fSize=18,fStyle=1
 	TitleBox title3,frame=0
 	
 	variable/G root:varsCAMTO:aux0 = root:varsCAMTO:EnergyGev
@@ -416,7 +418,7 @@ EndMacro
 
 Function quit_ElecPar(ctrlName) : ButtonControl
 	String ctrlName
-	Killwindow Particle_Parameters
+	Killwindow Global_Parameters
 End
 
 
@@ -428,12 +430,39 @@ Function continue_ElecPar(ctrlName) : ButtonControl
 	NVAR aux2 = root:varsCAMTO:aux2
 	NVAR aux3 = root:varsCAMTO:aux3
 	NVAR aux4 = root:varsCAMTO:aux4
+	NVAR FieldMapCount = root:varsCAMTO:FieldMapCount
 
 	variable/G root:varsCAMTO:EnergyGev = aux0
 	variable/G root:varsCAMTO:Charge = aux1
 	variable/G root:varsCAMTO:Mass = aux2
 	variable/G root:varsCAMTO:LightSpeed = aux3
 	variable/G root:varsCAMTO:TrajShift = aux4
+	
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	Wave/Z EnergiesGeV = root:wavesCAMTO:EnergiesGeV
+
+	variable i
+	if (WaveExists(EnergiesGeV)==1)
+		for (i=0; i<FieldMapCount; i++)
+			EnergiesGeV[i] = aux0
+		endfor
+	endif	
+
+End
+
+
+Function GetFieldMapIndex()
+
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	SVAR FieldMapDir = root:varsCAMTO:FieldMapDir
+
+	FindValue/Text=FieldMapDir/TXOP=4 FieldMapDirs		
+			
+	if (V_value == -1)			
+		return -1
+	else
+		return V_value
+	endif
 
 End
 
@@ -685,8 +714,14 @@ Function UpdateFieldMapDirs()
 	NVAR    FieldMapCount = root:varsCAMTO:FieldMapCount
 	SVAR    FieldMapDir   = root:varsCAMTO:FieldMapDir 
 	Wave/T  FieldMapDirs  = root:wavesCAMTO:FieldMapDirs
+	Wave/Z  EnergiesGeV   = root:wavesCAMTO:EnergiesGeV    
 
 	Make/O/T/N=(FieldMapCount) NewFieldMapDirs
+	
+	if (WaveExists(EnergiesGeV)==1)
+		Make/O/N=(FieldMapCount) NewEnergiesGeV
+	endif
+	
 	variable newFieldMapCount = 0
 	
 	SetDataFolder root:
@@ -704,6 +739,11 @@ Function UpdateFieldMapDirs()
 			endif
 		else
 			newFieldMapDirs[newFieldMapCount] = FieldMapDirs[i]
+			
+			if (WaveExists(EnergiesGeV)==1)
+				newEnergiesGeV[newFieldMapCount] = EnergiesGeV[i]
+			endif
+			
 			newFieldMapCount = newFieldMapCount + 1
 		endif
 	endfor 
@@ -712,8 +752,14 @@ Function UpdateFieldMapDirs()
 	Redimension/N=(FieldMapCount) newFieldMapDirs
 	Redimension/N=(FieldMapCount) FieldMapDirs
 	FieldMapDirs[] = newFieldMapDirs[p]
-		
-	Killwaves newFieldMapDirs
+	
+	if (WaveExists(EnergiesGeV)==1)
+		Redimension/N=(FieldMapCount) newEnergiesGeV
+		Redimension/N=(FieldMapCount) EnergiesGeV
+		EnergiesGeV[] = newEnergiesGeV[p]
+	endif
+	
+	Killwaves/Z newFieldMapDirs, newEnergiesGeV
 
 End
 
@@ -1050,6 +1096,22 @@ Function Carrega_Resultados(ctrlName) : ButtonControl
 
 	if (V_flag==0) 
 		return -1
+	endif
+
+	NVAR FieldMapCount = root:varsCAMTO:FieldMapCount
+	NVAR EnergyGeV = root:varsCAMTO:EnergyGeV
+
+	Wave/Z EnergiesGeV = root:wavesCAMTO:EnergiesGeV
+	
+	if (WaveExists(EnergiesGeV)==1)		
+		variable idx = GetFieldMapIndex()
+		if (idx == -1)			
+			DoAlert 0, "Invalid directory."
+			return -1
+		else
+			Redimension/N=(FieldMapCount) EnergiesGeV
+			EnergiesGeV[idx] = EnergyGeV
+		endif
 	endif
 
 	SVAR FMFilename = :varsFieldMap:FMFilename
@@ -2165,6 +2227,11 @@ End
 Function ApplyErrorCorrectionToAll(ctrlName) : ButtonControl
 	String ctrlName
 	
+	DoAlert 1, "Apply current error correction to all fieldmaps?"
+	if (V_flag != 1)
+		return -1
+	endif
+	
 	UpdateFieldMapDirs()
 		
 	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
@@ -2187,7 +2254,8 @@ Function ApplyErrorCorrectionToAll(ctrlName) : ButtonControl
 		AngularErrorCorrection(empty)
 		DisplacementErrorCorrection(empty)
 	endfor
-
+	
+	FieldMapDir = dfc
 	SetDataFolder df
 
 End
@@ -2964,6 +3032,11 @@ End
 Function CalcIntegralsMultipolesToAll(ctrlName) : ButtonControl
 	String ctrlName
 	
+	DoAlert 1, "Calculate multipoles for all fieldmaps?"
+	if (V_flag != 1)
+		return -1
+	endif
+	
 	UpdateFieldMapDirs()
 		
 	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
@@ -2987,7 +3060,25 @@ Function CalcIntegralsMultipolesToAll(ctrlName) : ButtonControl
 		CalcMultipoles(empty)
 	endfor
 
+	FieldMapDir = dfc
 	SetDataFolder df
+	
+End
+
+Function Particle_Energy()
+	
+	NVAR EnergyGeV = root:varsCAMTO:EnergyGeV
+	NVAR FieldMapCount = root:varsCAMTO:FieldMapCount
+	
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs 
+	Wave/Z EnergiesGeV = root:wavesCAMTO:EnergiesGeV
+	
+	if (WaveExists(EnergiesGeV) == 0)
+		Make/O/N=(FieldMapCount) root:wavesCAMTO:EnergiesGeV = EnergyGeV
+		Wave EnergiesGeV = root:wavesCAMTO:EnergiesGeV
+	endif
+	
+	Edit/K=1 FieldMapDirs, EnergiesGeV
 	
 End
 
@@ -3242,15 +3333,35 @@ Function MakeTrajNamesWave(pos_str)
 End
 
 
+Function GetParticleEnergy()
+	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
+	Wave/Z EnergiesGeV = root:wavesCAMTO:EnergiesGeV
+	
+	if (WaveExists(EnergiesGeV)==1)
+		variable idx = GetFieldMapIndex()
+		if (idx == -1)
+			return EnergyGeV
+		endif
+		return EnergiesGeV[idx]
+	
+	else
+		return EnergyGeV
+	
+	endif
+
+End
+
+
 Function TrajectoriesCalculationProc(ctrlName) : ButtonControl
 	String ctrlName
    
    	NVAR Charge     = root:varsCAMTO:Charge
 	NVAR Mass       = root:varsCAMTO:Mass
 	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
+	
+	variable energy = GetParticleEnergy()
 
-	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
 	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
 	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
    
@@ -3437,10 +3548,11 @@ Function TrajectoriesCalculation()
    	NVAR Charge     = root:varsCAMTO:Charge
 	NVAR Mass       = root:varsCAMTO:Mass
 	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
 	NVAR TrajShift  = root:varsCAMTO:TrajShift
 
-	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable energy = GetParticleEnergy()
+
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
 	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
 	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
        
@@ -3618,6 +3730,11 @@ End
 Function CalcTrajectoriesToAll(ctrlName) : ButtonControl
 	String ctrlName
 	
+	DoAlert 1, "Calculate trajectories for all fieldmaps?"
+	if (V_flag != 1)
+		return -1
+	endif
+	
 	UpdateFieldMapDirs()
 		
 	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
@@ -3640,6 +3757,7 @@ Function CalcTrajectoriesToAll(ctrlName) : ButtonControl
 		TrajectoriesCalculationProc(empty)
 	endfor
 
+	FieldMapDir = dfc
 	SetDataFolder df
 	
 End
@@ -3651,10 +3769,11 @@ Function Runge_Kutta(px, py, pz)
 	NVAR Charge     = root:varsCAMTO:Charge
 	NVAR Mass       = root:varsCAMTO:Mass
 	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
 	NVAR TrajShift  = root:varsCAMTO:TrajShift  
 	
-	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable energy = GetParticleEnergy()
+	
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
 	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
 	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
 		
@@ -3850,10 +3969,11 @@ Function Analitico(px, py, pz)
 	NVAR Charge     = root:varsCAMTO:Charge
 	NVAR Mass       = root:varsCAMTO:Mass
 	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
 	NVAR TrajShift  = root:varsCAMTO:TrajShift  
+	
+	variable energy = GetParticleEnergy()
 
-	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
 	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
 	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
 
@@ -4595,6 +4715,11 @@ End
 Function CalcDynIntegralsMultipolesToAll(ctrlName) : ButtonControl
 	String ctrlName
 	
+	DoAlert 1, "Calculate dynamic multipoles for all fieldmaps?"
+	if (V_flag != 1)
+		return -1
+	endif
+	
 	UpdateFieldMapDirs()
 		
 	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
@@ -4617,6 +4742,7 @@ Function CalcDynIntegralsMultipolesToAll(ctrlName) : ButtonControl
 		CalcDynIntegralsMultipoles(empty)
 	endfor
 
+	FieldMapDir = dfc
 	SetDataFolder df
 	
 End
@@ -5568,7 +5694,6 @@ Function CalcPhaseError(ctrlName) : ButtonControl
    	NVAR Charge     = root:varsCAMTO:Charge
 	NVAR Mass       = root:varsCAMTO:Mass
 	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
 	NVAR TrajShift  = root:varsCAMTO:TrajShift
 
 	NVAR StartXTraj = :varsFieldMap:StartXTraj
@@ -5621,7 +5746,9 @@ Function CalcPhaseError(ctrlName) : ButtonControl
 		Wave/Z TrajL = $"TrajZ"+num2str(StartXTraj/1000)	
 	endif
 	
-	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable energy = GetParticleEnergy()
+	
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
 	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
 	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
 	variable Bt = ChargeVel/LightSpeed 
@@ -5864,7 +5991,6 @@ Function CalcPhaseErrorNominalValues(Period, NrPeriods, LongitudinalCenter)
    	NVAR Charge     = root:varsCAMTO:Charge
 	NVAR Mass       = root:varsCAMTO:Mass
 	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
 	NVAR TrajShift  = root:varsCAMTO:TrajShift
 
 	NVAR StartXTraj = :varsFieldMap:StartXTraj
@@ -5899,8 +6025,9 @@ Function CalcPhaseErrorNominalValues(Period, NrPeriods, LongitudinalCenter)
 		Wave/Z TrajL = $"TrajZ"+num2str(StartXTraj/1000)	
 	endif
 
+	variable energy = GetParticleEnergy()
 	
-	variable TotalEnergy_J  = EnergyGev*1E9*abs(Charge)
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
 	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
 	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
 	variable Bt = ChargeVel/LightSpeed 
@@ -6380,6 +6507,11 @@ Function UpdateResultsPanel()
 		Button show_integralstraj_Table, win=Results,disable=disable_traj
 		Button show_integrals2traj,win=Results, disable=disable_traj
 		Button show_integrals2traj_Table, win=Results,disable=disable_traj
+		
+		NVAR/Z AddReferenceLines = root:$(df):varsFieldMap:AddReferenceLines
+		if (NVAR_EXists(AddReferenceLines)==0)
+			variable/G root:$(df):varsFieldMap:AddReferenceLines = 0
+		endif
 		
 		CheckBox referencelines,win=Results, disable=disable_traj,variable=root:$(df):varsFieldMap:AddReferenceLines
 		
@@ -6870,7 +7002,11 @@ Function ShowTrajectories(ctrlName) : ButtonControl
 	NVAR StepsXTraj	   		= :varsFieldMap:StepsXTraj
 	NVAR NPointsXTraj  		= :varsFieldMap:NPointsXTraj	
 	NVAR BeamDirection 		= :varsFieldMap:BeamDirection
-	NVAR AddReferenceLines	= :varsFieldMap:AddReferenceLines		
+	NVAR/Z AddReferenceLines	= :varsFieldMap:AddReferenceLines		
+	
+	if (NVAR_EXists(AddReferenceLines)==0)
+		variable/G :varsFieldMap:AddReferenceLines = 0
+	endif
 	
 	variable i
 	string AxisY
@@ -8056,7 +8192,7 @@ Window Compare_Results() : Panel
 	ValDisplay  trajstartyz_B,pos={170,420},size={140,18},title="Start YZ [mm]:  "
 	
 	Button show_trajectories,pos={11,445},size={160,24},fStyle=1,proc=Compare_Trajectories,title="Show Trajectory"
-	CheckBox reference_lines,pos={180,450},size={120,24},title="Add References Lines"
+	CheckBox reference_lines,pos={180,450},size={120,24},title="Add Reference Lines"
 		
 	Button show_dynmultipoles,pos={11,475},size={300,24},fStyle=1,proc=Compare_DynMultipoles,title="Show Dynamic Multipoles Tables"
 	Button show_dynmultipoleprofile,pos={11,505},size={240,24},fStyle=1,proc=Compare_DynMultipole_Profile,title="Show Dynamic Multipole Profile: K = "
@@ -8122,7 +8258,7 @@ Function UpdateCompareResultsPanel()
 		NVAR ProfileEndX    = root:varsCAMTO:ProfileEndX
 		NVAR ProfileStartYZ = root:varsCAMTO:ProfilePosYZ
 		
-		NVAR AddReferenceLines  = root:varsCAMTO:AddReferenceLines
+		NVAR/Z AddReferenceLines  = root:varsCAMTO:AddReferenceLines
 		NVAR CheckDynMultipoles = root:varsCAMTO:CheckDynMultipoles
 		NVAR CheckMultTwo       = root:varsCAMTO:CheckMultTwo
 	
@@ -8185,7 +8321,11 @@ Function UpdateCompareResultsPanel()
 		ValDisplay trajstartx_B,win=Compare_Results,value= #("root:"+ dfB + ":varsFieldMap:StartXTraj" )
 		ValDisplay trajstartangx_B,win=Compare_Results,value= #("root:"+ dfB + ":varsFieldMap:EntranceAngle" )
 		ValDisplay trajstartyz_B,win=Compare_Results,value= #("root:"+ dfB + ":varsFieldMap:StartYZTraj" )
-			
+		
+		if (NVAR_EXists(AddReferenceLines)==0)
+			variable/G :varsFieldMap:AddReferenceLines = 0
+		endif
+		
 		CheckBox reference_lines,win=Compare_Results,variable=AddReferenceLines, value=AddReferenceLines
 		CheckBox rep_dynmult,win=Compare_Results,variable=CheckDynMultipoles, value=CheckDynMultipoles
 		CheckBox rep_multtwo,win=Compare_Results,variable=CheckMultTwo, value=CheckMultTwo
@@ -9058,7 +9198,11 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 	DFREF df = GetDataFolderDFR()
 	SVAR dfA = root:varsCAMTO:FieldMapA
 	SVAR dfB = root:varsCAMTO:FieldMapB
-	NVAR AddReferenceLines = root:varsCAMTO:AddReferenceLines
+	NVAR/Z AddReferenceLines = root:varsCAMTO:AddReferenceLines
+
+	if (NVAR_EXists(AddReferenceLines)==0)
+		variable/G root:varsCAMTO:AddReferenceLines = 0
+	endif
 
 	variable i
 	variable xval_A
@@ -9853,7 +9997,6 @@ Function Add_Calc_Parameters(df, Dynamic)
 	SetDataFolder root:$(df)
 	
 	NVAR TrajShift = root:varsCAMTO:TrajShift
-	NVAR EnergyGev = root:varsCAMTO:EnergyGev
 	
 	SVAR FMFilename = :varsFieldMap:FMFilename
 		
@@ -9873,6 +10016,8 @@ Function Add_Calc_Parameters(df, Dynamic)
 		SVAR NormalCoefs 	= :varsFieldMap:NormalCoefs 
 		SVAR SkewCoefs 	 	= :varsFieldMap:SkewCoefs		
 	endif
+
+	variable energy = GetParticleEnergy()
 
 	Notebook Report ruler=TableHeader6, text="\t" + df + ":\r\r"
 
@@ -9903,7 +10048,7 @@ Function Add_Calc_Parameters(df, Dynamic)
 	i = 0
 	if (Dynamic)
 		TableWave[i][0] = "Particle energy"
-		TableWave[i][1] = num2str(EnergyGev) + " Gev"
+		TableWave[i][1] = num2str(energy) + " Gev"
 		TableWave[1+i][0] = "Trajectory step"
 		TableWave[1+i][1] = num2str(1000*TrajShift) + " mm"
 		TableWave[2+i][0] = "Trajectory x @z=0mm"
