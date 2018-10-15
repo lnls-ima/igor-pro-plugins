@@ -10143,26 +10143,48 @@ Window Load_Line_Scan() : Panel
 		Killwindow Load_Line_Scan
 	endif
 	
-	CreateLabelVar()
+	CreateLoadScanVariables()
 		
-	NewPanel /K=1 /W=(1240,60,1500,225)
+	NewPanel /K=1 /W=(1240,60,1500,310)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
-	DrawRect 5,3,255,160
+	DrawRect 5,3,255,245
 			
 	TitleBox FMdir,      pos={80,12},size={80,40},title="Load Line Scan",fSize=14,fStyle=1,frame=0
-	SetVariable scanlabel, pos={20,60},size={220,18},title="Label:",value=root:ScanLabel
-	Button loadscan,pos={20,100},size={220,41},proc=LoadLineScan,fStyle=1,title="Load"
+	SetVariable scanlabel, pos={20,50},size={220,18},title="Label:",value=root:ScanLabel
+	
+	TitleBox LoadTxt, pos={20,80},size={80,40},title="Columns:",fSize=12,frame=0
+	CheckBox check_pos,pos={35,100},size={220,15},title=" Position",variable=root:LoadPos
+	CheckBox check_bx,pos={35,120},size={220,15},title=" Bx Average",variable=root:LoadBx
+	CheckBox check_by,pos={35,140},size={220,15},title=" By Average",variable=root:LoadBy
+	CheckBox check_bz,pos={35,160},size={220,15},title=" Bz Average",variable=root:LoadBz
+	CheckBox check_bx_std,pos={35,180},size={220,15},title=" Bx Std",variable=root:LoadBxStd
+	CheckBox check_by_std,pos={35,200},size={220,15},title=" By Std",variable=root:LoadByStd
+	CheckBox check_bz_std,pos={35,220},size={220,15},title=" Bz Std",variable=root:LoadBzStd
+	
+	Button loadscan,pos={135, 110},size={100,110},proc=LoadLineScan,fSize=14,fStyle=1,title="Load"
 				
 EndMacro
 
 
-Function CreateLabelVar()
+Function CreateLoadScanVariables()
 	
 	DFREF df = GetDataFolderDFR()
 	
 	SetDataFolder root:
 	string/G ScanLabel=""
+
+	NVAR LoadPos = root:LoadPos
+
+	if (NVAR_Exists(LoadPos) == 0)
+		variable/G LoadPos = 1
+		variable/G LoadBx = 1
+		variable/G LoadBy = 1
+		variable/G LoadBz = 1
+		variable/G LoadBxStd = 1
+		variable/G LoadByStd = 1
+		variable/G LoadBzStd = 1
+	endif
 
 	SetDataFolder df
 
@@ -10172,6 +10194,13 @@ Function LoadLineScan(ctrlName) : ButtonControl
 	String ctrlName
 	
 	SVAR ScanLabel = root:ScanLabel
+	NVAR LoadPos = root:LoadPos
+	NVAR LoadBx = root:LoadBx
+	NVAR LoadBy = root:LoadBy
+	NVAR LoadBz = root:LoadBz
+	NVAR LoadBxStd = root:LoadBxStd
+	NVAR LoadByStd = root:LoadByStd
+	NVAR LoadBzStd = root:LoadBzStd
 	
 	DFREF df = GetDataFolderDFR()
 
@@ -10205,15 +10234,48 @@ Function LoadLineScan(ctrlName) : ButtonControl
 	Wave wave0, wave1, wave2, wave3
 	Wave/Z wave4, wave5, wave6
 	
-	Duplicate/O wave0, $("position" + sl)
-	Duplicate/O wave1, $("bx" + sl)
-	Duplicate/O wave2, $("by" + sl)
-	Duplicate/O wave3, $("bz" + sl)
+	if (LoadPos == 1)
+		Duplicate/O wave0, $("position" + sl)
+	else
+		Killwaves/Z $("position" + sl)
+	endif
+	
+	if (LoadBx == 1)
+		Duplicate/O wave1, $("bx" + sl)
+	else
+		Killwaves/Z $("bx" + sl)
+	endif
+	
+	if (LoadBy == 1)
+		Duplicate/O wave2, $("by" + sl)
+	else
+		Killwaves/Z $("by" + sl)
+	endif
+	
+	if (LoadBz == 1)
+		Duplicate/O wave3, $("bz" + sl)
+	else
+		Killwaves/Z $("bz" + sl)
+	endif
 	
 	if (Waveexists(wave4)==1 && Waveexists(wave5)==1 && Waveexists(wave6)==1)
-		Duplicate/O wave4, $("std_bx" + sl)
-		Duplicate/O wave5, $("std_by" + sl)
-		Duplicate/O wave6, $("std_bz" + sl)
+		if (LoadBxStd == 1)
+			Duplicate/O wave4, $("std_bx" + sl)
+		else
+			Killwaves/Z $("std_bx" + sl)
+		endif
+		
+		if (LoadByStd == 1)
+			Duplicate/O wave5, $("std_by" + sl)
+		else
+			Killwaves/Z $("std_by" + sl)
+		endif
+		
+		if (LoadBzStd == 1)
+			Duplicate/O wave6, $("std_bz" + sl)
+		else
+			Killwaves/Z $("std_bz" + sl)
+		endif
 	endif
 	
 	Killwaves/Z wave0, wave1, wave2, wave3, wave4, wave5, wave6
