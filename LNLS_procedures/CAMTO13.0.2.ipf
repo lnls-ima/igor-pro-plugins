@@ -1,5 +1,5 @@
 // Code for Analysis of Multipoles, Trajectories and Others.
-// Last Upgrade: 14/06/2018
+// Last Update: 14/05/2019
 
 #pragma rtGlobals = 1	
 #pragma version = 13.0.2
@@ -42,7 +42,7 @@ Function Header()
 	Print(" ")
 	Print("CAMTO - Code for Analysis of Multipoles, Trajectories and Others.")
 	Print("Version 13.0.2")
-	Print("Last Upgrade: June, 14th 2018")	
+	Print("Last Upgrade: May, 14th 2019")	
 	Print("Creator: James Citadini")	
 	Print("Co-Creators: Giancarlo Tosin, Priscila Palma Sanchez, Tiago Reis and Luana Vilela")
 	Print("Acknowlegments to: Ximenes Rocha Resende and Liu Lin")
@@ -568,7 +568,7 @@ Window Load_Field_Data() : Panel
 	TitleBox title10,pos={170,462},size={81,16},title="Export Field:",fSize=14,frame=0,fStyle=1
 	Button exportfield,pos={15,485},size={190,36},proc=ExportField,title="MagNet Format"
 	Button exportfield,disable=2,fStyle=1
-	Button exportfieldspectra,pos={220,485},size={190,36},proc=ExportFieldSpectra,title="Spectra Format"
+	Button exportfieldspectra,pos={220,485},size={190,36},proc=Export_Field_Spectra,title="Spectra Format"
 	Button exportfieldspectra,disable=2,fStyle=1
 			
 	if (strlen(root:varsCAMTO:FieldMapDir) > 0 && cmpstr(root:varsCAMTO:FieldMapDir, "_none_")!=0)
@@ -579,6 +579,221 @@ Window Load_Field_Data() : Panel
 	UpdateLoadDataPanel()
 			
 EndMacro
+
+
+Window Export_Field_Spectra(ctrlName) : Panel
+	String ctrlName
+	PauseUpdate; Silent 1		// building window...
+
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return 
+	endif
+
+	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
+	string PanelName
+	PanelName = WinList("Export_Field_Spectra",";","")	
+	if (stringmatch(PanelName, "Export_Field_Spectra;"))
+		Killwindow Export_Field_Spectra
+	endif
+		
+	NewPanel/K=1 /W=(1200,60,1630,325)
+	SetDrawLayer UserBack
+	SetDrawEnv fillpat= 0
+	DrawRect 7,8,149,162
+	SetDrawEnv fillpat= 0
+	DrawRect 149,8,286,162
+	SetDrawEnv fillpat= 0
+	DrawRect 286,8,423,162
+	SetDrawEnv fillpat= 0
+	DrawRect 7,162,423,195
+	SetDrawEnv fillpat= 0
+	DrawRect 7,195,423,260
+		
+	TitleBox LXAxis,pos={41.00,18.00},size={62.00,28.00},title="X - axis",fSize=20
+	TitleBox LXAxis,frame=0
+	TitleBox LYAxis,pos={183.00,18.00},size={61.00,28.00},disable=2,title="Y - axis"
+	TitleBox LYAxis,fSize=20,frame=0
+	TitleBox LZAxis,pos={320.00,18.00},size={61.00,28.00},title="Z - axis",fSize=20
+	TitleBox LZAxis,frame=0
+	
+	SetVariable start_x,pos={23.00,59.00},size={109.00,17.00},disable=2,title="Start"
+	SetVariable end_x,pos={23.00,94.00},size={109.00,17.00},disable=2,title="End"
+	SetVariable steps_x,pos={23.00,129.00},size={109.00,17.00},disable=2,title="Steps"
+	SetVariable start_y,pos={163.00,59.00},size={109.00,17.00},disable=2,title="Start"
+	SetVariable end_y,pos={163.00,94.00},size={109.00,17.00},disable=2,title="End"
+	SetVariable steps_y,pos={163.00,129.00},size={109.00,17.00},disable=2,title="Steps"
+	SetVariable start_z,pos={300.00,59.00},size={109.00,17.00},disable=2,title="Start"
+	SetVariable end_z,pos={300.00,94.00},size={109.00,17.00},disable=2,title="End"
+	SetVariable steps_z,pos={300.00,129.00},size={109.00,17.00},disable=2,title="Steps"
+	
+	TitleBox titleexport,pos={20, 170},size={60,28},title="Field Components: ",frame=0
+	CheckBox exportx, pos={140,170},size={50,16},title=" X "
+	CheckBox exporty, pos={240,170},size={50,16},title=" Y "
+	CheckBox exportz, pos={340,170},size={50,16},title=" Z "
+	
+	Button exportfieldspectra,pos={15,208},size={400.00,44.00},disable=2,proc=ExportFieldSpectra,title="Export Field"
+	Button exportfieldspectra,fStyle=1
+	
+	UpdateExportFieldSpectraPanel()
+			
+EndMacro
+
+
+Function UpdateExportFieldSpectraPanel()
+
+	string PanelName
+	PanelName = WinList("Export_Field_Spectra",";","")	
+	if (stringmatch(PanelName, "Export_Field_Spectra;")==0)
+		return -1
+	endif
+
+	SVAR df = root:varsCAMTO:FieldMapDir
+	NVAR FieldMapCount = root:varsCAMTO:FieldMapCount
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	
+	if (strlen(df) > 0 && cmpstr(df, "_none_")!=0)				
+		NVAR BeamDirection   = root:$(df):varsFieldMap:BeamDirection
+
+		NVAR StartX = root:$(df):varsFieldMap:StartX
+		NVAR EndX   = root:$(df):varsFieldMap:EndX
+		NVAR StepsX = root:$(df):varsFieldMap:StepsX
+		NVAR StartY = root:$(df):varsFieldMap:StartY
+		NVAR EndY   = root:$(df):varsFieldMap:EndY
+		NVAR StepsY = root:$(df):varsFieldMap:StepsY
+		NVAR StartZ = root:$(df):varsFieldMap:StartZ
+		NVAR EndZ   = root:$(df):varsFieldMap:EndZ
+		NVAR StepsZ = root:$(df):varsFieldMap:StepsZ
+		
+		NVAR/Z StartXSpectra = root:$(df):varsFieldMap:StartXSpectra
+		NVAR/Z EndXSpectra   = root:$(df):varsFieldMap:EndXSpectra
+		NVAR/Z StepsXSpectra = root:$(df):varsFieldMap:StepsXSpectra
+		NVAR/Z StartYSpectra = root:$(df):varsFieldMap:StartYSpectra
+		NVAR/Z EndYSpectra   = root:$(df):varsFieldMap:EndYSpectra
+		NVAR/Z StepsYSpectra = root:$(df):varsFieldMap:StepsYSpectra
+		NVAR/Z StartZSpectra = root:$(df):varsFieldMap:StartZSpectra
+		NVAR/Z EndZSpectra   = root:$(df):varsFieldMap:EndZSpectra
+		NVAR/Z StepsZSpectra = root:$(df):varsFieldMap:StepsZSpectra
+		
+		NVAR/Z SpectraExportX = root:$(df):varsFieldMap:SpectraExportX
+		NVAR/Z SpectraExportY = root:$(df):varsFieldMap:SpectraExportY
+		NVAR/Z SpectraExportZ = root:$(df):varsFieldMap:SpectraExportZ
+		
+		If (!NVAR_Exists(StartXSpectra))
+			variable/G root:$(df):varsFieldMap:StartXSpectra = StartX
+			NVAR StartXSpectra = root:$(df):varsFieldMap:StartXSpectra			
+		Endif
+		
+		If (!NVAR_Exists(EndXSpectra))
+			variable/G root:$(df):varsFieldMap:EndXSpectra = EndX
+			NVAR EndXSpectra = root:$(df):varsFieldMap:EndXSpectra
+		Endif
+		
+		If (!NVAR_Exists(StepsXSpectra))
+			variable/G root:$(df):varsFieldMap:StepsXSpectra = StepsX
+			NVAR StepsXSpectra = root:$(df):varsFieldMap:StepsXSpectra
+		Endif
+
+		If (!NVAR_Exists(StartYSpectra))
+			variable/G root:$(df):varsFieldMap:StartYSpectra = StartY
+			NVAR StartYSpectra = root:$(df):varsFieldMap:StartYSpectra			
+		Endif
+		
+		If (!NVAR_Exists(EndYSpectra))
+			variable/G root:$(df):varsFieldMap:EndYSpectra = EndY
+			NVAR EndYSpectra = root:$(df):varsFieldMap:EndYSpectra
+		Endif
+		
+		If (!NVAR_Exists(StepsYSpectra))
+			variable/G root:$(df):varsFieldMap:StepsYSpectra = StepsY
+			NVAR StepsYSpectra = root:$(df):varsFieldMap:StepsYSpectra
+		Endif
+
+		If (!NVAR_Exists(StartZSpectra))
+			variable/G root:$(df):varsFieldMap:StartZSpectra = StartZ
+			NVAR StartZSpectra = root:$(df):varsFieldMap:StartZSpectra			
+		Endif
+		
+		If (!NVAR_Exists(EndZSpectra))
+			variable/G root:$(df):varsFieldMap:EndZSpectra = EndZ
+			NVAR EndZSpectra = root:$(df):varsFieldMap:EndZSpectra
+		Endif
+		
+		If (!NVAR_Exists(StepsZSpectra))
+			variable/G root:$(df):varsFieldMap:StepsZSpectra = StepsZ
+			NVAR StepsZSpectra = root:$(df):varsFieldMap:StepsZSpectra
+		Endif
+		
+		If (!NVAR_Exists(SpectraExportX))
+			variable/G root:$(df):varsFieldMap:SpectraExportX = 1
+			NVAR SpectraExportX = root:$(df):varsFieldMap:SpectraExportX
+		Endif
+
+		If (!NVAR_Exists(SpectraExportY))
+			variable/G root:$(df):varsFieldMap:SpectraExportY = 1
+			NVAR SpectraExportY = root:$(df):varsFieldMap:SpectraExportY
+		Endif
+
+		If (!NVAR_Exists(SpectraExportZ))
+			variable/G root:$(df):varsFieldMap:SpectraExportZ = 1
+			NVAR SpectraExportZ = root:$(df):varsFieldMap:SpectraExportZ
+		Endif
+
+		SetVariable start_x,win=Export_Field_Spectra,value=StartXSpectra,disable=0
+		SetVariable start_x,win=Export_Field_Spectra,limits={StartX, EndX, 1}
+		SetVariable end_x,win=Export_Field_Spectra,value=EndXSpectra,disable=0
+		SetVariable end_x,win=Export_Field_Spectra,limits={StartX, EndX, 1}
+		SetVariable steps_x,win=Export_Field_Spectra,value=StepsXSpectra,disable=0
+		SetVariable steps_x,win=Export_Field_Spectra,limits={0, (EndX - StartX), 1}
+		SetVariable start_y,win=Export_Field_Spectra,value=StartYSpectra
+		SetVariable start_y,win=Export_Field_Spectra,limits={StartY, EndY, 1}
+		SetVariable end_y,win=Export_Field_Spectra,value=EndYSpectra
+		SetVariable end_y,win=Export_Field_Spectra,limits={StartY, EndY, 1}
+		SetVariable steps_y,win=Export_Field_Spectra,value=StepsYSpectra
+		SetVariable steps_y,win=Export_Field_Spectra,limits={0, (EndY - StartY), 1}
+		SetVariable start_z,win=Export_Field_Spectra,value=StartZSpectra
+		SetVariable start_z,win=Export_Field_Spectra,limits={StartZ, EndZ, 1}
+		SetVariable end_z,win=Export_Field_Spectra,value=EndZSpectra
+		SetVariable end_z,win=Export_Field_Spectra,limits={StartZ, EndZ, 1}
+		SetVariable steps_z,win=Export_Field_Spectra,value=StepsZSpectra
+		SetVariable steps_z,win=Export_Field_Spectra,limits={0, (EndZ - StartZ), 1}
+	
+		CheckBox exportx,win=Export_Field_Spectra,variable=SpectraExportX,disable=0
+		CheckBox exporty,win=Export_Field_Spectra,variable=SpectraExportY,disable=0
+		CheckBox exportz,win=Export_Field_Spectra,variable=SpectraExportZ,disable=0
+	
+		if (BeamDirection == 1)
+		 	TitleBox   LYAxis,win=Export_Field_Spectra, disable=0
+		 	SetVariable start_y,win=Export_Field_Spectra, disable=0
+		 	SetVariable end_y,win=Export_Field_Spectra, disable=0
+		 	SetVariable steps_y,win=Export_Field_Spectra, disable=0
+		 	TitleBox   LZAxis,win=Export_Field_Spectra, disable=2
+		 	SetVariable start_z,win=Export_Field_Spectra, disable=2
+		 	SetVariable end_z,win=Export_Field_Spectra, disable=2
+		 	SetVariable steps_z,win=Export_Field_Spectra, disable=2
+		else
+		 	TitleBox   LYAxis,win=Export_Field_Spectra, disable=2
+		 	SetVariable start_y,win=Export_Field_Spectra, disable=2
+		 	SetVariable end_y,win=Export_Field_Spectra, disable=2
+		 	SetVariable steps_y,win=Export_Field_Spectra, disable=2
+		 	TitleBox   LZAxis,win=Export_Field_Spectra, disable=0	 
+		 	SetVariable start_z,win=Export_Field_Spectra, disable=0
+		 	SetVariable end_z,win=Export_Field_Spectra, disable=0
+		 	SetVariable steps_z,win=Export_Field_Spectra, disable=0	
+		endif
+		
+		Button exportfieldspectra,win=Export_Field_Spectra,disable=0
+		
+	else
+		Button exportfieldspectra,win=Export_Field_Spectra,disable=2
+		CheckBox exportx,win=Export_Field_Spectra,disable=2
+		CheckBox exporty,win=Export_Field_Spectra,disable=2
+		CheckBox exportz,win=Export_Field_Spectra,disable=2
+		
+	endif
+
+End
+
 
 
 Function UpdateLoadDataPanel()
@@ -1639,20 +1854,48 @@ Function ExportFieldSpectra(ctrlName) : ButtonControl
 	
 	NVAR BeamDirection = :varsFieldMap:BeamDirection
 
-	NVAR StartX    = :varsFieldMap:StartX
-	NVAR EndX      = :varsFieldMap:EndX
-	NVAR StepsX    = :varsFieldMap:StepsX
-	NVAR NPointsX  = :varsFieldMap:NPointsX
-
-	NVAR StartYZ   = :varsFieldMap:StartYZ
-	NVAR EndYZ     = :varsFieldMap:EndYZ
-	NVAR StepsYZ   = :varsFieldMap:StepsYZ
-	NVAR NPointsYZ = :varsFieldMap:NPointsYZ	
+	NVAR StartX    = :varsFieldMap:StartXSpectra
+	NVAR EndX      = :varsFieldMap:EndXSpectra
+	NVAR StepsX    = :varsFieldMap:StepsXSpectra
 	
-	SVAR FMPath 		= :varsFieldMap:FMPath
+	NVAR StartY   = :varsFieldMap:StartYSpectra
+	NVAR EndY     = :varsFieldMap:EndYSpectra
+	NVAR StepsY   = :varsFieldMap:StepsYSpectra
+	
+	NVAR StartZ   = :varsFieldMap:StartZSpectra
+	NVAR EndZ     = :varsFieldMap:EndZSpectra
+	NVAR StepsZ   = :varsFieldMap:StepsZSpectra
+	
+	NVAR SpectraExportX = :varsFieldMap:SpectraExportX
+	NVAR SpectraExportY = :varsFieldMap:SpectraExportY
+	NVAR SpectraExportZ = :varsFieldMap:SpectraExportZ
+
+	NVAR FieldX = :varsFieldMap:FieldX
+	NVAR FieldY = :varsFieldMap:FieldY
+	NVAR FieldZ = :varsFieldMap:FieldZ
+	
+	variable NPointsX, NPointsY, NPointsZ
+	NPointsX = (EndX - StartX)/StepsX + 1
+	NPointsY = (EndY - StartY)/StepsY + 1
+	NPointsZ = (EndZ - StartZ)/StepsZ + 1
+	
+	variable StartYZ, EndYZ, StepsYZ, NPointsYZ
+	If (BeamDirection == 1)
+		StartYZ   = StartY
+		EndYZ     = EndY
+		StepsYZ   = StepsY
+		NPointsYZ	= NPointsY
+	Else
+		StartYZ   = StartZ
+		EndYZ     = EndZ
+		StepsYZ   = StepsZ
+		NPointsYZ	= NPointsZ
+	Endif
+	
+	SVAR FMPath = :varsFieldMap:FMPath
 	
 	string nome
-	variable i, j, l, k, xpos
+	variable i, j, l, k, xpos, yzpos
 	
 	if (NPointsYZ < 4)
 		DoAlert 0, "The number of points in the longitudinal direction must be greater than 4."
@@ -1674,21 +1917,29 @@ Function ExportFieldSpectra(ctrlName) : ButtonControl
 		for (l=0; l<NpointsV; l=l+1)
 			
 			for (i=0; i<NPointsYZ; i=i+1)
-						
-				nome = "RaiaBx_X" + num2str(xpos/1000)
-				Wave Tmp = $nome
-				Exportwave0[k] = Tmp[i]
-	
-				nome = "RaiaBy_X" + num2str(xpos/1000)
-				Wave Tmp = $nome
-				Exportwave1[k] = Tmp[i]
-	
-				nome = "RaiaBz_X" + num2str(xpos/1000)
-				Wave Tmp = $nome
-				Exportwave2[k] = Tmp[i]
+				yzpos = StartYZ + i*StepsYZ
 				
-				k = k + 1
-			
+				Campo_espaco(xpos/1000, yzpos/1000)
+				
+				If (SpectraExportX == 1)
+					Exportwave0[k] = FieldX
+				Else
+					Exportwave0[k] = 0
+				Endif
+				
+				If (SpectraExportY == 1)
+					Exportwave1[k] = FieldY
+				Else
+					Exportwave1[k] = 0
+				EndIf
+				
+				If (SpectraExportZ == 1)
+					Exportwave2[k] = FieldZ
+				Else
+					Exportwave2[k] = 0
+				Endif
+				
+				k = k + 1		
 			endfor
 		
 		endfor
@@ -1800,13 +2051,22 @@ Function/S GetDefaultFilename([Spectra])
 	
 	SVAR FMFilename = :varsFieldMap:FMFilename
 	
-	NVAR StartX    = :varsFieldMap:StartX
-	NVAR EndX      = :varsFieldMap:EndX
-	NVAR StartY    = :varsFieldMap:StartY
-	NVAR EndY      = :varsFieldMap:EndY
-	NVAR StartZ    = :varsFieldMap:StartZ
-	NVAR EndZ      = :varsFieldMap:EndZ
-
+	If (Spectra)
+		NVAR StartX    = :varsFieldMap:StartXSpectra
+		NVAR EndX      = :varsFieldMap:EndXSpectra
+		NVAR StartY   = :varsFieldMap:StartYSpectra
+		NVAR EndY     = :varsFieldMap:EndYSpectra
+		NVAR StartZ   = :varsFieldMap:StartZSpectra
+		NVAR EndZ     = :varsFieldMap:EndZSpectra
+	Else
+		NVAR StartX    = :varsFieldMap:StartX
+		NVAR EndX      = :varsFieldMap:EndX
+		NVAR StartY    = :varsFieldMap:StartY
+		NVAR EndY      = :varsFieldMap:EndY
+		NVAR StartZ    = :varsFieldMap:StartZ
+		NVAR EndZ      = :varsFieldMap:EndZ
+	Endif
+	
 	string newfilename
 	string cropfilename
 	string old
