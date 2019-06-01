@@ -2536,7 +2536,7 @@ Window Integrals_Multipoles() : Panel
 		Killwindow Integrals_Multipoles
 	endif	
 
-	NewPanel/K=1/W=(80,250,407,762)
+	NewPanel/K=1/W=(80,250,407,792)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,4,322,185
@@ -2547,7 +2547,7 @@ Window Integrals_Multipoles() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 3,335,322,420
 	SetDrawEnv fillpat= 0
-	DrawRect 3,420,322,508
+	DrawRect 3,420,322,538
 
 					
 	TitleBox title,pos={60,10},size={127,16},fSize=14,fStyle=1,frame=0, title="Field Integrals and Multipoles"
@@ -2582,7 +2582,8 @@ Window Integrals_Multipoles() : Panel
 	SetVariable fieldmap_dir,noedit=1,value=root:varsCAMTO:FieldMapDir
 	TitleBox copy_title,pos={10,452},size={150,18},frame=0,title="Copy Configuration from:"
 	PopupMenu copy_dir,pos={160,450},size={150,18},bodyWidth=145,mode=0,proc=CopyMultipolesConfig,title=" "
-	Button apply_to_all,pos={10,476},size={300,25},fStyle=1,proc=CalcIntegralsMultipolesToAll,title="Calculate Integrals and Multipoles for All Field Maps"
+	Button apply_to_all_integrals,pos={10,476},size={300,25},fStyle=1,proc=CalcIntegralsToAll,title="Calculate Integrals for All Field Maps"
+	Button apply_to_all_multipoles,pos={10,506},size={300,25},fStyle=1,proc=CalcMultipolesToAll,title="Calculate Multipoles for All Field Maps"
 	
 	UpdateFieldMapDirs()
 	UpdateIntegralsMultipolesPanel()
@@ -2605,10 +2606,12 @@ Function UpdateIntegralsMultipolesPanel()
 	string FieldMapList
 	if (FieldMapCount > 1)
 		FieldMapList = getFieldmapDirs()
-		Button apply_to_all,win=Integrals_Multipoles,disable=0
+		Button apply_to_all_integrals,win=Integrals_Multipoles,disable=0
+		Button apply_to_all_multipoles,win=Integrals_Multipoles,disable=0
 	else
 		FieldMapList = ""
-		Button apply_to_all,win=Integrals_Multipoles,disable=2
+		Button apply_to_all_integrals,win=Integrals_Multipoles,disable=2
+		Button apply_to_all_multipoles,win=Integrals_Multipoles,disable=2
 	endif
 	
 	if (DataFolderExists("root:Nominal"))
@@ -3289,7 +3292,43 @@ Function ResidualMultipolesCalc()
 End
 
 
-Function CalcIntegralsMultipolesToAll(ctrlName) : ButtonControl
+Function CalcIntegralsToAll(ctrlName) : ButtonControl
+	String ctrlName
+	
+	DoAlert 1, "Calculate integrals for all fieldmaps?"
+	if (V_flag != 1)
+		return -1
+	endif
+	
+	UpdateFieldMapDirs()
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR FieldMapCount  = root:varsCAMTO:FieldMapCount
+	SVAR FieldMapDir= root:varsCAMTO:FieldMapDir
+		
+	DFREF df = GetDataFolderDFR()
+	string dfc = GetDataFolder(0)
+	
+	variable i
+	string tdf
+	string empty = ""
+
+	for (i=0; i < FieldMapCount; i=i+1)
+		tdf = FieldMapDirs[i]
+		FieldMapDir = tdf
+		SetDataFolder root:$(tdf)
+		CopyMultipolesConfig_(dfc)
+		Print("Calculating Integrals for " + tdf + ":")
+		CalcIntegrals(empty)
+	endfor
+
+	FieldMapDir = dfc
+	SetDataFolder df
+	
+End
+
+
+Function CalcMultipolesToAll(ctrlName) : ButtonControl
 	String ctrlName
 	
 	DoAlert 1, "Calculate multipoles for all fieldmaps?"
@@ -3315,8 +3354,7 @@ Function CalcIntegralsMultipolesToAll(ctrlName) : ButtonControl
 		FieldMapDir = tdf
 		SetDataFolder root:$(tdf)
 		CopyMultipolesConfig_(dfc)
-		Print("Calculating Integrals and Multipoles for " + tdf + ":")
-		CalcIntegrals(empty)
+		Print("Calculating Multipoles for " + tdf + ":")
 		CalcMultipoles(empty)
 	endfor
 
@@ -5023,7 +5061,7 @@ Window Find_Peaks() : Panel
 		Killwindow Find_Peaks
 	endif	
 
-	NewPanel/K=1/W=(1380,60,1703,527)
+	NewPanel/K=1/W=(1380,60,1703,587)
 	
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
@@ -5035,7 +5073,7 @@ Window Find_Peaks() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 4,270,319,435
 	SetDrawEnv fillpat= 0
-	DrawRect 4,435,319,462
+	DrawRect 4,435,319,522
 	
 	TitleBox LXAxis,pos={65,4},size={63,22},title="Find Peaks and Zeros",fSize=19,frame=0,fStyle=1
 	
@@ -5083,6 +5121,9 @@ Window Find_Peaks() : Panel
 		
 	SetVariable fieldmapdir,pos={17,440},size={290,18},title="FieldMap directory: "
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
+	TitleBox copy_title,pos={15,467},size={145,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={160,465},size={145,18},bodyWidth=145,mode=0,proc=CopyFindPeaksConfig,title=" "
+	Button apply_to_all,pos={15,490},size={290,25},fStyle=1,proc=FindPeaksZerosToAll,title="Calculate for All Field Maps"	
 	
 	UpdateFieldMapDirs()
 	UpdateFindPeaksPanel()
@@ -5099,6 +5140,16 @@ Function UpdateFindPeaksPanel()
 	endif
 	
 	SVAR df = root:varsCAMTO:FieldMapDir
+	
+	NVAR FieldMapCount = root:varsCAMTO:FieldMapCount
+	if (FieldMapCount > 1)
+		string FieldMapList = getFieldmapDirs()
+		PopupMenu copy_dir,win=Find_Peaks,disable=0,value= #("\"" + FieldMapList + "\"")
+		Button apply_to_all,win=Find_Peaks,disable=0
+	else
+		PopupMenu copy_dir,win=Find_Peaks,disable=2		
+		Button apply_to_all,win=Find_Peaks,disable=2
+	endif
 	
 	if (strlen(df) > 0)
 		NVAR StartX = root:$(df):varsFieldMap:StartX
@@ -5140,6 +5191,66 @@ Function UpdateFindPeaksPanel()
 		SetZerosDisable(2)	
 	endif
 	
+End
+
+
+Function CopyFindPeaksConfig(ctrlName,popNum,popStr) : PopupMenuControl
+	String ctrlName
+	Variable popNum
+	String popStr
+	
+	SelectCopyDirectory(popNum,popStr)
+
+	SVAR dfc = root:varsCAMTO:FieldMapCopy
+	CopyFindPeaksConfig_(dfc)
+	
+	UpdateFindPeaksPanel()
+
+End
+
+
+Function CopyFindPeaksConfig_(dfc)
+	string dfc
+	
+	SVAR df  = root:varsCAMTO:FieldMapDir
+	Wave/T FieldMapDirs= root:wavesCAMTO:FieldMapDirs
+	
+	UpdateFieldMapDirs()	
+	FindValue/Text=dfc/TXOP=4 FieldMapDirs
+	
+	if (V_Value!=-1)	
+		NVAR temp_df  = root:$(df):varsFieldMap:FieldAxisPeak
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:FieldAxisPeak
+		temp_df = temp_dfc
+
+		NVAR temp_df  = root:$(df):varsFieldMap:PeaksPosNeg
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:PeaksPosNeg
+		temp_df = temp_dfc
+
+		NVAR temp_df  = root:$(df):varsFieldMap:PeaksSelected
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:PeaksSelected
+		temp_df = temp_dfc
+
+		NVAR temp_df  = root:$(df):varsFieldMap:PosXAux
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:PosXAux
+		temp_df = temp_dfc
+
+		NVAR temp_df  = root:$(df):varsFieldMap:StepsYZPeaks
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:StepsYZPeaks
+		temp_df = temp_dfc
+
+		NVAR temp_df  = root:$(df):varsFieldMap:NAmplPeaks
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:NAmplPeaks
+		temp_df = temp_dfc
+
+		NVAR temp_df  = root:$(df):varsFieldMap:NAmplZeros
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:NAmplZeros
+		temp_df = temp_dfc
+						
+	else
+		DoAlert 0, "Data folder not found."
+	endif
+		
 End
 
 
@@ -5234,6 +5345,52 @@ Function PosNegPeaks(ctrlName,popNum,popStr) : PopupMenuControl
 
 	NVAR PeaksPosNeg = :varsFieldMap:PeaksPosNeg 
 	PeaksPosNeg = popNum
+End
+
+
+Function FindPeaksZerosToAll(ctrlName) : ButtonControl
+	String ctrlName
+	
+	DoAlert 1, "Calculate for all fieldmaps?"
+	if (V_flag != 1)
+		return -1
+	endif
+	
+	UpdateFieldMapDirs()
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR FieldMapCount  = root:varsCAMTO:FieldMapCount
+	SVAR FieldMapDir= root:varsCAMTO:FieldMapDir
+		
+	DFREF df = GetDataFolderDFR()
+	string dfc = GetDataFolder(0)
+	
+	variable i
+	string tdf
+	string empty = ""
+
+	for (i=0; i < FieldMapCount; i=i+1)
+		tdf = FieldMapDirs[i]
+		FieldMapDir = tdf
+		SetDataFolder root:$(tdf)
+		CopyFindPeaksConfig_(dfc)
+		
+		NVAR PeaksSelected = root:$(tdf):varsFieldMap:PeaksSelected
+		if(PeaksSelected==1)
+			Print(" ")
+			Print("Finding Peaks for " + tdf + ":")
+			FindPeaksProc(empty)
+		else
+			Print(" ")
+			Print("Finding Zeros for " + tdf + ":")
+			FindZerosProc(empty)
+		endif
+		
+	endfor
+
+	FieldMapDir = dfc
+	SetDataFolder df
+	
 End
 
 
@@ -5333,7 +5490,6 @@ Function FindPeaksProc(ctrlName)
 		DeletePoints j, 1, ValuePeaksPos		
 		
 		wavestats/Q ValuePeaksPos
-		Print(" ")
 		Print("Positive Peaks")
 		Print("Average : " + num2str(V_avg))
 		Print("Standard Deviation : " + num2str(V_sdev))	
@@ -5379,7 +5535,6 @@ Function FindPeaksProc(ctrlName)
 		DeletePoints j, 1, ValuePeaksNeg
 		
 		wavestats/Q ValuePeaksNeg
-		Print(" ")
 		Print("Negative Peaks")
 		Print("Average : " + num2str(V_avg))
 		Print("Standard Deviation : " + num2str(V_sdev))		
@@ -5643,7 +5798,6 @@ Function FindZerosProc(ctrlName)
 		
 	// Search for zeros
 	FindLevels/EDGE=0/P/Q/R=(startx,endx) Interp_Field, 0
-	Print(" ")
 	Print("Find Zeros")
 	Print("Number of zeros found : " + num2str(V_LevelsFound))
 	
@@ -5757,7 +5911,7 @@ Window Phase_Error() : Panel
 		Killwindow Phase_Error
 	endif	
 	
-	NewPanel/K=1/W=(80,260,404,648)
+	NewPanel/K=1/W=(80,260,404,703)
 	SetDrawLayer UserBack
 	SetDrawEnv fillpat= 0
 	DrawRect 3,3,320,75
@@ -5768,7 +5922,7 @@ Window Phase_Error() : Panel
 	SetDrawEnv fillpat= 0
 	DrawRect 3,315,320,353
 	SetDrawEnv fillpat= 0
-	DrawRect 3,353,320,383
+	DrawRect 3,353,320,440
 						
 	TitleBox    traj,pos={10,25},size={90,16},fSize=14,fStyle=1,frame=0,title="Trajectory"
 	ValDisplay  traj_x,pos={110,10},size={200,18},title="Start X [mm]:    "
@@ -5804,6 +5958,9 @@ Window Phase_Error() : Panel
 	
 	SetVariable fieldmapdir,pos={20,360},size={290,18},title="Field Map Directory: "
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
+	TitleBox copy_title,pos={15,388},size={145,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={160,385},size={145,18},bodyWidth=145,mode=0,proc=CopyPhaseErrorConfig,title=" "
+	Button apply_to_all,pos={15,410},size={290,25},fStyle=1,proc=CalcPhaseErrorToAll,title="Calculate Phase Error for All Field Maps"
 	
 	UpdateFieldMapDirs()
 	UpdatePhaseErrorPanel()
@@ -5820,6 +5977,16 @@ Function UpdatePhaseErrorPanel()
 	endif
 	
 	SVAR df = root:varsCAMTO:FieldMapDir
+
+	NVAR FieldMapCount = root:varsCAMTO:FieldMapCount
+	if (FieldMapCount > 1)
+		string FieldMapList = getFieldmapDirs()
+		PopupMenu copy_dir,win=Phase_Error,disable=0,value= #("\"" + FieldMapList + "\"")
+		Button apply_to_all,win=Phase_Error,disable=0
+	else
+		PopupMenu copy_dir,win=Phase_Error,disable=2		
+		Button apply_to_all,win=Phase_Error,disable=2
+	endif
 		
 	if (strlen(df) > 0)
 		NVAR PeriodPeaksZerosNominal = root:$(df):varsFieldMap:PeriodPeaksZerosNominal
@@ -5881,6 +6048,54 @@ Function UpdatePhaseErrorPanel()
 		SetVariable period_nominal, win=Phase_Error, disable=2		
 	endif
 	
+End
+
+
+Function CopyPhaseErrorConfig(ctrlName,popNum,popStr) : PopupMenuControl
+	String ctrlName
+	Variable popNum
+	String popStr
+	
+	SelectCopyDirectory(popNum,popStr)
+
+	SVAR dfc = root:varsCAMTO:FieldMapCopy
+	CopyPhaseErrorConfig_(dfc)
+	
+	UpdatePhaseErrorPanel()
+
+End
+
+
+Function CopyPhaseErrorConfig_(dfc)
+	string dfc
+	
+	SVAR df  = root:varsCAMTO:FieldMapDir
+	Wave/T FieldMapDirs= root:wavesCAMTO:FieldMapDirs
+	
+	UpdateFieldMapDirs()	
+	FindValue/Text=dfc/TXOP=4 FieldMapDirs
+				
+	if (V_Value!=-1)	
+		NVAR temp_df  = root:$(df):varsFieldMap:PeriodPeaksZerosNominal
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:PeriodPeaksZerosNominal
+		temp_df = temp_dfc
+
+		NVAR temp_df  = root:$(df):varsFieldMap:SemiPeriodsPeaksZeros
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:SemiPeriodsPeaksZeros
+		temp_df = temp_dfc
+
+		NVAR temp_df  = root:$(df):varsFieldMap:IDPeriodNominal
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:IDPeriodNominal
+		temp_df = temp_dfc
+		
+		NVAR temp_df  = root:$(df):varsFieldMap:IDCutPeriods
+		NVAR temp_dfc = root:$(dfc):varsFieldMap:IDCutPeriods
+		temp_df = temp_dfc
+				
+	else
+		DoAlert 0, "Data folder not found."
+	endif
+		
 End
 
 
@@ -5947,6 +6162,43 @@ Function PopupSemiPeriodPos(ctrlName,popNum,popStr) : PopupMenuControl
 	SemiPeriodsPeaksZeros = popNum
 	
 End
+
+
+Function CalcPhaseErrorToAll(ctrlName) : ButtonControl
+	String ctrlName
+	
+	DoAlert 1, "Calculate phase error for all fieldmaps?"
+	if (V_flag != 1)
+		return -1
+	endif
+	
+	UpdateFieldMapDirs()
+		
+	Wave/T FieldMapDirs = root:wavesCAMTO:FieldMapDirs
+	NVAR FieldMapCount  = root:varsCAMTO:FieldMapCount
+	SVAR FieldMapDir= root:varsCAMTO:FieldMapDir
+		
+	DFREF df = GetDataFolderDFR()
+	string dfc = GetDataFolder(0)
+	
+	variable i
+	string tdf
+	string empty = ""
+
+	for (i=0; i < FieldMapCount; i=i+1)
+		tdf = FieldMapDirs[i]
+		FieldMapDir = tdf
+		SetDataFolder root:$(tdf)
+		CopyPhaseErrorConfig_(dfc)	
+		Print("Calculationg Phase Error for " + tdf + ":")
+		CalcPhaseError(empty)		
+	endfor
+
+	FieldMapDir = dfc
+	SetDataFolder df
+	
+End
+
 
 Function CalcPhaseError(ctrlName) : ButtonControl
 	String ctrlName
