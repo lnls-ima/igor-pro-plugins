@@ -345,6 +345,19 @@ Function KillFieldMapDirs()
 End
 
 
+Function CloseWindow(window_name)
+	string window_name
+	
+	string panel_name
+	panel_name = WinList(window_name,";","")	
+	if (stringmatch(panel_name, window_name+";"))
+		KillWindow $window_name
+	endif
+
+End
+
+
+
 Window Global_Parameters() : Panel
 	PauseUpdate; Silent 1		// building window...
 	
@@ -357,12 +370,7 @@ Window Global_Parameters() : Panel
 		endif 
 	endif
 	
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Global_Parameters",";","")	
-	if (stringmatch(PanelName, "Global_Parameters;"))
-		Killwindow Global_Parameters
-	endif	
+	CloseWindow("Global_Parameters")
 	
 	NewPanel/K=1/W=(80,60,404,266)
 	SetDrawLayer UserBack
@@ -479,12 +487,7 @@ Window Load_Field_Data() : Panel
 		endif 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Load_Field_Data",";","")	
-	if (stringmatch(PanelName, "Load_Field_Data;"))
-		Killwindow Load_Field_Data
-	endif
+	CloseWindow("Load_Field_Data")
 		
 	NewPanel /K=1 /W=(740,60,1166,592)
 	SetDrawLayer UserBack
@@ -590,12 +593,7 @@ Window Export_Field_Spectra(ctrlName) : Panel
 		return 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Export_Field_Spectra",";","")	
-	if (stringmatch(PanelName, "Export_Field_Spectra;"))
-		Killwindow Export_Field_Spectra
-	endif
+	CloseWindow("Export_Field_Spectra")
 		
 	NewPanel/K=1 /W=(1200,60,1630,325)
 	SetDrawLayer UserBack
@@ -642,9 +640,9 @@ EndMacro
 
 Function UpdateExportFieldSpectraPanel()
 
-	string PanelName
-	PanelName = WinList("Export_Field_Spectra",";","")	
-	if (stringmatch(PanelName, "Export_Field_Spectra;")==0)
+	string panel_name
+	panel_name = WinList("Export_Field_Spectra",";","")	
+	if (stringmatch(panel_name, "Export_Field_Spectra;")==0)
 		return -1
 	endif
 
@@ -798,9 +796,9 @@ End
 
 Function UpdateLoadDataPanel()
 
-	string PanelName
-	PanelName = WinList("Load_Field_Data",";","")	
-	if (stringmatch(PanelName, "Load_Field_Data;")==0)
+	string panel_name
+	panel_name = WinList("Load_Field_Data",";","")	
+	if (stringmatch(panel_name, "Load_Field_Data;")==0)
 		return -1
 	endif
 	
@@ -2217,35 +2215,110 @@ Window Hall_Probe_Error_Correction() : Panel
 		return 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Hall_Probe_Error_Correction",";","")	
-	if (stringmatch(PanelName, "Hall_Probe_Error_Correction;"))
-		Killwindow Hall_Probe_Error_Correction
-	endif	
+	CloseWindow("Hall_Probe_Error_Correction")
 
-	NewPanel/K=1/W=(430,60,710,358)
+	NewPanel/K=1/W=(430,60,830,360)
 	SetDrawEnv fillpat= 0
-	DrawRect 2, 2, 278,113
+	DrawRect 2, 2, 396,200
 	SetDrawEnv fillpat= 0
-	DrawRect 2, 113, 278, 206
+	DrawRect 2, 200, 396, 406
 	SetDrawEnv fillpat= 0
-	DrawRect 2, 206, 278, 295
+	DrawRect 2, 406, 396, 695
 	
-	SetVariable ErrAngXZ,pos={26,8},size={228,18},title="Angular Error XZ (°)"
-	SetVariable ErrAngYZ,pos={26,32},size={228,18},title="Angular Error YZ (°)"
-	SetVariable ErrAngXY,pos={26,56},size={228,18},title="Angular Error XY (°)"
-	Button AngularCorrection,pos={15,78},size={250,30},fSize=13,fStyle=1,proc=AngularErrorCorrection,title="Probes Angular Error Correction"
+	variable h
+	h = 10
+	
+	// Probe X
+	TitleBox px_title,pos={170,h},size={100,16},title="Probe X",fSize=16,frame=0,fStyle=1
+	h = h + 25
+	
+	SetVariable px_angy,pos={10,h},size={250,18},title="Angular Error Y (°)"
+	ValDisplay  px_angy_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	SetVariable px_angz,pos={10,h},size={250,18},title="Angular Error Z (°)"
+	ValDisplay  px_angz_display,pos={270,h},size={120,18}
+	h = h + 25
 		
-	SetVariable ErrDisplacementX,pos={26,126},size={228,18},title="Displacement Error X   (mm)"
-	SetVariable ErrDisplacementYZ,pos={26,150},size={228,18},title="Displacement Error YZ (mm)"
-	Button DisplacementCorrection,pos={15,172},size={250,30},fSize=13,fStyle=1,proc=DisplacementErrorCorrection,title="Probes Displacement Error Correction"
+	SetVariable px_shiftx,pos={10,h},size={250,18},title="Displacement Error X (mm)"
+	ValDisplay  px_shiftx_display,pos={270,h},size={120,18}
+	h = h + 25
 	
-	SetVariable fieldmapdir,pos={15,215},size={255,18},title="Field Map Directory:"
+	SetVariable px_shiftyz,pos={10,h},size={250,18},title="Displacement Error YZ (mm)"
+	ValDisplay  px_shiftyz_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	SetVariable px_offset,pos={10,h},size={250,18},title="Offset (T)"
+	ValDisplay  px_offset_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	Button px_btn,pos={25,h},size={350,30},fSize=13,fStyle=1,proc=ProbeXCorrection,title="Apply Probe X Corrections"
+	h = h + 50
+
+	// Probe Y
+	TitleBox py_title,pos={170,h},size={100,16},title="Probe Y",fSize=16,frame=0,fStyle=1
+	h = h + 25
+	
+	SetVariable py_angx,pos={10,h},size={250,18},title="Angular Error X (°)"
+	ValDisplay  py_angx_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	SetVariable py_angz,pos={10,h},size={250,18},title="Angular Error Z (°)"
+	ValDisplay  py_angz_display,pos={270,h},size={120,18}
+	h = h + 25
+		
+	SetVariable py_shiftx,pos={10,h},size={250,18},title="Displacement Error X (mm)"
+	ValDisplay  py_shiftx_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	SetVariable py_shiftyz,pos={10,h},size={250,18},title="Displacement Error YZ (mm)"
+	ValDisplay  py_shiftyz_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	SetVariable py_offset,pos={10,h},size={250,18},title="Offset (T)"
+	ValDisplay  py_offset_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	Button py_btn,pos={25,h},size={350,30},fSize=13,fStyle=1,proc=ProbeYCorrection,title="Apply Probe Y Corrections"
+	h = h + 50
+
+	// Probe Z
+	TitleBox pz_title,pos={170,h},size={100,16},title="Probe Z",fSize=16,frame=0,fStyle=1
+	h = h + 25
+	
+	SetVariable pz_angx,pos={10,h},size={250,18},title="Angular Error X (°)"
+	ValDisplay  pz_angx_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	SetVariable pz_angy,pos={10,h},size={250,18},title="Angular Error Y (°)"
+	ValDisplay  pz_angy_display,pos={270,h},size={120,18}
+	h = h + 25
+		
+	SetVariable pz_shiftx,pos={10,h},size={250,18},title="Displacement Error X (mm)"
+	ValDisplay  pz_shiftx_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	SetVariable pz_shiftyz,pos={10,h},size={250,18},title="Displacement Error YZ (mm)"
+	ValDisplay  pz_shiftyz_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	SetVariable pz_offset,pos={10,h},size={250,18},title="Offset (T)"
+	ValDisplay  pz_offset_display,pos={270,h},size={120,18}
+	h = h + 25
+	
+	Button pz_btn,pos={25,h},size={350,30},fSize=13,fStyle=1,proc=ProbeZCorrection,title="Apply Probe Z Corrections"
+	h = h + 50
+	
+	//Copy configuration
+	SetVariable fieldmapdir,pos={20,h},size={355,18},title="Field Map Directory:"
 	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FieldMapDir
-	TitleBox copy_title,pos={15,242},size={145,18},frame=0,title="Copy Configuration from:"
-	PopupMenu copy_dir,pos={160,240},size={110,18},bodyWidth=110,mode=0,proc=CopyHallProbeConfig,title=" "
-	Button apply_to_all,pos={15,266},size={255,25},fStyle=1,proc=ApplyErrorCorrectionToAll,title="Apply Error Correction to All Field Maps"
+	h = h + 25
+	
+	TitleBox copy_title,pos={20,h+2},size={145,18},frame=0,title="Copy Configuration from:"
+	PopupMenu copy_dir,pos={170,h},size={205,18},bodyWidth=205,mode=0,proc=CopyHallProbeConfig,title=" "
+	h = h + 25
+	
+	Button apply_to_all,pos={20,h},size={355,25},fStyle=1,proc=ApplyErrorCorrectionToAll,title="Apply Error Correction to All Field Maps"
 
 	UpdateFieldMapDirs()
 	UpdateHallProbePanel()
@@ -2255,9 +2328,9 @@ EndMacro
 
 Function UpdateHallProbePanel()
 
-	string PanelName
-	PanelName = WinList("Hall_Probe_Error_Correction",";","")	
-	if (stringmatch(PanelName, "Hall_Probe_Error_Correction;")==0)
+	string panel_name
+	panel_name = WinList("Hall_Probe_Error_Correction",";","")	
+	if (stringmatch(panel_name, "Hall_Probe_Error_Correction;")==0)
 		return -1
 	endif
 	
@@ -2529,12 +2602,7 @@ Window Integrals_Multipoles() : Panel
 		return 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Integrals_Multipoles",";","")	
-	if (stringmatch(PanelName, "Integrals_Multipoles;"))
-		Killwindow Integrals_Multipoles
-	endif	
+	CloseWindow("Integrals_Multipoles")
 
 	NewPanel/K=1/W=(80,250,407,792)
 	SetDrawLayer UserBack
@@ -2593,9 +2661,9 @@ EndMacro
 
 Function UpdateIntegralsMultipolesPanel()
 	
-	string PanelName
-	PanelName = WinList("Integrals_Multipoles",";","")	
-	if (stringmatch(PanelName, "Integrals_Multipoles;")==0)
+	string panel_name
+	panel_name = WinList("Integrals_Multipoles",";","")	
+	if (stringmatch(panel_name, "Integrals_Multipoles;")==0)
 		return -1
 	endif
 
@@ -3389,12 +3457,7 @@ Window Trajectories() : Panel
 		return 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Trajectories",";","")	
-	if (stringmatch(PanelName, "Trajectories;"))
-		Killwindow Trajectories
-	endif		
+	CloseWindow("Trajectories")
 
 	NewPanel/K=1/W=(440,250,750,700)
 	SetDrawLayer UserBack
@@ -3450,9 +3513,9 @@ EndMacro
 
 Function UpdateTrajectoriesPanel()
 	
-	string PanelName
-	PanelName = WinList("Trajectories",";","")	
-	if (stringmatch(PanelName, "Trajectories;")==0)
+	string panel_name
+	panel_name = WinList("Trajectories",";","")	
+	if (stringmatch(panel_name, "Trajectories;")==0)
 		return -1
 	endif
 	
@@ -4448,12 +4511,7 @@ Window Dynamic_Multipoles() : Panel
 		return 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Dynamic_Multipoles",";","")	
-	if (stringmatch(PanelName, "Dynamic_Multipoles;"))
-		Killwindow Dynamic_Multipoles
-	endif	
+	CloseWindow("Dynamic_Multipoles")	
 	
 	NewPanel/K=1/W=(780,250,1103,825)
 	SetDrawLayer UserBack
@@ -4519,9 +4577,9 @@ EndMacro
 
 Function UpdateDynMultipolesPanel()
 	
-	string PanelName
-	PanelName = WinList("Dynamic_Multipoles",";","")	
-	if (stringmatch(PanelName, "Dynamic_Multipoles;")==0)
+	string panel_name
+	panel_name = WinList("Dynamic_Multipoles",";","")	
+	if (stringmatch(panel_name, "Dynamic_Multipoles;")==0)
 		return -1
 	endif
 	
@@ -5054,12 +5112,7 @@ Window Find_Peaks() : Panel
 		return 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Find_Peaks",";","")	
-	if (stringmatch(PanelName, "Find_Peaks;"))
-		Killwindow Find_Peaks
-	endif	
+	CloseWindow("Find_Peaks")
 
 	NewPanel/K=1/W=(1380,60,1703,587)
 	
@@ -5133,9 +5186,9 @@ EndMacro
 
 Function UpdateFindPeaksPanel()
 	
-	string PanelName
-	PanelName = WinList("Find_Peaks",";","")	
-	if (stringmatch(PanelName, "Find_Peaks;")==0)
+	string panel_name
+	panel_name = WinList("Find_Peaks",";","")	
+	if (stringmatch(panel_name, "Find_Peaks;")==0)
 		return -1
 	endif
 	
@@ -5672,11 +5725,7 @@ Function GraphPeaksProc(ctrlName) : ButtonControl
 	
 	Wave Interp_Field = $("Interp_" + Name)
 	
-	string PanelName
-	PanelName = WinList("PeaksGraph",";","")	
-	if (stringmatch(PanelName, "PeaksGraph;"))
-		Killwindow PeaksGraph
-	endif
+	CloseWindow("PeaksGraph")
 		
 	if ((WaveExists(ValuePeaksPos)) || (WaveExists(ValuePeaksNeg)))	
 		if (WaveExists(ValuePeaksPos))
@@ -5714,11 +5763,7 @@ End
 Function TablePeaksProc(ctrlName) : ButtonControl
 	String ctrlName
 
-	string PanelName
-	PanelName = WinList("PeaksTable",";","")	
-	if (stringmatch(PanelName, "PeaksTable;"))
-		Killwindow PeaksTable
-	endif
+	CloseWindow("PeaksTable")
 	
 	if ((WaveExists(ValuePeaksPos)) || (WaveExists(ValuePeaksNeg)))	
 		if (WaveExists(ValuePeaksPos))
@@ -5885,11 +5930,7 @@ End
 Function TableZerosProc(ctrlName) : ButtonControl
 	String ctrlName
 
-	string PanelName
-	PanelName = WinList("ZerosTable",";","")	
-	if (stringmatch(PanelName, "ZerosTable;"))
-		Killwindow ZerosTable
-	endif
+	CloseWindow("ZerosTable")
 	
 	if ((WaveExists(ValueZeros)) || (WaveExists(PositionZeros)))	
 		Edit/N=ZerosTable/K=1 PositionZeros, ValueZeros
@@ -5904,12 +5945,8 @@ Window Phase_Error() : Panel
 		DoAlert 0, "CAMTO variables not found."
 		return 
 	endif
-
-	string PanelName
-	PanelName = WinList("Phase_Error",";","")	
-	if (stringmatch(PanelName, "Phase_Error;"))
-		Killwindow Phase_Error
-	endif	
+	
+	CloseWindow("Phase_Error")
 	
 	NewPanel/K=1/W=(80,260,404,703)
 	SetDrawLayer UserBack
@@ -5970,9 +6007,9 @@ EndMacro
 
 Function UpdatePhaseErrorPanel()
 
-	string PanelName
-	PanelName = WinList("Phase_Error",";","")	
-	if (stringmatch(PanelName, "Phase_Error;")==0)
+	string panel_name
+	panel_name = WinList("Phase_Error",";","")	
+	if (stringmatch(panel_name, "Phase_Error;")==0)
 		return -1
 	endif
 	
@@ -6441,12 +6478,7 @@ End
 Function ShowPhaseError(ctrlName) : ButtonControl
 	String ctrlName
 	
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("LocalPhaseError",";","")	
-	if (stringmatch(PanelName, "LocalPhaseError;"))
-		Killwindow LocalPhaseError
-	endif
+	CloseWindow("LocalPhaseError")
 
 	NVAR PosXAux       = :varsFieldMap:PosXAux
 	NVAR FieldAxisPeak = :varsFieldMap:FieldAxisPeak	
@@ -6786,12 +6818,7 @@ Window Results() : Panel
 		return 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Results",";","")	
-	if (stringmatch(PanelName, "Results;"))
-		Killwindow Results
-	endif
+	CloseWindow("Results")
 
 	NewPanel/K=1/W=(1235,60,1573,785)
 	SetDrawEnv fillpat= 0
@@ -6915,9 +6942,9 @@ EndMacro
 
 Function UpdateResultsPanel()
 
-	string PanelName
-	PanelName = WinList("Results",";","")	
-	if (stringmatch(PanelName, "Results;")==0)
+	string panel_name
+	panel_name = WinList("Results",";","")	
+	if (stringmatch(panel_name, "Results;")==0)
 		return -1
 	endif
 	
@@ -7838,11 +7865,7 @@ Window Field_Specification() : Panel
 		endif 
 	endif
 
-	string PanelName
-	PanelName = WinList("Field_Specification",";","")	
-	if (stringmatch(PanelName, "Field_Specification;"))
-		Killwindow Field_Specification
-	endif	
+	CloseWindow("Field_Specification")
 	
 	NewPanel/K=1/W=(240,60,615,550)
 
@@ -8554,11 +8577,7 @@ Window ID_Results() : Panel
 		return 
 	endif
 
-	string PanelName
-	PanelName = WinList("ID_Results",";","")	
-	if (stringmatch(PanelName, "ID_Results;"))
-		Killwindow ID_Results
-	endif	
+	CloseWindow("ID_Results")
 	
 	NewPanel/K=1/W=(380,260,704,475)
 	SetDrawLayer UserBack
@@ -8587,9 +8606,9 @@ EndMacro
 
 Function UpdateIDResultsPanel()
 
-	string PanelName
-	PanelName = WinList("ID_Results",";","")	
-	if (stringmatch(PanelName, "ID_Results;")==0)
+	string panel_name
+	panel_name = WinList("ID_Results",";","")	
+	if (stringmatch(panel_name, "ID_Results;")==0)
 		return -1
 	endif
 	
@@ -8647,12 +8666,7 @@ Window Compare_Results() : Panel
 		return 
 	endif
 
-	//Procura Janela e se estiver aberta, fecha antes de abrir novamente.
-	string PanelName
-	PanelName = WinList("Compare_Results",";","")	
-	if (stringmatch(PanelName, "Compare_Results;"))
-		Killwindow Compare_Results
-	endif	
+	CloseWindow("Compare_Results")
 
 	NewPanel/K=1/W=(1010,60,1335,710)
 	SetDrawLayer UserBack
@@ -8723,9 +8737,9 @@ EndMacro
 
 Function UpdateCompareResultsPanel()
 
-	string PanelName
-	PanelName = WinList("Compare_Results",";","")	
-	if (stringmatch(PanelName, "Compare_Results;")==0)
+	string panel_name
+	panel_name = WinList("Compare_Results",";","")	
+	if (stringmatch(panel_name, "Compare_Results;")==0)
 		return -1
 	endif
 
@@ -9242,22 +9256,10 @@ Function Compare_Field_In_Line_([PosX, FieldComponent])
 	SetDataFolder df
 		
 	String strpos = "PosX = "+	num2str(PosX/1000) + " m"
-	string PanelName
 	
-	PanelName = WinList("CompareFieldInLine_Bx",";","")	
-	if (stringmatch(PanelName, "CompareFieldInLine_Bx;"))
-		KillWindow CompareFieldInLine_Bx
-	endif
-	
-	PanelName = WinList("CompareFieldInLine_By",";","")	
-	if (stringmatch(PanelName, "CompareFieldInLine_By;"))
-		KillWindow CompareFieldInLine_By
-	endif
-	
-	PanelName = WinList("CompareFieldInLine_Bz",";","")	
-	if (stringmatch(PanelName, "CompareFieldInLine_Bz;"))
-		KillWindow CompareFieldInLine_Bz
-	endif
+	CloseWindow("CompareFieldInLine_Bx")
+	CloseWindow("CompareFieldInLine_By")
+	CloseWindow("CompareFieldInLine_Bz")
 	
 	if (cmpstr(FieldComponent, "Bx") == 0 || strlen(FieldComponent) == 0)
 		
@@ -9416,22 +9418,10 @@ Function Compare_Field_Profile_([PosYZ, FieldComponent])
 	SetDataFolder df
 		
 	String strpos = "PosYZ = "+	num2str(PosYZ/1000) + " m"
-	string PanelName
 
-	PanelName = WinList("CompareFieldProfile_Bx",";","")	
-	if (stringmatch(PanelName, "CompareFieldProfile_Bx;"))
-		KillWindow CompareFieldProfile_Bx
-	endif
-
-	PanelName = WinList("CompareFieldProfile_By",";","")	
-	if (stringmatch(PanelName, "CompareFieldProfile_By;"))
-		KillWindow CompareFieldProfile_By
-	endif
-
-	PanelName = WinList("CompareFieldProfile_Bz",";","")	
-	if (stringmatch(PanelName, "CompareFieldProfile_Bz;"))
-		KillWindow CompareFieldProfile_Bz
-	endif
+	CloseWindow("CompareFieldProfile_Bx")
+	CloseWindow("CompareFieldProfile_By")
+	CloseWindow("CompareFieldProfile_Bz")
 	
 	if (cmpstr(FieldComponent, "Bx") == 0 || strlen(FieldComponent) == 0)
 		
@@ -9647,15 +9637,8 @@ Function Compare_Multipole_Profile_(Dynamic, [K, FieldComponent])
 	
 	SetDataFolder root:wavesCAMTO:
 	
-	PanelName = WinList(nwindow,";","")	
-	if (stringmatch(PanelName, nwindow + ";"))
-		KillWindow $(nwindow)
-	endif	
-
-	PanelName = WinList(swindow,";","")	
-	if (stringmatch(PanelName, swindow + ";"))
-		KillWindow $(swindow)
-	endif		
+	CloseWindow(nwindow)
+	CloseWindow(swindow)
 	
 	if (cmpstr(FieldComponent, "Normal") == 0 || strlen(FieldComponent) == 0)		
 	
@@ -9761,10 +9744,7 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 		endif
 		Wave TmpX = $AxisX
 		
-		PanelName = WinList("CompareTrajectoriesX",";","")	
-		if (stringmatch(PanelName, "CompareTrajectoriesX;"))
-			KillWindow CompareTrajectoriesX
-		endif
+		CloseWindow("CompareTrajectoriesX")
 		Display/N=CompareTrajectoriesX/K=1 TmpY/TN='TrajX_A' vs TmpX
 		Label bottom "\\Z12Longitudinal Position [m]"			
 		Label left "\\Z12Horizontal Trajectory [m]"	
@@ -9819,10 +9799,7 @@ Function Compare_Trajectories(ctrlName) : ButtonControl
 		Wave TmpY = $AxisY
 		Wave TmpX = $AxisX
 		
-		PanelName = WinList("CompareTrajectoriesYZ",";","")	
-		if (stringmatch(PanelName, "CompareTrajectoriesYZ;"))
-			KillWindow CompareTrajectoriesYZ
-		endif
+		CloseWindow("CompareTrajectoriesYZ")
 		Display/N=CompareTrajectoriesYZ/K=1 TmpY/TN='TrajYZ_A' vs TmpX
 		Label bottom "\\Z12Longitudinal Position [m]"			
 		Label left "\\Z12Vertical Trajectory [m]"
@@ -10003,10 +9980,7 @@ Function Show_Residual_Field(Dynamic)
 		Wave ResMult_Skew_B   = $"root:" + dfB + ":" + mult + "_Skew_Res"		
 	endif
 		
-	PanelName = WinList("NormalResidualField",";","")	
-	if (stringmatch(PanelName, "NormalResidualField;"))
-		KillWindow NormalResidualField
-	endif
+	CloseWindow("NormalResidualField")
 	
 	if (fieldmapA && fieldmapB)
 		Display/N=NormalResidualField/K=1 ResMult_Normal_A vs ResMult_Pos_A
@@ -10031,10 +10005,7 @@ Function Show_Residual_Field(Dynamic)
 	Label bottom "\\Z12Transversal Position [m]"	
 	Legend/A=MT/W=NormalResidualField GraphLegend
 	
-	PanelName = WinList("SkewResidualField",";","")	
-	if (stringmatch(PanelName, "SkewResidualField;"))
-		KillWindow SkewResidualField
-	endif
+	CloseWindow("SkewResidualField")
 	
 	if (fieldmapA && fieldmapB)
 		Display/N=SkewResidualField/K=1   ResMult_Skew_A vs ResMult_Pos_A
@@ -10649,11 +10620,7 @@ End
 Window Load_Line_Scan() : Panel
 	PauseUpdate; Silent 1
 
-	string PanelName
-	PanelName = WinList("Load_Line_Scan",";","")	
-	if (stringmatch(PanelName, "Load_Line_Scan;"))
-		Killwindow Load_Line_Scan
-	endif
+	CloseWindow("Load_Line_Scan")
 	
 	CreateLoadScanVariables()
 		
