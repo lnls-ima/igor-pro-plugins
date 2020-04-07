@@ -5,6 +5,75 @@
 #pragma version = 14.0.0
 
 
+//Function findtest(npts, val)
+//	variable npts
+//	variable val
+//
+//	variable i, index
+//	variable timerRefNum, calc_time
+//
+//	//val = abs(enoise(npts))
+//	
+//	Print val
+//	
+//	Make/O/N=(npts) longwave
+//
+//	longwave[] = p 
+//
+//	timerRefNum = StartMSTimer
+//		
+//	FindValue/V=(val)/T=1 longwave
+//
+//	calc_time = StopMSTimer(timerRefNum)
+//	Print V_Value
+//	Print longwave[V_Value] 
+//	Print "Find elapsed time :", calc_time*(10^(-3)), " ms"
+//
+//	timerRefNum = StartMSTimer
+//
+//	index = -1
+//	for (i=0; i<=npts; i++)
+//		if (longwave[i] >= val-1 && longwave[i] <= val + 1 )
+//			index = i
+//			break
+//		endif
+//	endfor
+//	
+//	calc_time = StopMSTimer(timerRefNum)
+//	print index
+//	Print longwave[index]
+//	Print "For elapsed time :", calc_time*(10^(-3)), " ms"
+//
+//
+//end
+
+
+//Function TestField()
+//
+//	variable timerRefNum, calc_time
+//	timerRefNum = StartMSTimer
+//	
+//	WAVE posX, posL
+//	NVAR fieldY = :varsFieldmap:FIELD_Y
+//	
+//	Make/O/N=(numpnts(posX)) TestWave
+//	
+//	variable i, j
+//	for (j=0; j<numpnts(posL); j++)
+//		for (i=0; i<numpnts(posX); i++)
+//			GetFieldAtPoint(posX[i], posL[j])
+//			TestWave[i] = fieldY
+//		endfor
+//	endfor
+//
+//	calc_time = StopMSTimer(timerRefNum)
+//	Print "GetFieldAtPoint elapsed time :", calc_time*1e-6, " s"
+//	Display TestWave
+//
+//End
+
+
+
 Menu "CAMTO 14.0.0"
 	"Initialize CAMTO", CAMTO_Init()
 	"Global Parameters", CAMTO_Params()
@@ -483,7 +552,7 @@ Function CAMTO_Spec_UpdateSpec(ba) : ButtonControl
 
 	switch(ba.eventCode)
 		case 2:
-			CalcResFieldSpec()
+			CalculateResFieldSpec()
 			// AQUI!!
 			//UpdateIntegralsMultipolesPanel()
 			//UpdateDynMultipolesPanel()
@@ -1065,6 +1134,16 @@ Static Function UpdatePanelLoadFieldmap()
 		
 		endif
 
+	else
+		ValDisplay vdispStartX, win=$windowName, disable=0, value=_NUM:0
+		ValDisplay vdispEndX, win=$windowName, disable=0, value=_NUM:0
+		ValDisplay vdispStepX, win=$windowName, disable=0, value=_NUM:1
+		ValDisplay vdispStartY, win=$windowName, value=_NUM:0
+		ValDisplay vdispEndY, win=$windowName, value=_NUM:0
+		ValDisplay vdispStepY, win=$windowName, value=_NUM:1
+		ValDisplay vdispStartZ, win=$windowName, value=_NUM:0
+		ValDisplay vdispEndZ, win=$windowName, value=_NUM:0
+		ValDisplay vdispStepZ, win=$windowName, value=_NUM:1
 	endif
 		
 	PopupMenu popupStaticTransient, win=$windowName, mode=StaticTransient
@@ -1107,7 +1186,17 @@ Function CAMTO_Load_SelectFolder(ca) : CheckBoxControl
 					PopupMenu popupFieldmapFolder, win=$ca.win, disable=1
 					SetVariable svarRename, win=$ca.win, disable=2
 					Button btnRename, win=$ca.win, disable=2
-					
+
+					ValDisplay vdispStartX, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispEndX, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispStepX, win=$ca.win, disable=2, value=_NUM:1
+					ValDisplay vdispStartY, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispEndY, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispStepY, win=$ca.win, disable=2, value=_NUM:1
+					ValDisplay vdispStartZ, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispEndZ, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispStepZ, win=$ca.win, disable=2, value=_NUM:1
+
 					break
 			
 				case "chbNewFolderName":
@@ -1117,7 +1206,17 @@ Function CAMTO_Load_SelectFolder(ca) : CheckBoxControl
 					SetVariable svarNewFolderName, win=$ca.win, disable=0
 					SetVariable svarRename, win=$ca.win, disable=2
 					Button btnRename, win=$ca.win, disable=2
-					
+
+					ValDisplay vdispStartX, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispEndX, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispStepX, win=$ca.win, disable=2, value=_NUM:1
+					ValDisplay vdispStartY, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispEndY, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispStepY, win=$ca.win, disable=2, value=_NUM:1
+					ValDisplay vdispStartZ, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispEndZ, win=$ca.win, disable=2, value=_NUM:0
+					ValDisplay vdispStepZ, win=$ca.win, disable=2, value=_NUM:1
+
 					break
 				
 				case "chbExistingFolderName":
@@ -1129,7 +1228,9 @@ Function CAMTO_Load_SelectFolder(ca) : CheckBoxControl
 	
 					fieldmapList = GetfieldmapFolders()
 					PopupMenu popupFieldmapFolder, win=$ca.win, disable=0, value=#("\"" + fieldmapList + "\"")
-									
+					
+					UpdatePanelLoadFieldmap()
+						
 					break
 		
 			endswitch
@@ -1625,6 +1726,13 @@ Static Function InitializeFieldmapVariables()
 	variable/G EXPORT_END_Z = 0
 	variable/G EXPORT_STEP_Z = 1
 
+	variable/G FIELD_X
+	variable/G FIELD_Y
+	variable/G FIELD_Z
+
+	variable/G INDEX_X
+	variable/G INDEX_L
+
 //	variable/G StartYZ = 0
 //	variable/G EndYZ = 0
 //	variable/G StepsYZ = 1
@@ -1784,7 +1892,7 @@ Static Function GetFieldmapIndex()
 End
 
 
-Static Function SaveFieldmapHeaderInfo()
+Static Function SaveFieldmapHeader()
 
 	SVAR fieldmapFilename = :varsFieldmap:FIELDMAP_FILENAME
 	SVAR fieldmapFilepath = :varsFieldmap:FIELDMAP_FILEPATH
@@ -1813,7 +1921,7 @@ Static Function SaveFieldmapHeaderInfo()
 		endif	
 		
 		Redimension/N=(count+1) headerLines
-		headerLines[count] = str
+		headerLines[count] = str[0, strlen(str)-2]
 		count = count + 1
 	
 	while (count < 100)
@@ -1946,7 +2054,7 @@ Static Function LoadFieldmap([filename, overwrite])
 	fieldmapFilename = S_fileName
 	fieldmapFilepath = S_path
 
-	SaveFieldmapHeaderInfo()
+	SaveFieldmapHeader()
 
 	// Change wave references for transient fieldmap
 	if (staticTransient == 2)
@@ -2238,7 +2346,7 @@ Function CAMTO_Export() : Panel
 	endif
 
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(1200,60,1640,400)
+	NewPanel/K=1/N=$windowName/W=(1200,60,1640,505)
 	SetDrawLayer UserBack
 	
 	variable m, h, h1, l1, l2, l 
@@ -2248,10 +2356,20 @@ Function CAMTO_Export() : Panel
 	l1 = 5
 	l2 = 435
 
-	TitleBox tbxTitle1, pos={0,h}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Export Field"
-	h += 30
+	TitleBox tbxTitle1, pos={0,h+5}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Export Fieldmap"
+	h += 35
 	
-	TitleBox  tbxTitle2, pos={m,h},size={120,20}, frame=0, title="Field Components "
+	Button btnExportFieldmap, pos={m,h}, size={400,40}, fstyle=1, disable=2, proc=CAMTO_Export_ExportFieldmapFormat, title="Export in Fieldmap Format"
+	h += 55
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	TitleBox tbxTitle2, pos={0,h+5}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Export Spectra File"
+	h += 35
+
+	TitleBox  tbxTitle3, pos={m,h},size={120,20}, frame=0, title="Field Components "
 	CheckBox chbExportBx, pos={m+120,h}, size={40,20}, disable=2, title=" Bx "
 	CheckBox chbExportBy, pos={m+170,h}, size={40,20}, disable=2, title=" By "
 	CheckBox chbExportBz, pos={m+220,h}, size={40,20}, disable=2, title=" Bz "
@@ -2290,9 +2408,8 @@ Function CAMTO_Export() : Panel
 	DrawRect 2*l2/3,h1,l2,h-5
 	h1 = h-5
 
-	Button btnExportFieldmap, pos={m,h}, size={190,40}, fstyle=1, disable=2, proc=CAMTO_Export_ExportFieldmapFormat, title="Export Fieldmap Format"
-	Button btnExportSpectra, pos={m+210,h}, size={190,40}, fstyle=1, disable=2, proc=CAMTO_Export_ExportSpectraFormat, title="Export Spectra Format"
-	h += 50
+	Button btnExportSpectra, pos={m,h+5}, size={400,40}, fstyle=1, disable=2, proc=CAMTO_Export_ExportSpectraFormat, title="Export in Spectra Format"
+	h += 60
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
@@ -2449,460 +2566,516 @@ Function CAMTO_Export_UpdatePositions(ba) : ButtonControl
 	return 0
 End
 
+
+Function CAMTO_Export_ExportFieldmapFormat(ba) : ButtonControl
+	struct WMButtonAction &ba
+	
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+
+			ExportFieldmapFormat()
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function CAMTO_Export_ExportSpectraFormat(ba) : ButtonControl
+	struct WMButtonAction &ba
+	
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+
+			ExportSpectraFormat()
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function GetFieldAtPoint(px, pl)
+	variable px, pl
+	
+	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
+	NVAR nptsL = :varsFieldmap:LOAD_NPTS_L
+		
+	NVAR fieldX = :varsFieldmap:FIELD_X
+	NVAR fieldY = :varsFieldmap:FIELD_Y
+	NVAR fieldZ = :varsFieldmap:FIELD_Z
+	
+	NVAR iX = :varsFieldmap:INDEX_X
+	NVAR iL = :varsFieldmap:INDEX_L
+	
+	WAVE posX, posL
+	
+	variable i, ii, field1, field2, limitX, limitL
+	string posXStr1, posXStr2
+
+	limitX = 0
+	limitL = 0
+	
+	// Update horizontal index
+	if (nptsX == 1 || px <= posX[0])
+		iX = 0
+		limitX = 1
+	
+	elseif (px >= posX[nptsX-1])
+		iX = nptsX-1
+		limitX = 1
+	
+	else
+		if (px >= posX[iX])
+			ii = 1
+		else
+			ii = -1
+		endif
+	
+		for (i=iX; i<nptsX; i=i+ii)
+			if (i < 0)
+				ii = 1
+				i = 0
+			endif
+		
+			if (px >= posX[i] && px <= posX[i+1])
+				iX = i
+				break
+			endif
+		
+		endfor	
+	
+	endif
+	
+	// Update longitudinal index
+	if (nptsL == 1 || pl <= posL[0])
+		iL = 0
+		limitL = 1
+	
+	elseif (pl >= posl[nptsL-1])
+		iL = nptsL-1
+		limitL = 1
+	
+	else
+		if (pl >= posL[iL])
+			ii = 1
+		else
+			ii = -1
+		endif
+	
+		for (i=iL; i<nptsL; i=i+ii)
+			if (i < 0)
+				ii = 1
+				i = 0
+			endif
+			
+			if (pl >= posL[i] && pl <= posL[i+1])
+				iL = i
+				break
+			endif
+	
+		endfor	
+	
+	endif
+
+	posXStr1 = num2str(posX[iX])
+	Wave waveBx1 = $("Bx_X" + posXStr1)
+	Wave waveBy1 = $("By_X" + posXStr1)
+	Wave waveBz1 = $("Bz_X" + posXStr1)
+
+	if (limitX && limitL)
+		fieldX = waveBx1[iL]
+		fieldY = waveBy1[iL]
+		fieldZ = waveBz1[iL]
+	
+	elseif (limitX)
+		fieldX = waveBx1[iL] + ((waveBx1[iL+1] - waveBx1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldY = waveBy1[iL] + ((waveBy1[iL+1] - waveBy1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldZ = waveBz1[iL] + ((waveBz1[iL+1] - waveBz1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		
+	elseif (limitL)
+		posXStr2 = num2str(posX[iX+1])
+		Wave waveBx2 = $("Bx_X" + posXStr2)
+		Wave waveBy2 = $("By_X" + posXStr2)
+		Wave waveBz2 = $("Bz_X" + posXStr2)
+
+		fieldX = waveBx1[iL] + ((waveBx2[iL] - waveBx1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		fieldY = waveBy1[iL] + ((waveBy2[iL] - waveBy1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		fieldZ = waveBz1[iL] + ((waveBz2[iL] - waveBz1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		
+	else
+		posXStr2 = num2str(posX[iX+1])
+		Wave waveBx2 = $("Bx_X" + posXStr2)
+		Wave waveBy2 = $("By_X" + posXStr2)
+		Wave waveBz2 = $("Bz_X" + posXStr2)
+
+		// Find field X
+		field1 = waveBx1[iL] + ((waveBx1[iL+1] - waveBx1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBx2[iL] + ((waveBx2[iL+1] - waveBx2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldX = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		// Find field Y
+		field1 = waveBy1[iL] + ((waveBy1[iL+1] - waveBy1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBy2[iL] + ((waveBy2[iL+1] - waveBy2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldY = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		// Find field Z
+		field1 = waveBz1[iL] + ((waveBz1[iL+1] - waveBz1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBz2[iL] + ((waveBz2[iL+1] - waveBz2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldZ = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+	endif
+		
+End
+
+
+Static Function/S GetDefaultFieldmapFilename([spectra])
+	variable spectra
+	
+	if (ParamIsDefault(spectra))
+		spectra = 0
+	endif	
+	
+	SVAR fieldmapFilename = :varsFieldmap:FIELDMAP_FILENAME
+	
+	if (Spectra)
+		NVAR startX = :varsFieldmap:EXPORT_START_X
+		NVAR endX = :varsFieldmap:EXPORT_END_X
+		NVAR startY = :varsFieldmap:EXPORT_START_Y
+		NVAR endY = :varsFieldmap:EXPORT_END_Y
+		NVAR startZ = :varsFieldmap:EXPORT_START_Z
+		NVAR endZ = :varsFieldmap:EXPORT_END_Z
+	else
+		NVAR startX = :varsFieldmap:LOAD_START_X
+		NVAR endX = :varsFieldmap:LOAD_END_X
+		NVAR startY = :varsFieldmap:LOAD_START_Y
+		NVAR endY = :varsFieldmap:LOAD_END_Y
+		NVAR startZ = :varsFieldmap:LOAD_START_Z
+		NVAR endZ = :varsFieldmap:LOAD_END_Z
+	endif
+	
+	string filename, auxStr	
+	filename = fieldmapFilename
+	
+	SplitString/E="X=(.*?)mm" filename
+	if (strlen(S_Value) != 0)
+		if (startX != endX)
+			sprintf auxStr, "X=%g_%gmm", startX, endX
+		else
+			auxStr = ""
+		endif
+		filename = ReplaceString(S_Value, filename, auxStr)
+	endif
+
+	SplitString/E="Y=(.*?)mm" filename
+	if (strlen(S_Value) != 0)
+		if (startY != endY)
+			sprintf auxStr, "Y=%g_%gmm", startY, endY
+		else
+			auxStr = ""
+		endif
+		filename = ReplaceString(S_Value, filename, auxStr)
+	endif
+
+	SplitString/E="Z=(.*?)mm" filename
+	if (strlen(S_Value) != 0)
+		if (startZ != endZ)
+			sprintf auxStr, "Z=%g_%gmm", startZ, endZ
+		else
+			auxStr = ""
+		endif
+		filename = ReplaceString(S_Value, filename, auxStr)
+	endif
+
+	SplitString/E="([[:digit:]]+)-([[:digit:]]+)-([[:digit:]]+)" filename
+	if (strlen(S_Value) != 0)
+		auxStr = Secs2Date(DateTime, -2)
+		filename = ReplaceString(S_Value, filename, auxStr)
+	endif
+	
+	if (spectra)
+		SplitString/E="(.dat|.txt)" filename
+		if (strlen(S_Value) != 0)
+			auxStr = "_spectra" + S_Value
+			filename = ReplaceString(S_Value, filename, auxStr)
+		endif
+	endif
+	
+	return filename
+
+end
+
+
+Static Function IncludeFieldmapHeader(fullPath)
+	string fullPath
+		
+	WAVE/T headerLines
+	
+	string filename, timestamp
+	variable i, size, replaced
+	string str, strv
+		
+	SplitString/E=".*:" fullPath
+	filename = fullPath[strlen(S_value), strlen(fullPath)-1]
+	timestamp = secs2Date(DateTime, -2) + "_" + ReplaceString(":", secs2Time(DateTime, 3), "-")
+	
+	Duplicate/O/T headerLines newHeaderLines
+	
+	size = numpnts(newHeaderLines)
+	replaced = 0
+	
+	for (i=0; i<size; i=i+1)
+		
+		str = newHeaderLines[i]
+		
+		sscanf str, "timestamp: %s", strv
+		if (strlen(strv) != 0)
+			newHeaderLines[i] = ReplaceString(strv, str, timestamp)
+			replaced = replaced + 1
+		endif
+
+		sscanf str, "filename: %s", strv
+		if (strlen(strv) != 0)
+			newHeaderLines[i] = ReplaceString(strv, str, filename)
+			replaced = replaced + 1
+		endif
+		
+		if (replaced == 2)
+			Redimension/N=(size+2) newHeaderLines
+			newHeaderLines[size] = "X[mm]	Y[mm]	Z[mm]	Bx	By	Bz	[T]"	
+			newHeaderLines[size+1] = "------------------------------------------------------------------------------------------------------------------------------------------------------------------"	
+			break
+		endif
+	
+	endfor
+	
+	Edit/N=FieldmapHeader newHeaderLines
+	SaveTableCopy/A=0/O/T=1/W=FieldmapHeader/N=0 as fullPath
+	KillWindow/Z FieldmapHeader
+	KillWaves/Z newHeaderLines
+End
+
+
+Static Function ExportFieldmapFormat()
+
+	SVAR fieldmapFilepath = :varsFieldmap:FIELDMAP_FILEPATH
+	NVAR beamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
+
+	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
+	NVAR nptsL = :varsFieldmap:LOAD_NPTS_L
+	NVAR startY = :varsFieldmap:LOAD_START_Y
+	NVAR startZ = :varsFieldmap:LOAD_START_Z
+
+	WAVE posX, posL
+	
+	make/D/O/N=(nptsX, nptsL) Px
+	make/D/O/N=(nptsX, nptsL) Py
+	make/D/O/N=(nptsX, nptsL) Pz
+	make/D/O/N=(nptsX, nptsL) Bx
+	make/D/O/N=(nptsX, nptsL) By
+	make/D/O/N=(nptsX, nptsL) Bz
+
+	string nameWave, filename
+	variable i
+	
+	for (i=0; i<nptsX; i=i+1)
+		Px[i][] = posX[i]*1000
+	
+		if (beamDirection == 1)
+			Py[i][] = posL[q]*1000
+			Pz[i][] = startZ
+		else
+			Py[i][] = startY
+			Pz[i][] = posL[q]*1000
+		endif
+	
+		nameWave = "Bx_X" + num2str(posX[i])
+		Wave waveBx = $nameWave
+		Bx[i][] = waveBx[q]
+		
+		nameWave = "By_X" + num2str(posX[i])
+		Wave waveBy = $nameWave
+		By[i][] = waveBy[q]
+		
+		nameWave = "Bz_X" + num2str(posX[i])
+		Wave waveBz = $nameWave
+		Bz[i][] = waveBz[q]
+		
+	endfor
+	
+	Redimension/N=(nptsX*nptsL) Px
+	Redimension/N=(nptsX*nptsL) Py
+	Redimension/N=(nptsX*nptsL) Pz
+	Redimension/N=(nptsX*nptsL) Bx
+	Redimension/N=(nptsX*nptsL) By
+	Redimension/N=(nptsX*nptsL) Bz
+		
+	Edit/N=FieldmapTable Px, Py, Pz, Bx, By, Bz
+	ModifyTable sigDigits(Bx)=16, sigDigits(By)=16, sigDigits(Bz)=16
+
+	filename = GetDefaultFieldmapFilename()	
+	
+	Open/D tablePath as fieldmapFilepath + filename
+	if (strlen(S_FileName) != 0)
+		IncludeFieldmapHeader(S_FileName)
+		SaveTableCopy/A=2/O/T=1/W=FieldmapTable/N=0 as S_fileName
+	endif
+	Close/A
+		
+	KillWindow/Z FieldmapTable
+	Killwaves/Z Px, Py, Pz, Bx, By, Bz
+	
+End
 // Ok até aqui!!
 
 
+Static Function ExportSpectraFormat()
+	
+	NVAR BeamDirection = :varsFieldmap:BeamDirection
+
+	NVAR StartX    = :varsFieldmap:StartXSpectra
+	NVAR EndX      = :varsFieldmap:EndXSpectra
+	NVAR StepsX    = :varsFieldmap:StepsXSpectra
+	
+	NVAR StartY   = :varsFieldmap:StartYSpectra
+	NVAR EndY     = :varsFieldmap:EndYSpectra
+	NVAR StepsY   = :varsFieldmap:StepsYSpectra
+	
+	NVAR StartZ   = :varsFieldmap:StartZSpectra
+	NVAR EndZ     = :varsFieldmap:EndZSpectra
+	NVAR StepsZ   = :varsFieldmap:StepsZSpectra
+	
+	NVAR SpectraExportX = :varsFieldmap:SpectraExportX
+	NVAR SpectraExportY = :varsFieldmap:SpectraExportY
+	NVAR SpectraExportZ = :varsFieldmap:SpectraExportZ
+
+	NVAR FieldX = :varsFieldmap:FieldX
+	NVAR FieldY = :varsFieldmap:FieldY
+	NVAR FieldZ = :varsFieldmap:FieldZ
+	
+	variable NPointsX, NPointsY, NPointsZ
+	NPointsX = (EndX - StartX)/StepsX + 1
+	NPointsY = (EndY - StartY)/StepsY + 1
+	NPointsZ = (EndZ - StartZ)/StepsZ + 1
+	
+	variable StartYZ, EndYZ, StepsYZ, NPointsYZ
+	If (BeamDirection == 1)
+		StartYZ   = StartY
+		EndYZ     = EndY
+		StepsYZ   = StepsY
+		NPointsYZ	= NPointsY
+	Else
+		StartYZ   = StartZ
+		EndYZ     = EndZ
+		StepsYZ   = StepsZ
+		NPointsYZ	= NPointsZ
+	Endif
+	
+	SVAR FMPath = :varsFieldmap:FMPath
+	
+	string nome
+	variable i, j, l, k, xpos, yzpos
+	
+	if (NPointsYZ < 4)
+		DoAlert 0, "The number of points in the longitudinal direction must be greater than 4."
+		return -1
+	endif
+		
+	variable CorNpointsX, CorStepsX
+	variable NpointsV = 2
+	variable StepsV = 1
+	
+	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave0
+	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave1
+	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave2
+	
+	k=0
+	for (j=0; j<NpointsX; j=j+1)
+		xpos = StartX + j*StepsX		
+		
+		for (l=0; l<NpointsV; l=l+1)
+			
+			for (i=0; i<NPointsYZ; i=i+1)
+				yzpos = StartYZ + i*StepsYZ
+				
+				//Campo_espaco(xpos/1000, yzpos/1000)
+				
+				If (SpectraExportX == 1)
+					Exportwave0[k] = FieldX
+				Else
+					Exportwave0[k] = 0
+				Endif
+				
+				If (SpectraExportY == 1)
+					Exportwave1[k] = FieldY
+				Else
+					Exportwave1[k] = 0
+				EndIf
+				
+				If (SpectraExportZ == 1)
+					Exportwave2[k] = FieldZ
+				Else
+					Exportwave2[k] = 0
+				Endif
+				
+				k = k + 1		
+			endfor
+		
+		endfor
+	
+	endfor
+	
+	if (NpointsX == 1)
+		CorNpointsX = 2
+		CorStepsX = 1
+		Concatenate/O/NP {Exportwave0, Exportwave0}, ConcatExportwave0
+		Concatenate/O/NP {Exportwave1, Exportwave1}, ConcatExportwave1
+		Concatenate/O/NP {Exportwave2, Exportwave2}, ConcatExportwave2
+		Edit/N=CompleteTable ConcatExportwave0, ConcatExportwave1, ConcatExportwave2
+		ModifyTable sigDigits(ConcatExportwave0)=16, sigDigits(ConcatExportwave1)=16, sigDigits(ConcatExportwave2)=16
+		
+	else
+		CorNpointsX = NpointsX
+		CorStepsX = StepsX
+		Edit/N=CompleteTable Exportwave0, Exportwave1, Exportwave2
+		ModifyTable sigDigits(Exportwave0)=16, sigDigits(Exportwave1)=16, sigDigits(Exportwave2)=16
+	
+	endif
+	
+	string NewFMFilename = GetDefaultFieldmapFilename(Spectra=1)	
+	string header_str
+	sprintf header_str, "%g\t%g\t%g\t%g\t%g\t%g", CorStepsX, StepsV, StepsYZ, CorNpointsX, NpointsV, NPointsYZ
+
+	Make/O/T/N=1 SpectraHeaderLines
+	SpectraHeaderLines[0] = header_str
+		
+	Open/D TablePath as FMPath+NewFMFilename
+	if (!stringmatch(S_fileName,""))
+		Edit/N=Header SpectraHeaderLines
+		SaveTableCopy/A=0/O/T=1/W=Header0/N=0 as S_fileName
+		SaveTableCopy/A=2/O/T=1/W=CompleteTable/N=0 as S_fileName
+	endif
+	Close/A
+		
+	KillWindow/Z CompleteTable
+	KillWindow/Z Header0
+	KillWaves/Z HeaderLines	
+	Killwaves/Z Exportwave0, Exportwave1, Exportwave2
+	Killwaves/Z ConcatExportwave0, ConcatExportwave1, ConcatExportwave2
+
+End
 
 
-//Static Function EraseStatsVariables()
-//   KillVariables/Z  V_npnts
-//   KillVariables/Z  V_numNaNs
-//   KillVariables/Z  V_numINFs
-//   KillVariables/Z  V_avg
-//   KillVariables/Z  V_Sum
-//   KillVariables/Z  V_sdev
-//   KillVariables/Z  V_rms
-//   KillVariables/Z  V_adev
-//   KillVariables/Z  V_skew
-//   KillVariables/Z  V_kurt
-//   KillVariables/Z  V_minloc
-//   KillVariables/Z  V_maxloc
-//   KillVariables/Z  V_min
-//   KillVariables/Z  V_max
-//   KillVariables/Z  V_startRow
-//   KillVariables/Z  V_endRow        
-//   KillVariables/Z  V_sem        
-//   KillVariables/Z  V_minRowLoc        
-//   KillVariables/Z  V_maxRowLoc
-//   
-//   return 0
-//              
-//End
-
-
-//Function ExportField(ctrlName) : ButtonControl
-//	String ctrlName
-//	
-//	if (CheckFolder() == -1)
-//		return -1
-//	endif
-//	
-//	Export_Full_Data()
-//
-//End
-//
-//
-//Function Export_Full_Data()
-//
-//	NVAR BeamDirection = :varsFieldmap:BeamDirection
-//
-//	NVAR StartX    = :varsFieldmap:StartX
-//	NVAR EndX      = :varsFieldmap:EndX
-//	NVAR StepsX    = :varsFieldmap:StepsX
-//	NVAR NPointsX  = :varsFieldmap:NPointsX
-//
-//	NVAR StartYZ   = :varsFieldmap:StartYZ
-//	NVAR EndYZ     = :varsFieldmap:EndYZ
-//	NVAR StepsYZ   = :varsFieldmap:StepsYZ
-//	NVAR NPointsYZ = :varsFieldmap:NPointsYZ	
-//	
-//	SVAR FMPath 		= :varsFieldmap:FMPath
-//	
-//	string nome
-//	variable i, j, k
-//	
-//	make/D/o/n=(NPointsX*NPointsYZ) Exportwave0
-//	make/D/o/n=(NPointsX*NPointsYZ) Exportwave1
-//	make/D/o/n=(NPointsX*NPointsYZ) Exportwave2
-//	make/D/o/n=(NPointsX*NPointsYZ) Exportwave3
-//	make/D/o/n=(NPointsX*NPointsYZ) Exportwave4
-//	make/D/o/n=(NPointsX*NPointsYZ) Exportwave5
-//	
-//	k =0
-//	for (i=0;i<NPointsYZ;i=i+1)
-//		for (j=0;j<NpointsX;j=j+1)
-//
-//			Exportwave0[k] = StartX + j*StepsX		
-//
-//			if (BeamDirection == 1)
-//				Exportwave1[k] = StartYZ + i*StepsYZ
-//				Exportwave2[k] = 0
-//			else
-//				Exportwave1[k] = 0
-//				Exportwave2[k] = StartYZ + i*StepsYZ			
-//			endif
-//			
-//			nome = "RaiaBx_X" + num2str(Exportwave0[k]/1000)
-//			Wave Tmp = $nome
-//			Exportwave3[k] = Tmp[i]
-//
-//			nome = "RaiaBy_X" + num2str(Exportwave0[k]/1000)
-//			Wave Tmp = $nome
-//			Exportwave4[k] = Tmp[i]
-//
-//			nome = "RaiaBz_X" + num2str(Exportwave0[k]/1000)
-//			Wave Tmp = $nome
-//			Exportwave5[k] = Tmp[i]
-//			
-//			k = k + 1
-//		endfor
-//	endfor
-//	
-//	Edit/N=CompleteTable Exportwave0,Exportwave1,Exportwave2,Exportwave3,Exportwave4,Exportwave5
-//	ModifyTable sigDigits(Exportwave3)=16,sigDigits(Exportwave4)=16,sigDigits(Exportwave5)=16
-//
-//	string NewFMFilename = GetDefaultFilename()	
-//	
-//	Open/D TablePath as FMPath+NewFMFilename
-//	if (!stringmatch(S_fileName,""))
-//		IncludeHeader(S_fileName)
-//		SaveTableCopy/A=2/O/T=1/W=CompleteTable/N=0 as S_fileName
-//	endif
-//	Close/A
-//		
-//	KillWindow/Z CompleteTable
-//	
-//	Killwaves/Z Exportwave0
-//	Killwaves/Z Exportwave1
-//	Killwaves/Z Exportwave2
-//	Killwaves/Z Exportwave3
-//	Killwaves/Z Exportwave4
-//	Killwaves/Z Exportwave5		
-//End
-//
-//
-//Function ExportFieldSpectra(ctrlName) : ButtonControl
-//	String ctrlName
-//	
-//	if (CheckFolder() == -1)
-//		return -1
-//	endif
-//	
-//	NVAR BeamDirection = :varsFieldmap:BeamDirection
-//
-//	NVAR StartX    = :varsFieldmap:StartXSpectra
-//	NVAR EndX      = :varsFieldmap:EndXSpectra
-//	NVAR StepsX    = :varsFieldmap:StepsXSpectra
-//	
-//	NVAR StartY   = :varsFieldmap:StartYSpectra
-//	NVAR EndY     = :varsFieldmap:EndYSpectra
-//	NVAR StepsY   = :varsFieldmap:StepsYSpectra
-//	
-//	NVAR StartZ   = :varsFieldmap:StartZSpectra
-//	NVAR EndZ     = :varsFieldmap:EndZSpectra
-//	NVAR StepsZ   = :varsFieldmap:StepsZSpectra
-//	
-//	NVAR SpectraExportX = :varsFieldmap:SpectraExportX
-//	NVAR SpectraExportY = :varsFieldmap:SpectraExportY
-//	NVAR SpectraExportZ = :varsFieldmap:SpectraExportZ
-//
-//	NVAR FieldX = :varsFieldmap:FieldX
-//	NVAR FieldY = :varsFieldmap:FieldY
-//	NVAR FieldZ = :varsFieldmap:FieldZ
-//	
-//	variable NPointsX, NPointsY, NPointsZ
-//	NPointsX = (EndX - StartX)/StepsX + 1
-//	NPointsY = (EndY - StartY)/StepsY + 1
-//	NPointsZ = (EndZ - StartZ)/StepsZ + 1
-//	
-//	variable StartYZ, EndYZ, StepsYZ, NPointsYZ
-//	If (BeamDirection == 1)
-//		StartYZ   = StartY
-//		EndYZ     = EndY
-//		StepsYZ   = StepsY
-//		NPointsYZ	= NPointsY
-//	Else
-//		StartYZ   = StartZ
-//		EndYZ     = EndZ
-//		StepsYZ   = StepsZ
-//		NPointsYZ	= NPointsZ
-//	Endif
-//	
-//	SVAR FMPath = :varsFieldmap:FMPath
-//	
-//	string nome
-//	variable i, j, l, k, xpos, yzpos
-//	
-//	if (NPointsYZ < 4)
-//		DoAlert 0, "The number of points in the longitudinal direction must be greater than 4."
-//		return -1
-//	endif
-//		
-//	variable CorNpointsX, CorStepsX
-//	variable NpointsV = 2
-//	variable StepsV = 1
-//	
-//	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave0
-//	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave1
-//	make/D/o/n=(NPointsX*NpointsV*NPointsYZ) Exportwave2
-//	
-//	k=0
-//	for (j=0; j<NpointsX; j=j+1)
-//		xpos = StartX + j*StepsX		
-//		
-//		for (l=0; l<NpointsV; l=l+1)
-//			
-//			for (i=0; i<NPointsYZ; i=i+1)
-//				yzpos = StartYZ + i*StepsYZ
-//				
-//				Campo_espaco(xpos/1000, yzpos/1000)
-//				
-//				If (SpectraExportX == 1)
-//					Exportwave0[k] = FieldX
-//				Else
-//					Exportwave0[k] = 0
-//				Endif
-//				
-//				If (SpectraExportY == 1)
-//					Exportwave1[k] = FieldY
-//				Else
-//					Exportwave1[k] = 0
-//				EndIf
-//				
-//				If (SpectraExportZ == 1)
-//					Exportwave2[k] = FieldZ
-//				Else
-//					Exportwave2[k] = 0
-//				Endif
-//				
-//				k = k + 1		
-//			endfor
-//		
-//		endfor
-//	
-//	endfor
-//	
-//	if (NpointsX == 1)
-//		CorNpointsX = 2
-//		CorStepsX = 1
-//		Concatenate/O/NP {Exportwave0, Exportwave0}, ConcatExportwave0
-//		Concatenate/O/NP {Exportwave1, Exportwave1}, ConcatExportwave1
-//		Concatenate/O/NP {Exportwave2, Exportwave2}, ConcatExportwave2
-//		Edit/N=CompleteTable ConcatExportwave0, ConcatExportwave1, ConcatExportwave2
-//		ModifyTable sigDigits(ConcatExportwave0)=16, sigDigits(ConcatExportwave1)=16, sigDigits(ConcatExportwave2)=16
-//		
-//	else
-//		CorNpointsX = NpointsX
-//		CorStepsX = StepsX
-//		Edit/N=CompleteTable Exportwave0, Exportwave1, Exportwave2
-//		ModifyTable sigDigits(Exportwave0)=16, sigDigits(Exportwave1)=16, sigDigits(Exportwave2)=16
-//	
-//	endif
-//	
-//	string NewFMFilename = GetDefaultFilename(Spectra=1)	
-//	string header_str
-//	sprintf header_str, "%g\t%g\t%g\t%g\t%g\t%g", CorStepsX, StepsV, StepsYZ, CorNpointsX, NpointsV, NPointsYZ
-//
-//	Make/O/T/N=1 SpectraHeaderLines
-//	SpectraHeaderLines[0] = header_str
-//		
-//	Open/D TablePath as FMPath+NewFMFilename
-//	if (!stringmatch(S_fileName,""))
-//		Edit/N=Header SpectraHeaderLines
-//		SaveTableCopy/A=0/O/T=1/W=Header0/N=0 as S_fileName
-//		SaveTableCopy/A=2/O/T=1/W=CompleteTable/N=0 as S_fileName
-//	endif
-//	Close/A
-//		
-//	KillWindow/Z CompleteTable
-//	KillWindow/Z Header0
-//	KillWaves/Z HeaderLines	
-//	Killwaves/Z Exportwave0, Exportwave1, Exportwave2
-//	Killwaves/Z ConcatExportwave0, ConcatExportwave1, ConcatExportwave2
-//
-//End
-//
-//
-//Function/S year()
-//	return StringFromList(0, Secs2Date(DateTime, -2), "-")
-//End
-// 
-// 
-//Function/S month()
-//	variable ret = str2num(StringFromList(1, Secs2Date(DateTime, -2), "-"))
-//	if (ret < 10) 
-//		return "0"+num2str(ret)
-//	else 
-//		return num2str(ret)
-//	endif
-//End
-//
-// 
-//Function/S day()
-//	variable ret = str2num(StringFromList(2, Secs2Date(DateTime, -2), "-"))
-//	if (ret < 10) 
-//		return "0"+num2str(ret)
-//	else 
-//		return num2str(ret)
-//	endif
-//End
-//
-// 
-//Function/S hour()
-//	variable ret = str2num(StringFromList(0, Secs2Time(DateTime, 3), ":"))
-//	if (ret < 10) 
-//		return "0"+num2str(ret)
-//	else 
-//		return num2str(ret)
-//	endif
-//End
-//
-// 
-//Function/S minute()
-//	variable ret = str2num(StringFromList(1, Secs2Time(DateTime, 3), ":"))
-//	if (ret < 10) 
-//		return "0"+num2str(ret)
-//	else 
-//		return num2str(ret)
-//	endif
-//End
-// 
-// 
-//Function/S second()
-//	variable ret = str2num(StringFromList(2, Secs2Time(DateTime, 3), ":"))
-//	if (ret < 10) 
-//		return "0"+num2str(ret)
-//	else 
-//		return num2str(ret)
-//	endif
-//End
-//
-//
-//Function/S GetDefaultFilename([Spectra])
-//	variable Spectra
-//	
-//	if (ParamIsDefault(Spectra))
-//		Spectra = 0
-//	endif	
-//	
-//	SVAR FMFilename = :varsFieldmap:FMFilename
-//	
-//	If (Spectra)
-//		NVAR StartX    = :varsFieldmap:StartXSpectra
-//		NVAR EndX      = :varsFieldmap:EndXSpectra
-//		NVAR StartY   = :varsFieldmap:StartYSpectra
-//		NVAR EndY     = :varsFieldmap:EndYSpectra
-//		NVAR StartZ   = :varsFieldmap:StartZSpectra
-//		NVAR EndZ     = :varsFieldmap:EndZSpectra
-//	Else
-//		NVAR StartX    = :varsFieldmap:StartX
-//		NVAR EndX      = :varsFieldmap:EndX
-//		NVAR StartY    = :varsFieldmap:StartY
-//		NVAR EndY      = :varsFieldmap:EndY
-//		NVAR StartZ    = :varsFieldmap:StartZ
-//		NVAR EndZ      = :varsFieldmap:EndZ
-//	Endif
-//	
-//	string newfilename
-//	string cropfilename
-//	string old
-//	string new
-//	variable startidx, endidx
-//		
-//	newfilename = FMfilename
-//	
-//	startidx = strsearch(newfilename, "X=",0)
-//	if (startidx!=-1) 
-//		cropfilename = newfilename[startidx, strlen(newfilename)]
-//		endidx   = strsearch(cropfilename, "mm",0)
-//		old = cropfilename[0,endidx+1]
-//		
-//		sprintf new, "X=%g_%gmm", StartX, EndX
-//		newfilename = ReplaceString(old, newfilename, new)
-//	endif
-//
-//	startidx = strsearch(newfilename, "Y=",0)
-//	if (startidx!=-1) 
-//		cropfilename = newfilename[startidx, strlen(newfilename)]
-//		endidx   = strsearch(cropfilename, "mm",0)
-//		old = cropfilename[0,endidx+1]
-//		
-//		sprintf new, "Y=%g_%gmm", StartY, EndY
-//		newfilename = ReplaceString(old, newfilename, new)
-//	endif
-//
-//	startidx = strsearch(newfilename, "Z=",0)
-//	if (startidx!=-1) 
-//		cropfilename = newfilename[startidx, strlen(newfilename)]
-//		endidx   = strsearch(cropfilename, "mm",0)
-//		old = cropfilename[0,endidx+1]
-//		
-//		sprintf new, "Z=%g_%gmm", StartZ, EndZ
-//		newfilename = ReplaceString(old, newfilename, new)
-//	endif
-//
-//	endidx = strsearch(newfilename, "_", 0)
-//	string oldtimestamp = newfilename[0, endidx-1]
-//	string expr="([[:digit:]]+)-([[:digit:]]+)-([[:digit:]]+)"
-//	string s1, s2, s3
-//	SplitString/E=(expr) oldtimestamp, s1, s2, s3 
-//	if (V_flag == 3)
-//		string newtimestamp = year() + "-" + month() + "-" + day()
-//		newfilename = ReplaceString(oldtimestamp, newfilename, newtimestamp)
-//	endif
-//	
-//	if (Spectra)
-//		SplitString/E=".*\." newfilename
-//		string tmp = S_value[0, strlen(S_value)-2] + "_spectra_format"
-//		SplitString/E="\..*" newfilename
-//		newfilename = tmp + S_value
-//	endif
-//	
-//	return newfilename
-//
-//end 
-//
-//
-//Function IncludeHeader(fullPath)
-//	string fullPath
-//		
-//	Wave/T HeaderLines
-//	
-//	SplitString/E=".*:" fullPath
-//	string NewFilename = fullPath[strlen(S_value),strlen(fullPath)-1]
-//	string NewTimestamp = year() + "-" + month() + "-" + day() +  "_" + hour() + "-" + minute() + "-" + second()
-//	
-//	Duplicate/O/T HeaderLines NewHeaderLines
-//	
-//	variable i, size, replaced
-//	string str, strv
-//	
-//	size = numpnts(NewHeaderLines)
-//	replaced = 0
-//	
-//	for (i=0; i<size; i=i+1)
-//		
-//		str = NewHeaderLines[i]
-//		
-//		sscanf str, "timestamp: %s", strv
-//		if (strlen(strv) != 0)
-//			NewHeaderLines[i] =ReplaceString(strv, str, NewTimestamp)
-//			replaced = replaced + 1
-//		endif
-//
-//		sscanf str, "filename: %s", strv
-//		if (strlen(strv) != 0)
-//			NewHeaderLines[i] = ReplaceString(strv, str, NewFilename)
-//			replaced = replaced + 1
-//		endif
-//		
-//		if (replaced == 2)
-//			break
-//		endif
-//	
-//	endfor
-//	
-//	Redimension/N=(size+2) NewHeaderLines
-//	NewHeaderLines[size] = "X[mm]	Y[mm]	Z[mm]	Bx	By	Bz	[T]"	
-//	NewHeaderLines[size+1] = "------------------------------------------------------------------------------------------------------------------------------------------------------------------"	
-//	
-//	Edit/N=Header NewHeaderLines
-//	SaveTableCopy/A=0/O/T=1/W=Header0/N=0 as fullPath
-//	KillWindow Header0
-//	KillWaves/Z NewHeaderLines
-//End
-//
-//
 //Function SelectCopyDirectory(popNum,popStr)
 //	Variable popNum
 //	String popStr
@@ -7403,127 +7576,7 @@ End
 //End
 //
 //
-//Function Campo_espaco(Px, Pyz)
-//	variable Px, Pyz
-//		
-//	NVAR FieldX = :varsFieldmap:FieldX
-//	NVAR FieldY = :varsFieldmap:FieldY
-//	NVAR FieldZ = :varsFieldmap:FieldZ
-//	
-//	NVAR StartX   = :varsFieldmap:StartX
-//	NVAR EndX     = :varsFieldmap:EndX
-//	NVAR StepsX   = :varsFieldmap:StepsX
-//	NVAR NPointsX = :varsFieldmap:NPointsX
-//	
-//	NVAR StartYZ   = :varsFieldmap:StartYZ
-//	NVAR EndYZ     = :varsFieldmap:EndYZ
-//	NVAR StepsYZ   = :varsFieldmap:StepsYZ
-//	NVAR NPointsYZ = :varsFieldmap:NPointsYZ		
-//	
-//	NVAR iX  = :varsFieldmap:iX
-//	NVAR iYZ = :varsFieldmap:iYZ	
-//	
-//	Wave C_PosX
-//	Wave C_PosYZ	
-//
-//	variable i, j
-//	variable ii
-//
-//	//Procura Raia em X
-//	if(px >= C_PosX[iX])
-//		ii = 1
-//	else
-//		ii = -1	
-//	endif
-//	
-//	if (NPointsX == 1)
-//		iX = 0
-//	else
-//		for(i=iX;i<NPointsX-1;i=i+ii)
-//			if (i < 0)
-//				ii = 1
-//				i = i + 1
-//			endif
-//	
-//			if ( (px >= C_PosX[i]) && (Px <= C_PosX[i+1]) && (C_PosX[i+1] > C_PosX[i])  )
-//				iX = i
-//				break
-//			endif
-//		endfor
-//	endif
-//
-//	//Procura Raia em YZ
-//	if(pyz >= C_PosYZ[iYZ])
-//		ii = 1
-//	else
-//		ii = -1	
-//	endif
-//	
-//	for(i=iYZ;i<NPointsYZ-1;i=i+ii)
-//		if (i < 0)
-//		   ii = 1
-//		   i = i + 1
-//		endif
-//	
-//		if ( (pyz >= C_PosYZ[i]) && (pyz <= C_PosYZ[i+1]) && (C_PosYZ[i+1] > C_PosYZ[i]) )
-//			iYZ = i
-//			break
-//		endif
-//	endfor
-//
-//	string NomeX1
-//	string NomeX2	
-//	variable AuxX1
-//	variable AuxX2	
-//
-//	if (NPointsX == 1)
-//		// Find Field X
-//		NomeX1 = "RaiaBx_X" + num2str(C_PosX[iX]) 
-//		Wave TmpX1 = $NomeX1
-//		AuxX1 = ( (TmpX1[iYZ+1] - TmpX1[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX1[iYZ]
-//		FieldX = AuxX1
-//
-//		// Find Field Y
-//		NomeX1 = "RaiaBy_X" + num2str(C_PosX[iX]) 
-//		Wave TmpX1 = $NomeX1
-//		AuxX1 = ( (TmpX1[iYZ+1] - TmpX1[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX1[iYZ]
-//		FieldY = AuxX1
-//
-//		// Find Field Z
-//		NomeX1 = "RaiaBz_X" + num2str(C_PosX[iX]) 
-//		Wave TmpX1 = $NomeX1
-//		AuxX1 = ( (TmpX1[iYZ+1] - TmpX1[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX1[iYZ]
-//		FieldZ = AuxX1
-//	else
-//		// Find Field X
-//		NomeX1 = "RaiaBx_X" + num2str(C_PosX[iX]) 
-//		Wave TmpX1 = $NomeX1
-//		NomeX2 = "RaiaBx_X" + num2str(C_PosX[iX+1]) 
-//		Wave TmpX2 = $NomeX2
-//		AuxX1 = ( (TmpX1[iYZ+1] - TmpX1[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX1[iYZ]
-//		AuxX2 = ( (TmpX2[iYZ+1] - TmpX2[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX2[iYZ]	
-//		FieldX = ( (AuxX2 - AuxX1) / (C_PosX[iX+1]-C_PosX[iX]) * (px-C_PosX[iX]) ) + AuxX1
-//
-//		// Find Field Y
-//		NomeX1 = "RaiaBy_X" + num2str(C_PosX[iX]) 
-//		Wave TmpX1 = $NomeX1
-//		NomeX2 = "RaiaBy_X" + num2str(C_PosX[iX+1]) 
-//		Wave TmpX2 = $NomeX2
-//		AuxX1 = ( (TmpX1[iYZ+1] - TmpX1[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX1[iYZ]
-//		AuxX2 = ( (TmpX2[iYZ+1] - TmpX2[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX2[iYZ]	
-//		FieldY = ( (AuxX2 - AuxX1) / (C_PosX[iX+1]-C_PosX[iX]) * (px-C_PosX[iX]) ) + AuxX1
-//
-//		// Find Field Z
-//		NomeX1 = "RaiaBz_X" + num2str(C_PosX[iX]) 
-//		Wave TmpX1 = $NomeX1
-//		NomeX2 = "RaiaBz_X" + num2str(C_PosX[iX+1]) 
-//		Wave TmpX2 = $NomeX2
-//		AuxX1 = ( (TmpX1[iYZ+1] - TmpX1[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX1[iYZ]
-//		AuxX2 = ( (TmpX2[iYZ+1] - TmpX2[iYZ]) / (C_PosYZ[iYZ+1] - C_PosYZ[iYZ]) * (pyz - C_PosYZ[iYZ]) ) + TmpX2[iYZ]	
-//		FieldZ = ( (AuxX2 - AuxX1) / (C_PosX[iX+1]-C_PosX[iX]) * (px-C_PosX[iX]) ) + AuxX1
-//	endif
-//		
-//End
+
 //
 //
 //Window Results() : Panel
