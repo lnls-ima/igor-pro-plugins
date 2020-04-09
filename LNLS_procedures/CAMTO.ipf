@@ -11,6 +11,7 @@ Menu "CAMTO 14.0.0"
 	"Field Specification", CAMTO_Spec()
 	"Load Fieldmap", CAMTO_Load()
 	"Export Field Data", CAMTO_Export()
+	"View Magnetic Field", CAMTO_ViewField()
 	"Hall Probe Correction", CAMTO_HallProbe()
 	"Integrals and Multipoles", CAMTO_Multipoles()
 	"Particle Energy", CAMTO_Energy()
@@ -1668,6 +1669,20 @@ Static Function InitializeFieldmapVariables()
 	variable/G INDEX_X
 	variable/G INDEX_L
 
+	variable/G VIEW_POS_X
+	variable/G VIEW_POS_L
+	variable/G VIEW_PLOT_X
+	variable/G VIEW_PLOT_START_X
+	variable/G VIEW_PLOT_END_X
+	variable/G VIEW_PLOT_L
+	variable/G VIEW_FIELD_X
+	variable/G VIEW_FIELD_Y
+	variable/G VIEW_FIELD_Z
+	variable/G VIEW_HOM_X
+	variable/G VIEW_HOM_Y
+	variable/G VIEW_HOM_Z
+	variable/G VIEW_APPEND_FIELD = 0
+
 //	variable/G StartYZ = 0
 //	variable/G EndYZ = 0
 //	variable/G StepsYZ = 1
@@ -1873,6 +1888,7 @@ End
 Static Function UpdatePositionVariables()
 	
 	UpdatePositionVariablesExport()
+	UpdatePositionVariablesViewField()
 
 //	NVAR GridMin     = :varsFieldmap:GridMin
 //	NVAR GridMax 	 = :varsFieldmap:GridMax
@@ -1933,6 +1949,40 @@ Static Function UpdatePositionVariablesExport()
 	return 0
 	
 End 
+
+
+Static Function UpdatePositionVariablesViewField()
+	NVAR startX = :varsFieldmap:LOAD_START_X
+	NVAR endX = :varsFieldmap:LOAD_END_X
+
+	NVAR viewposX = :varsFieldmap:VIEW_POS_X
+	NVAR viewposL = :varsFieldmap:VIEW_POS_L
+	NVAR plotX = :varsFieldmap:VIEW_PLOT_X
+	NVAR plotL = :varsFieldmap:VIEW_PLOT_L
+	NVAR plotStartX = :varsFieldmap:VIEW_PLOT_START_X
+	NVAR plotEndX = :varsFieldmap:VIEW_PLOT_END_X
+	
+	WAVE posX, posL
+
+	plotStartX = startX
+	plotEndX = endX
+	
+	FindValue/T=1e-6/V=0 posX
+	if (V_Value != -1)
+		viewposX = 0
+		plotX = 0
+	endif
+
+	FindValue/T=1e-6/V=0 posL
+	if (V_Value != -1)
+		viewposL = 0
+		plotL = 0
+	endif
+
+	return 0
+	
+End 
+
 
 Static Function LoadFieldmap([filename, overwrite])
 	string filename
@@ -2270,7 +2320,7 @@ Static Function LoadFieldmap([filename, overwrite])
 End
 
 
-Static Function AddCopyConfigOptions(windowName, m, h, lt)
+Static Function AddCurrentFieldmapDisplay(windowName, m, h, lt)
 	string windowName
 	variable m, h, lt
 	
@@ -2279,6 +2329,18 @@ Static Function AddCopyConfigOptions(windowName, m, h, lt)
 	SetVariable svarCurrentFieldmap, win=$windowName, pos={m, h}, size={l,20}, noedit=1, title="Current Fieldmap "
 	SetVariable svarCurrentFieldmap, win=$windowName, value=root:varsCAMTO:FIELDMAP_FOLDER
 	h += 30
+	
+	return h
+
+End
+
+Static Function AddCopyConfigOptions(windowName, m, h, lt)
+	string windowName
+	variable m, h, lt
+	
+	variable l = lt - 2*m
+
+	h = AddCurrentFieldmapDisplay(windowName, m, h, lt)
 	
 	TitleBox tbxCopyConfig, win=$windowName, pos={m,h}, size={140,20}, frame=0, title="Copy Configuration From "
 	PopupMenu popupCopyConfig, win=$windowName, pos={m+150,h},size={l-150,20}, bodyWidth=l-150, disable=2, mode=0, title=" "
@@ -2630,7 +2692,7 @@ End
 
 
 Static Function GetFieldAtPoint(px, pl)
-	variable px, pl
+	variable px, pl //horizontal and longitudinal positions in meters
 	
 	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
 	NVAR nptsL = :varsFieldmap:LOAD_NPTS_L
@@ -3206,7 +3268,498 @@ Static Function ExportSpectraFormat()
 	return 0
 
 End
+
+
+Function CAMTO_ViewField() : Panel
+	
+	string windowName = "ViewField"
+	string graphName = "GraphViewField"
+	string annotationName = "FieldColors"
+	string windowTitle = "View Magnetic Field"
+		
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return -1
+	endif
+
+	DoWindow/K $windowName
+	NewPanel/K=1/N=$windowName/W=(200,150,1500,670) as windowTitle
+	SetDrawLayer UserBack
+		
+	CAMTO_SubViewField(windowName, 0, 0)
+	
+	Display/W=(370,10,1290,510)/HOST=$windowName/N=$graphName
+	TextBox/W=$windowName#$graphName/A=LT/C/N=$annotationName "\\K(65000,0,0) Bx \r\\K(0,40000,0) By \r\\K(0,0,65000) Bz "
+	
+	AddCurrentFieldmapDisplay(windowName, 20, 490, 360)
+	SetDrawEnv/W=$windowName fillpat=0
+	DrawRect/W=$windowName 8,480,350,515
+
+	UpdatePanelViewField()
+
+	return 0
+			
+End
+
+
+Function CAMTO_SubViewField(windowName, startH, startV)
+	string windowName
+	variable startH, startV
+
+	string subwindowName = "SubViewField"
+	
+	NewPanel/W=(startH, startV, startH+360, startV+480)/HOST=$windowName/N=$subwindowName
+	SetDrawLayer UserBack
+		
+	variable m, h, h1, l1, l2, l 
+	m = 20	
+	h = 10
+	h1 = 8
+	l1 = 8
+	l2 = 350
+
+	TitleBox tbxTitle1, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Field At Point"
+	h += 30
+	
+	SetVariable svarPosX, pos={m,h+10}, size={140,20}, title="Pos X [mm]"
+	SetVariable svarPosL, pos={m,h+40}, size={140,20}, title="Pos L [mm]"
+	ValDisplay vdispFieldX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field X [T]"
+	ValDisplay vdispFieldY, pos={m+150,h+25}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field Y [T]"
+	ValDisplay vdispFieldZ, pos={m+150,h+50}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field Z [T]"
+	h += 80
+
+	Button btnFieldAtPoint, pos={m,h}, size={320,25}, fstyle=1, proc=CAMTO_SubViewField_FieldAtPoint, title="Get Field at Point"
+	h += 40
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	TitleBox tbxTitle2, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Longitudinal Profile"
+	h += 30
+	
+	Button btnLongitudinalProfile, pos={m,h}, size={150,25}, fstyle=1, proc=CAMTO_SubViewField_LProfile,title="Show field at X [mm] ="
+	SetVariable svarPlotX, pos={m+160,h+4}, size={80,25}, title=" "
+	CheckBox chbAppend, pos={m+250,h+5}, size={80,25}, title="Append"
+	h += 40
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	TitleBox tbxTitle3, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Horizontal Profile"
+	h += 30
+
+	SetVariable svarPlotStartX, pos={m,h}, size={140,20}, title="Start X [mm]"
+	ValDisplay vdispHomX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. X [T]"
+	h += 25
+	
+	SetVariable svarPlotEndX, pos={m,h}, size={140,20}, title="End X [mm]"
+	ValDisplay vdispHomY, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Y [T]"
+	h += 25
+	
+	SetVariable svarPlotL, pos={m,h}, size={140,20}, title="Pos L [mm]"
+	ValDisplay vdispHomZ, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Z [T]"	
+	h += 25
+	
+	Button btnHorizontalProfile, pos={m,h}, size={320,25}, fstyle=1, proc=CAMTO_SubViewField_XProfile, title="Show Field Profile and Homogeneity"
+	h += 40
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	TitleBox tbxTitle4, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Field Integrals"
+	h += 30
+
+	Button btnFirstInt, pos={m,h}, size={210,25}, fstyle=1, proc=CAMTO_SubViewField_FirstInt, title="Show First Integrals over lines"
+	Button btnFirstIntTable, pos={m+220,h}, size={100,25}, fstyle=1, proc=CAMTO_SubViewField_FirstIntTable, title="Show Table"
+	h += 30
+	
+	Button btnSecondInt, pos={m,h}, size={210,25}, fstyle=1, proc=CAMTO_SubViewField_SecondInt, title="Show Second Integrals over lines"
+	Button btnSecondIntTable, pos={m+220,h}, size={100,25}, fstyle=1, proc=CAMTO_SubViewField_SecondIntTable, title="Show Table"
+	h += 40
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	return 0
+	
+End
+
+
+Static Function UpdatePanelViewField()
+
+	string windowName = "ViewField"
+
+	if (WinType(windowName)==0)
+		return -1
+	endif
+	
+	UpdatePanelSubViewField(windowName)
+	
+	return 0
+
+End
+
+
+Static Function UpdatePanelSubViewField(windowName)
+	string windowName
+
+	string subwindowName = "SubViewField"
+
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+
+	if (strlen(df) > 0 && cmpstr(df, "_none_")!=0)				
+		NVAR startX = root:$(df):varsFieldmap:LOAD_START_X
+		NVAR endX = root:$(df):varsFieldmap:LOAD_END_X
+		NVAR stepX = root:$(df):varsFieldmap:LOAD_STEP_X
+		NVAR startL = root:$(df):varsFieldmap:LOAD_START_L
+		NVAR endL = root:$(df):varsFieldmap:LOAD_END_L
+		NVAR stepL = root:$(df):varsFieldmap:LOAD_STEP_L
+
+		NVAR posX = root:$(df):varsFieldmap:VIEW_POS_X
+		NVAR posL = root:$(df):varsFieldmap:VIEW_POS_L
+		
+		NVAR plotX = root:$(df):varsFieldmap:VIEW_PLOT_X
+		NVAR appendField = root:$(df):varsFieldmap:VIEW_APPEND_FIELD
+		
+		NVAR plotStartX = root:$(df):varsFieldmap:VIEW_PLOT_START_X
+		NVAR plotEndX = root:$(df):varsFieldmap:VIEW_PLOT_END_X
+		NVAR plotL = root:$(df):varsFieldmap:VIEW_PLOT_L
+						
+		SetVariable svarPosX, win=$windowName#$subwindowName, value=posX, disable=0, limits={startX, endX, stepX}
+		SetVariable svarPosL, win=$windowName#$subwindowName, value=posL, disable=0, limits={startL, endL, stepL}
+
+		ValDisplay vdispFieldX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_X")
+		ValDisplay vdispFieldY, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_Y")
+		ValDisplay vdispFieldZ, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_Z")
+
+		SetVariable svarPlotX, win=$windowName#$subwindowName, value=plotX, disable=0, limits={startX, endX, stepX}
+		CheckBox chbAppend, win=$windowName#$subwindowName, variable=appendField, disable=0
+		
+		SetVariable svarPlotStartX, win=$windowName#$subwindowName, value=plotStartX, disable=0, limits={startX, endX, stepX}
+		SetVariable svarPlotEndX, win=$windowName#$subwindowName, value=plotEndX, disable=0, limits={startX, endX, stepX}
+		SetVariable svarPlotL, win=$windowName#$subwindowName, value=plotL, disable=0, limits={startL, endL, stepL}
+		
+		ValDisplay vdispHomX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_X")
+		ValDisplay vdispHomY, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_Y")
+		ValDisplay vdispHomZ, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_Z")
+		
+		Button btnFieldAtPoint, win=$windowName#$subwindowName, disable=0
+		Button btnLongitudinalProfile, win=$windowName#$subwindowName, disable=0
+		Button btnHorizontalProfile, win=$windowName#$subwindowName, disable=0
+		Button btnFirstInt, win=$windowName#$subwindowName, disable=0
+		Button btnFirstIntTable, win=$windowName#$subwindowName, disable=0
+		Button btnSecondInt, win=$windowName#$subwindowName, disable=0
+		Button btnSecondIntTable, win=$windowName#$subwindowName, disable=0
+		
+	else
+		Button btnFieldAtPoint, win=$windowName#$subwindowName, disable=2
+		Button btnLongitudinalProfile, win=$windowName#$subwindowName, disable=2
+		Button btnHorizontalProfile, win=$windowName#$subwindowName, disable=2
+		Button btnFirstInt, win=$windowName#$subwindowName, disable=2
+		Button btnFirstIntTable, win=$windowName#$subwindowName, disable=2
+		Button btnSecondInt, win=$windowName#$subwindowName, disable=2
+		Button btnSecondIntTable, win=$windowName#$subwindowName, disable=2
+		CheckBox chbAppend, win=$windowName#$subwindowName, disable=2
+	
+	endif
+
+	return 0
+	
+End
+
+
+Function CAMTO_SubViewField_FieldAtPoint(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+		
+			NVAR posX = :varsFieldmap:VIEW_POS_X
+			NVAR posL = :varsFieldmap:VIEW_POS_L
+			NVAR fieldX = :varsFieldmap:FIELD_X
+			NVAR fieldY = :varsFieldmap:FIELD_Y
+			NVAR fieldZ = :varsFieldmap:FIELD_Z			
+			NVAR viewFieldX = :varsFieldmap:VIEW_FIELD_X
+			NVAR viewFieldY = :varsFieldmap:VIEW_FIELD_Y
+			NVAR viewFieldZ = :varsFieldmap:VIEW_FIELD_Z	
+			
+			GetFieldAtPoint(posX/1000, posL/1000)
+			
+			viewFieldX = fieldX
+			viewFieldY = fieldY
+			viewFieldZ = fieldZ
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function CAMTO_SubViewField_LProfile(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+			
+			variable subwindow
+			string windowName, subwindowName, graphXName, graphYName, graphZName	
+			
+			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
+			
+			if (!cmpstr(subwindowName, "SubViewField"))
+				graphXName = windowName + "#" + "GraphViewField"
+				graphYName = graphXName
+				graphZName = graphXName
+				subwindow = 1
+			else
+				graphXName = ""
+				graphYName = ""
+				graphZName = ""
+				subwindow = 0
+			endif
+						
+			PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName, subwindow)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+Static Function DeleteTracesFromGraph(graphName)
+	string graphName
+
+	string allTraces, traceName
+	variable i, nrTraces
+	
+	allTraces = TraceNameList(graphName, ";", 1)
+	nrTraces = ItemsInList(allTraces, ";")
+	
+	for (i=nrTraces-1; i>=0; i=i-1)
+		traceName = StringFromList(i, allTraces)
+		RemoveFromGraph/W=$graphName $traceName
+	endfor
+
+	return 0
+
+End
+
+
+Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName, subwindow)
+	string graphXName, graphYName, graphZName
+	variable subwindow
+
+	NVAR plotX = :varsFieldmap:VIEW_PLOT_X
+	NVAR appendField =:varsFieldmap:VIEW_APPEND_FIELD
+	
+	WAVE posL
+	
+	string posXStr, posXStrmm, traceNames, tnX, tnY, tnZ
+		
+	if (!appendField)
+		if (subwindow)
+			DeleteTracesFromGraph(graphXName)
+			DeleteTracesFromGraph(graphYName)
+			DeleteTracesFromGraph(graphZName)
+		else
+			DoWindow/K $graphXName
+			DoWindow/K $graphYName
+			DoWindow/K $graphZName
+			
+			Display/N=$graphXName/K=1
+			Display/N=$graphYName/K=1
+			Display/N=$graphZName/K=1
+			
+		endif
+	endif
+
+	posXStrmm = num2str(plotX)
+	tnX = "Bx x=" + posXStrmm + "mm"
+	tnY = "By x=" + posXStrmm + "mm"
+	tnZ = "Bz x=" + posXStrmm + "mm"
+	
+	traceNames = TraceNameList(graphXName, ";", 1)
+	if (strsearch(traceNames, tnX, 0) != -1)
+		DoAlert 1, "Field already on the graph. Append anyway?" 
+		if (V_flag == 2)
+			return -1
+		endif
+	endif
+
+	posXStr = num2str(plotX/1000)
+	
+	WAVE waveBx = $"Bx_X" + posXStr
+	Appendtograph/W=$graphXName waveBx/TN=$tnX vs posL
+	ModifyGraph rgb($tnX)=(65000,0,0)
+
+	WAVE waveBy = $"By_X" + posXStr
+	Appendtograph/W=$graphYName waveBy/TN=$tnY vs posL
+	ModifyGraph rgb($tnY)=(0,40000,0)
+
+	WAVE waveBz = $"Bz_X" + posXStr
+	Appendtograph/W=$graphZName waveBz/TN=$tnZ vs posL
+	ModifyGraph rgb($tnZ)=(0,0,65000)
+	
+	if (subwindow)
+		Label/W=$graphXName bottom "Longitudinal Position [m]"
+		Label/W=$graphXName left "Field [T]"
+		ModifyGraph/W=$graphXName grid=1
+		ModifyGraph/W=$graphXName gridRGB=(35000,35000,35000)
+	
+	else
+		Label/W=$graphXName bottom "Longitudinal Position [m]"
+		Label/W=$graphXName left "Field Bx [T]"
+		ModifyGraph/W=$graphXName grid=1
+		ModifyGraph/W=$graphXName gridRGB=(35000,35000,35000)
+	
+		Label/W=$graphYName bottom "Longitudinal Position [m]"
+		Label/W=$graphYName left "Field By [T]"
+		ModifyGraph/W=$graphYName grid=1
+		ModifyGraph/W=$graphYName gridRGB=(35000,35000,35000)	
+	
+		Label/W=$graphZName bottom "Longitudinal Position [m]"
+		Label/W=$graphZName left "Field Bz[T]"		
+		ModifyGraph/W=$graphZName grid=1
+		ModifyGraph/W=$graphZName gridRGB=(35000,35000,35000)
+
+	endif
+
+End
 //Ok até aqui!!
+
+
+//Window Integrals_Multipoles() : Panel
+//	PauseUpdate; Silent 1		// building window...
+//
+//	if (DataFolderExists("root:varsCAMTO")==0)
+//		DoAlert 0, "CAMTO variables not found."
+//		return 
+//	endif
+//
+//	CloseWindow("Integrals_Multipoles")
+//
+//	NewPanel/K=1/W=(80,250,407,792)
+//	SetDrawLayer UserBack
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,4,322,185
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,185,322,260
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,260,322,335
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,335,322,420
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,420,322,538
+//
+//					
+//	TitleBox title,pos={60,10},size={127,16},fsize=14,fstyle=1,frame=0, title="Field Integrals and Multipoles"
+//	TitleBox subtitle,pos={86,30},size={127,16},fsize=14,frame=0, title="K0 to Kx (0 - On, 1 - Off)"
+//
+//	SetVariable order,pos={10,60},size={220,16},title="Order of Multipolar Analysis:"
+//	SetVariable dist,pos={10,85},size={221,16},title="Distance for Multipolar Analysis:"	
+//	TitleBox dist_unit,pos={230,85},size={72,16},title=" mm from center",fsize=12,frame=0
+//
+//	SetVariable norm_K,pos={10,110},size={220,16},title="Normalize Against K:"
+//	PopupMenu norm_comp,pos={10,135},size={241,16},proc=PopupMultComponent,title="Component:"
+//	PopupMenu norm_comp,value= #"\"Normal;Skew\""
+//	
+//	TitleBox    grid_title,pos={10, 160},size={90,18},frame=0,title="Horizontal Range:"
+//	SetVariable grid_min,pos={110,160},limits={-inf, inf, 0},size={95,18},title="Min [mm]:"
+//	SetVariable grid_max,pos={215,160},limits={-inf, inf, 0},size={95,18},title="Max [mm]:"
+//
+//	TitleBox    mult_title,pos={10, 190},size={90,18},frame=0,title="Multipoles"
+//	SetVariable norm_ks,pos={20,210},size={285,16},title="Normal - Ks to Use:"
+//	SetVariable skew_ks,pos={20,235},size={285,16},title="\t Skew - Ks to Use:"
+//
+//	TitleBox    res_title,pos={10, 265},size={90,18},frame=0,title="Residual Normalized Multipoles"
+//	SetVariable res_norm_ks,pos={20,285},size={285,16},title="Normal - Ks to Use:"
+//	SetVariable res_skew_ks,pos={20,310},size={285,16},title="\t Skew - Ks to Use:"
+//
+//	Button int_button,pos={12,340},size={300,34},proc=CalcIntegrals,title="Calculate Field Integrals"
+//	Button int_button,fsize=15,fstyle=1
+//	Button mult_button,pos={12,380},size={300,34},proc=CalcMultipoles,title="Calculate Multipoles"
+//	Button mult_button,fsize=15,fstyle=1
+//
+//	SetVariable fieldmap_dir,pos={10,425},size={300,18},title="Field Map Directory: "
+//	SetVariable fieldmap_dir,noedit=1,value=root:varsCAMTO:FIELDMAP_FOLDER
+//	TitleBox copy_title,pos={10,452},size={150,18},frame=0,title="Copy Configuration from:"
+//	PopupMenu copy_dir,pos={160,450},size={150,18},bodyWidth=145,mode=0,proc=CopyMultipolesConfig,title=" "
+//	Button apply_to_all_integrals,pos={10,476},size={300,25},fstyle=1,proc=CalcIntegralsToAll,title="Calculate Integrals for All Field Maps"
+//	Button apply_to_all_multipoles,pos={10,506},size={300,25},fstyle=1,proc=CalcMultipolesToAll,title="Calculate Multipoles for All Field Maps"
+//	
+//	UpdateFieldmapFolders()
+//	UpdateIntegralsMultipolesPanel()
+//		
+//EndMacro
+//
+//
+//Function UpdateIntegralsMultipolesPanel()
+//	
+//	string panel_name
+//	panel_name = WinList("Integrals_Multipoles",";","")	
+//	if (stringmatch(panel_name, "Integrals_Multipoles;")==0)
+//		return -1
+//	endif
+//
+//	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+//	
+//	NVAR fieldmapCount = root:varsCAMTO:FIELDMAP_COUNT
+//	
+//	string FieldmapList
+//	if (fieldmapCount > 1)
+//		FieldmapList = getFieldmapDirs()
+//		Button apply_to_all_integrals,win=Integrals_Multipoles,disable=0
+//		Button apply_to_all_multipoles,win=Integrals_Multipoles,disable=0
+//	else
+//		FieldmapList = ""
+//		Button apply_to_all_integrals,win=Integrals_Multipoles,disable=2
+//		Button apply_to_all_multipoles,win=Integrals_Multipoles,disable=2
+//	endif
+//	
+//	if (DataFolderExists("root:Nominal"))
+//		FieldmapList = "Field Specification;" + FieldmapList
+//	endif
+//	
+//	PopupMenu copy_dir,win=Integrals_Multipoles,disable=0,value= #("\"" + "Multipoles over trajectory;" + FieldmapList + "\"")
+//	
+//	if (strlen(df) > 0)
+//		NVAR FittingOrder = root:$(df):varsFieldmap:FittingOrder
+//		NVAR NormComponent = root:$(df):varsFieldmap:NormComponent
+//	
+//		SetVariable order,win=Integrals_Multipoles,value= root:$(df):varsFieldmap:FittingOrder
+//		SetVariable dist,win=Integrals_Multipoles,value= root:$(df):varsFieldmap:Distcenter
+//		SetVariable norm_k,win=Integrals_Multipoles,limits={0,(FittingOrder-1),1},value= root:$(df):varsFieldmap:KNorm
+//		PopupMenu norm_comp,win=Integrals_Multipoles,disable=0,mode=NormComponent
+//		
+//		SetVariable grid_min,win=Integrals_Multipoles,value= root:$(df):varsFieldmap:GridMin
+//		SetVariable grid_max,win=Integrals_Multipoles,value= root:$(df):varsFieldmap:GridMax
+//	
+//		SetVariable norm_ks,win=Integrals_Multipoles, value= root:$(df):varsFieldmap:NormalCoefs	
+//		SetVariable skew_ks,win=Integrals_Multipoles, value= root:$(df):varsFieldmap:SkewCoefs
+//				
+//		SetVariable res_norm_ks, win=Integrals_Multipoles, value= root:$(df):varsFieldmap:ResNormalCoefs
+//		SetVariable res_skew_ks, win=Integrals_Multipoles, value= root:$(df):varsFieldmap:ResSkewCoefs
+//
+//		Button mult_button,win=Integrals_Multipoles,disable=0
+//	else
+//		PopupMenu norm_comp,win=Integrals_Multipoles,disable=2
+//		Button mult_button,win=Integrals_Multipoles,disable=2
+//	endif
+//	
+//End
 
 
 //Window Probe_Error_Correction() : Panel
@@ -3596,126 +4149,7 @@ End
 //End
 //
 //
-//Window Integrals_Multipoles() : Panel
-//	PauseUpdate; Silent 1		// building window...
-//
-//	if (DataFolderExists("root:varsCAMTO")==0)
-//		DoAlert 0, "CAMTO variables not found."
-//		return 
-//	endif
-//
-//	CloseWindow("Integrals_Multipoles")
-//
-//	NewPanel/K=1/W=(80,250,407,792)
-//	SetDrawLayer UserBack
-//	SetDrawEnv fillpat= 0
-//	DrawRect 3,4,322,185
-//	SetDrawEnv fillpat= 0
-//	DrawRect 3,185,322,260
-//	SetDrawEnv fillpat= 0
-//	DrawRect 3,260,322,335
-//	SetDrawEnv fillpat= 0
-//	DrawRect 3,335,322,420
-//	SetDrawEnv fillpat= 0
-//	DrawRect 3,420,322,538
-//
-//					
-//	TitleBox title,pos={60,10},size={127,16},fsize=14,fstyle=1,frame=0, title="Field Integrals and Multipoles"
-//	TitleBox subtitle,pos={86,30},size={127,16},fsize=14,frame=0, title="K0 to Kx (0 - On, 1 - Off)"
-//
-//	SetVariable order,pos={10,60},size={220,16},title="Order of Multipolar Analysis:"
-//	SetVariable dist,pos={10,85},size={221,16},title="Distance for Multipolar Analysis:"	
-//	TitleBox dist_unit,pos={230,85},size={72,16},title=" mm from center",fsize=12,frame=0
-//
-//	SetVariable norm_K,pos={10,110},size={220,16},title="Normalize Against K:"
-//	PopupMenu norm_comp,pos={10,135},size={241,16},proc=PopupMultComponent,title="Component:"
-//	PopupMenu norm_comp,value= #"\"Normal;Skew\""
-//	
-//	TitleBox    grid_title,pos={10, 160},size={90,18},frame=0,title="Horizontal Range:"
-//	SetVariable grid_min,pos={110,160},limits={-inf, inf, 0},size={95,18},title="Min [mm]:"
-//	SetVariable grid_max,pos={215,160},limits={-inf, inf, 0},size={95,18},title="Max [mm]:"
-//
-//	TitleBox    mult_title,pos={10, 190},size={90,18},frame=0,title="Multipoles"
-//	SetVariable norm_ks,pos={20,210},size={285,16},title="Normal - Ks to Use:"
-//	SetVariable skew_ks,pos={20,235},size={285,16},title="\t Skew - Ks to Use:"
-//
-//	TitleBox    res_title,pos={10, 265},size={90,18},frame=0,title="Residual Normalized Multipoles"
-//	SetVariable res_norm_ks,pos={20,285},size={285,16},title="Normal - Ks to Use:"
-//	SetVariable res_skew_ks,pos={20,310},size={285,16},title="\t Skew - Ks to Use:"
-//
-//	Button int_button,pos={12,340},size={300,34},proc=CalcIntegrals,title="Calculate Field Integrals"
-//	Button int_button,fsize=15,fstyle=1
-//	Button mult_button,pos={12,380},size={300,34},proc=CalcMultipoles,title="Calculate Multipoles"
-//	Button mult_button,fsize=15,fstyle=1
-//
-//	SetVariable fieldmap_dir,pos={10,425},size={300,18},title="Field Map Directory: "
-//	SetVariable fieldmap_dir,noedit=1,value=root:varsCAMTO:FIELDMAP_FOLDER
-//	TitleBox copy_title,pos={10,452},size={150,18},frame=0,title="Copy Configuration from:"
-//	PopupMenu copy_dir,pos={160,450},size={150,18},bodyWidth=145,mode=0,proc=CopyMultipolesConfig,title=" "
-//	Button apply_to_all_integrals,pos={10,476},size={300,25},fstyle=1,proc=CalcIntegralsToAll,title="Calculate Integrals for All Field Maps"
-//	Button apply_to_all_multipoles,pos={10,506},size={300,25},fstyle=1,proc=CalcMultipolesToAll,title="Calculate Multipoles for All Field Maps"
-//	
-//	UpdateFieldmapFolders()
-//	UpdateIntegralsMultipolesPanel()
-//		
-//EndMacro
-//
-//
-//Function UpdateIntegralsMultipolesPanel()
-//	
-//	string panel_name
-//	panel_name = WinList("Integrals_Multipoles",";","")	
-//	if (stringmatch(panel_name, "Integrals_Multipoles;")==0)
-//		return -1
-//	endif
-//
-//	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
-//	
-//	NVAR fieldmapCount = root:varsCAMTO:FIELDMAP_COUNT
-//	
-//	string FieldmapList
-//	if (fieldmapCount > 1)
-//		FieldmapList = getFieldmapDirs()
-//		Button apply_to_all_integrals,win=Integrals_Multipoles,disable=0
-//		Button apply_to_all_multipoles,win=Integrals_Multipoles,disable=0
-//	else
-//		FieldmapList = ""
-//		Button apply_to_all_integrals,win=Integrals_Multipoles,disable=2
-//		Button apply_to_all_multipoles,win=Integrals_Multipoles,disable=2
-//	endif
-//	
-//	if (DataFolderExists("root:Nominal"))
-//		FieldmapList = "Field Specification;" + FieldmapList
-//	endif
-//	
-//	PopupMenu copy_dir,win=Integrals_Multipoles,disable=0,value= #("\"" + "Multipoles over trajectory;" + FieldmapList + "\"")
-//	
-//	if (strlen(df) > 0)
-//		NVAR FittingOrder = root:$(df):varsFieldmap:FittingOrder
-//		NVAR NormComponent = root:$(df):varsFieldmap:NormComponent
-//	
-//		SetVariable order,win=Integrals_Multipoles,value= root:$(df):varsFieldmap:FittingOrder
-//		SetVariable dist,win=Integrals_Multipoles,value= root:$(df):varsFieldmap:Distcenter
-//		SetVariable norm_k,win=Integrals_Multipoles,limits={0,(FittingOrder-1),1},value= root:$(df):varsFieldmap:KNorm
-//		PopupMenu norm_comp,win=Integrals_Multipoles,disable=0,mode=NormComponent
-//		
-//		SetVariable grid_min,win=Integrals_Multipoles,value= root:$(df):varsFieldmap:GridMin
-//		SetVariable grid_max,win=Integrals_Multipoles,value= root:$(df):varsFieldmap:GridMax
-//	
-//		SetVariable norm_ks,win=Integrals_Multipoles, value= root:$(df):varsFieldmap:NormalCoefs	
-//		SetVariable skew_ks,win=Integrals_Multipoles, value= root:$(df):varsFieldmap:SkewCoefs
-//				
-//		SetVariable res_norm_ks, win=Integrals_Multipoles, value= root:$(df):varsFieldmap:ResNormalCoefs
-//		SetVariable res_skew_ks, win=Integrals_Multipoles, value= root:$(df):varsFieldmap:ResSkewCoefs
-//
-//		Button mult_button,win=Integrals_Multipoles,disable=0
-//	else
-//		PopupMenu norm_comp,win=Integrals_Multipoles,disable=2
-//		Button mult_button,win=Integrals_Multipoles,disable=2
-//	endif
-//	
-//End
-//
+
 //
 //Function CopyMultipolesConfig(ctrlName,popNum,popStr) : PopupMenuControl
 //	String ctrlName
