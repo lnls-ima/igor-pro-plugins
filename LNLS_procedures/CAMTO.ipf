@@ -72,6 +72,8 @@ Function CAMTO_Init()
 	variable/G LIGHT_SPEED = 2.99792458E+08
 	variable/G TRAJECTORY_STEP = 0.00001
 	
+	variable/G POSITION_TOLERANCE = 1e-10
+	
 	variable/G FIELDMAP_COUNT = 0
 	variable/G FIELDMAP_REFERENCE = 1
 	string/G FIELDMAP_NEW_FOLDER = "Fieldmap"
@@ -110,6 +112,10 @@ Function CAMTO_Init()
 	Make/D/N=(1, 2) normalMultipoles
 	Make/D/N=(0, 2) skewMultipoles
 	Make/D/N=(10,5) multipoleErrors
+	Make/N=3 colorX = {65000, 0, 0}
+	Make/N=3 colorY = {0, 40000, 0}
+	Make/N=3 colorZ = {0, 0, 65000}
+	Make/N=3 colorGrid = {35000, 35000, 35000}
 	
 	SetDataFolder root:
 
@@ -1618,6 +1624,7 @@ Static Function InitializeFieldmapVariables()
 	string/G FIELDMAP_FILEPATH = ""
 	
 	variable/G DATA_LOADED = 0
+	variable/G IRREGULAR_GRID = 0
 	variable/G LOAD_TIME_INSTANT = 0
 	variable/G LOAD_BEAM_DIRECTION
 	variable/G LOAD_STATIC_TRANSIENT
@@ -1674,6 +1681,7 @@ Static Function InitializeFieldmapVariables()
 	variable/G VIEW_PLOT_X
 	variable/G VIEW_PLOT_START_X
 	variable/G VIEW_PLOT_END_X
+	variable/G VIEW_PLOT_STEP_X
 	variable/G VIEW_PLOT_L
 	variable/G VIEW_FIELD_X
 	variable/G VIEW_FIELD_Y
@@ -1952,8 +1960,11 @@ End
 
 
 Static Function UpdatePositionVariablesViewField()
+	NVAR tol = root:varsCAMTO:POSITION_TOLERANCE
+	
 	NVAR startX = :varsFieldmap:LOAD_START_X
 	NVAR endX = :varsFieldmap:LOAD_END_X
+	NVAR stepX = :varsFieldmap:LOAD_STEP_X
 
 	NVAR viewposX = :varsFieldmap:VIEW_POS_X
 	NVAR viewposL = :varsFieldmap:VIEW_POS_L
@@ -1961,19 +1972,21 @@ Static Function UpdatePositionVariablesViewField()
 	NVAR plotL = :varsFieldmap:VIEW_PLOT_L
 	NVAR plotStartX = :varsFieldmap:VIEW_PLOT_START_X
 	NVAR plotEndX = :varsFieldmap:VIEW_PLOT_END_X
+	NVAR plotStepX = :varsFieldmap:VIEW_PLOT_STEP_X
 	
 	WAVE posX, posL
 
 	plotStartX = startX
 	plotEndX = endX
+	plotStepX = stepX
 	
-	FindValue/T=1e-6/V=0 posX
+	FindValue/T=(tol)/V=0 posX
 	if (V_Value != -1)
 		viewposX = 0
 		plotX = 0
 	endif
 
-	FindValue/T=1e-6/V=0 posL
+	FindValue/T=(tol)/V=0 posL
 	if (V_Value != -1)
 		viewposL = 0
 		plotL = 0
@@ -1996,6 +2009,7 @@ Static Function LoadFieldmap([filename, overwrite])
 		overwrite = 0
 	endif
 
+	NVAR tol = root:varsCAMTO:POSITION_TOLERANCE
 	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
 	NVAR staticTransient = root:varsCAMTO:LOAD_STATIC_TRANSIENT
 	NVAR symmetryLongitudinal = root:varsCAMTO:LOAD_SYMMETRY_LONGITUDINAL
@@ -2007,6 +2021,7 @@ Static Function LoadFieldmap([filename, overwrite])
 	SVAR fieldmapFilepath = :varsFieldmap:FIELDMAP_FILEPATH
 
 	NVAR dataLoaded = :varsFieldmap:DATA_LOADED
+	NVAR irregularGrid = :varsFieldmap:IRREGULAR_GRID
 	NVAR timeInstant = :varsFieldmap:LOAD_TIME_INSTANT	
 	NVAR localBeamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
 	NVAR localStaticTransient = :varsFieldmap:LOAD_STATIC_TRANSIENT
@@ -2083,6 +2098,7 @@ Static Function LoadFieldmap([filename, overwrite])
 	if (staticTransient == 2)
 		if (!WaveExists(wave6))
 			DoAlert 0, "Inconsistent number of columns for transient fieldmap."
+			Killwaves/Z wave0, wave1, wave2, wave3, wave4, wave5
 			return -1
 		endif
 		timeInstant = wave3[0]
@@ -2092,6 +2108,7 @@ Static Function LoadFieldmap([filename, overwrite])
 	endif
 
 	// Load x start, end and step values
+	FindDuplicates/TOL=(tol)/RN=waveXUnique wave0
 	startX = WaveMin(wave0)
 	endX = WaveMax(wave0)
 	stepX = abs(wave0[1] - wave0[0])
@@ -2099,8 +2116,9 @@ Static Function LoadFieldmap([filename, overwrite])
 	   stepX = 1
 	endif
 	nptsX = Round((endX - startX)/stepX + 1)
-
+	
 	// Load y start, end and step values
+	FindDuplicates/TOL=(tol)/RN=waveYUnique wave1
 	startY = WaveMin(wave1)
 	endY = WaveMax(wave1)
 	stepY = abs(wave1[nptsX] - wave1[0])
@@ -2110,6 +2128,7 @@ Static Function LoadFieldmap([filename, overwrite])
 	nptsY = Round((endY - startY)/stepY + 1)
 
 	// Load z start, end and step values
+	FindDuplicates/TOL=(tol)/RN=waveZUnique wave2
 	startZ = WaveMin(wave2)
 	endZ = WaveMax(wave2)
 	stepZ = abs(wave2[nptsX] - wave2[0])
@@ -2124,12 +2143,14 @@ Static Function LoadFieldmap([filename, overwrite])
 		endL = endY 
 		stepL = stepY
 		nptsL = nptsY
+		WAVE waveLUnique = waveYUnique
 	
 	else
 		startL = startZ
 		endL = endZ
 		stepL = stepZ
 		nptsL = nptsZ
+		WAVE waveLUnique = waveZUnique
 	
 	endif
 
@@ -2138,6 +2159,7 @@ Static Function LoadFieldmap([filename, overwrite])
 		if (startL != 0)
 			DoAlert 0, "Can't apply longitudinal symmetry. Non-zero initial position."
 			Killwaves/Z wave0, wave1, wave2, wave3, wave4, wave5, wave6
+			Killwaves/Z waveXUnique, waveYUnique, waveZUnique
 			return -1
 		endif
 	
@@ -2181,6 +2203,7 @@ Static Function LoadFieldmap([filename, overwrite])
 		if (startX != 0)
 			DoAlert 0, "Can't apply horizontal symmetry. Non-zero initial position."
 			Killwaves/Z wave0, wave1, wave2, wave3, wave4, wave5, wave6
+			Killwaves/Z waveXUnique, waveYUnique, waveZUnique
 			return -1
 		endif
 		
@@ -2204,10 +2227,27 @@ Static Function LoadFieldmap([filename, overwrite])
 	endif
 
 	// Make horizontal and longitudinal position waves (convert from millimeter to meter)
-	Make/D/O/N=(nptsX) posX
-	Make/D/O/N=(nptsL) posL
-	posX = (startX + stepX*p) / 1000
-	posL = (startL + stepL*p) / 1000
+	Make/D/O posX
+	if (numpnts(waveXUnique) != nptsX)
+		Duplicate/O waveXUnique, posX
+		posX = posX / 1000
+		nptsX = numpnts(posX)
+		irregularGrid = 1
+	else
+		Redimension/N=(nptsX) posX
+		posX = (startX + stepX*p) / 1000
+	endif  
+	
+	Make/D/O posL
+	if (numpnts(waveLUnique) != nptsL)
+		Duplicate/O waveLUnique, posL
+		posL = posL / 1000
+		nptsL = numpnts(posL)
+		irregularGrid = 1
+	else
+		Redimension/N=(nptsL) posL
+		posL = (startL + stepL*p) / 1000
+	endif
 	
 	// Get Bx, By and Bz values
 	for(i=0; i<nptsX; i+=1)
@@ -2311,12 +2351,67 @@ Static Function LoadFieldmap([filename, overwrite])
 	endif
 	
 	Killwaves/Z wave0, wave1, wave2, wave3, wave4, wave5, wave6
+	Killwaves/Z waveXUnique, waveYUnique, waveZUnique
 	
 	dataLoaded = 1
+	CalculateFieldIntegrals()
 	UpdatePositionVariables()
 	
 	return 0
 			
+End
+
+
+Static Function CalculateFieldIntegrals()
+ 	WAVE posX, posL
+
+ 	variable i, nptsX	
+ 	string posXStr, wn, wnInt, wnInt2
+ 	
+ 	nptsX = numpnts(posX)
+ 	
+	Make/D/O/N=(nptsX) Int_Bx	
+	Make/D/O/N=(nptsX) Int_By	
+	Make/D/O/N=(nptsX) Int_Bz	
+	Make/D/O/N=(nptsX) Int2_Bx	
+	Make/D/O/N=(nptsX) Int2_By
+	Make/D/O/N=(nptsX) Int2_Bz	
+	
+	for (i=0; i<nptsX; i++)
+		posXStr = num2str(posX[i])
+
+		wn = "Bx_X" + posXstr
+		wnInt = "Int_Bx_X" + posXstr
+		wnInt2 = "Int2_Bx_X" + posXstr
+		Integrate/METH=1 $wn/X=posL/D=$wnInt
+		Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
+		WAVE waveBInt = $wnInt	
+		WAVE waveBInt2 = $wnInt2		
+		Int_Bx[i] = waveBInt[numpnts(waveBInt)-1]
+		Int2_Bx[i] = waveBInt2[numpnts(waveBInt2)-1]
+		
+		wn = "By_X" + posXstr
+		wnInt = "Int_By_X" + posXstr
+		wnInt2 = "Int2_By_X" + posXstr
+		Integrate/METH=1 $wn/X=posL/D=$wnInt
+		Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
+		WAVE waveBInt = $wnInt	
+		WAVE waveBInt2 = $wnInt2		
+		Int_By[i] = waveBInt[numpnts(waveBInt)-1]
+		Int2_By[i] = waveBInt2[numpnts(waveBInt2)-1]
+
+		wn = "Bz_X" + posXstr
+		wnInt = "Int_Bz_X" + posXstr
+		wnInt2 = "Int2_Bz_X" + posXstr
+		Integrate/METH=1 $wn/X=posL/D=$wnInt
+		Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
+		WAVE waveBInt = $wnInt	
+		WAVE waveBInt2 = $wnInt2		
+		Int_Bz[i] = waveBInt[numpnts(waveBInt)-1]
+		Int2_Bz[i] = waveBInt2[numpnts(waveBInt2)-1]
+
+	endfor	
+	
 End
 
 
@@ -3276,20 +3371,29 @@ Function CAMTO_ViewField() : Panel
 	string graphName = "GraphViewField"
 	string annotationName = "FieldColors"
 	string windowTitle = "View Magnetic Field"
+	string annotationStr = ""	
 		
 	if (DataFolderExists("root:varsCAMTO")==0)
 		DoAlert 0, "CAMTO variables not found."
 		return -1
 	endif
 
+	WAVE colorX = root:wavesCAMTO:colorX
+	WAVE colorY = root:wavesCAMTO:colorY
+	WAVE colorZ = root:wavesCAMTO:colorZ
+	
 	DoWindow/K $windowName
 	NewPanel/K=1/N=$windowName/W=(200,150,1500,670) as windowTitle
 	SetDrawLayer UserBack
 		
 	CAMTO_SubViewField(windowName, 0, 0)
 	
-	Display/W=(370,10,1290,510)/HOST=$windowName/N=$graphName
-	TextBox/W=$windowName#$graphName/A=LT/C/N=$annotationName "\\K(65000,0,0) Bx \r\\K(0,40000,0) By \r\\K(0,0,65000) Bz "
+	Display/W=(370,10,1290,510)/HOST=$windowName/N=$graphName	
+
+	sprintf annotationStr, "%s\\K(%d,%d,%d) Bx \r", annotationStr, colorX[0], colorX[1], colorX[2]
+	sprintf annotationStr, "%s\\K(%d,%d,%d) By \r", annotationStr, colorY[0], colorY[1], colorY[2]
+	sprintf annotationStr, "%s\\K(%d,%d,%d) Bz", annotationStr, colorZ[0], colorZ[1], colorZ[2]
+	TextBox/W=$windowName#$graphName/A=LT/C/N=$annotationName annotationStr
 	
 	AddCurrentFieldmapDisplay(windowName, 20, 490, 360)
 	SetDrawEnv/W=$windowName fillpat=0
@@ -3338,7 +3442,8 @@ Function CAMTO_SubViewField(windowName, startH, startV)
 	TitleBox tbxTitle2, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Longitudinal Profile"
 	h += 30
 	
-	Button btnLongitudinalProfile, pos={m,h}, size={150,25}, fstyle=1, proc=CAMTO_SubViewField_LProfile,title="Show field at X [mm] ="
+	Button btnLongitudinalProfile, pos={m,h}, size={150,25}, fstyle=1, title="Show field at X [mm] ="
+	Button btnLongitudinalProfile, proc=CAMTO_SubViewField_LProfile
 	SetVariable svarPlotX, pos={m+160,h+4}, size={80,25}, title=" "
 	CheckBox chbAppend, pos={m+250,h+5}, size={80,25}, title="Append"
 	h += 40
@@ -3351,18 +3456,20 @@ Function CAMTO_SubViewField(windowName, startH, startV)
 	h += 30
 
 	SetVariable svarPlotStartX, pos={m,h}, size={140,20}, title="Start X [mm]"
-	ValDisplay vdispHomX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. X [T]"
+	ValDisplay vdispHomX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. X [%]"
 	h += 25
 	
 	SetVariable svarPlotEndX, pos={m,h}, size={140,20}, title="End X [mm]"
-	ValDisplay vdispHomY, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Y [T]"
+	ValDisplay vdispHomY, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Y [%]"
 	h += 25
 	
-	SetVariable svarPlotL, pos={m,h}, size={140,20}, title="Pos L [mm]"
-	ValDisplay vdispHomZ, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Z [T]"	
+	SetVariable svarPlotStepX, pos={m,h}, size={140,20}, title="Step X [mm]"
+	ValDisplay vdispHomZ, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Z [%]"	
 	h += 25
 	
-	Button btnHorizontalProfile, pos={m,h}, size={320,25}, fstyle=1, proc=CAMTO_SubViewField_XProfile, title="Show Field Profile and Homogeneity"
+	Button btnHorizontalProfile, pos={m,h}, size={240,25}, fstyle=1, title="Show field and homogeneity at L [mm] ="
+	Button btnHorizontalProfile, proc=CAMTO_SubViewField_XProfile
+	SetVariable svarPlotL, pos={m+250,h+4}, size={70,25}, title=" "
 	h += 40
 	
 	SetDrawEnv fillpat=0
@@ -3427,6 +3534,7 @@ Static Function UpdatePanelSubViewField(windowName)
 		
 		NVAR plotStartX = root:$(df):varsFieldmap:VIEW_PLOT_START_X
 		NVAR plotEndX = root:$(df):varsFieldmap:VIEW_PLOT_END_X
+		NVAR plotStepX = root:$(df):varsFieldmap:VIEW_PLOT_STEP_X
 		NVAR plotL = root:$(df):varsFieldmap:VIEW_PLOT_L
 						
 		SetVariable svarPosX, win=$windowName#$subwindowName, value=posX, disable=0, limits={startX, endX, stepX}
@@ -3441,6 +3549,7 @@ Static Function UpdatePanelSubViewField(windowName)
 		
 		SetVariable svarPlotStartX, win=$windowName#$subwindowName, value=plotStartX, disable=0, limits={startX, endX, stepX}
 		SetVariable svarPlotEndX, win=$windowName#$subwindowName, value=plotEndX, disable=0, limits={startX, endX, stepX}
+		SetVariable svarPlotStepX, win=$windowName#$subwindowName, value=plotStepX, disable=0, limits={0, (endX - startX), 1}
 		SetVariable svarPlotL, win=$windowName#$subwindowName, value=plotL, disable=0, limits={startL, endL, stepL}
 		
 		ValDisplay vdispHomX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_X")
@@ -3524,13 +3633,163 @@ Function CAMTO_SubViewField_LProfile(ba) : ButtonControl
 				graphZName = graphXName
 				subwindow = 1
 			else
-				graphXName = ""
-				graphYName = ""
-				graphZName = ""
+				graphXName = "LongitudinalProfileX"
+				graphYName = "LongitudinalProfileY"
+				graphZName = "LongitudinalProfileZ"
 				subwindow = 0
 			endif
 						
 			PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName, subwindow)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function CAMTO_SubViewField_XProfile(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+			
+			variable subwindow
+			string windowName, subwindowName, graphXName, graphYName, graphZName	
+			
+			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
+			
+			if (!cmpstr(subwindowName, "SubViewField"))
+				graphXName = windowName + "#" + "GraphViewField"
+				graphYName = graphXName
+				graphZName = graphXName
+				subwindow = 1
+			else
+				graphXName = "HorizontalProfileX"
+				graphYName = "HorizontalProfileY"
+				graphZName = "HorizontalProfileZ"
+				subwindow = 0
+			endif
+						
+			PlotFieldHorizontalProfile(graphXName, graphYName, graphZName, subwindow)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function CAMTO_SubViewField_FirstInt(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+			
+			variable subwindow
+			string windowName, subwindowName, graphXName, graphYName, graphZName	
+			
+			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
+			
+			if (!cmpstr(subwindowName, "SubViewField"))
+				graphXName = windowName + "#" + "GraphViewField"
+				graphYName = graphXName
+				graphZName = graphXName
+				subwindow = 1
+			else
+				graphXName = "FirstIntegralX"
+				graphYName = "FirstIntegralY"
+				graphZName = "FirstIntegralZ"
+				subwindow = 0
+			endif
+						
+			PlotFieldIntegral(graphXName, graphYName, graphZName, subwindow, secondIntegral=0)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function CAMTO_SubViewField_SecondInt(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+			
+			variable subwindow
+			string windowName, subwindowName, graphXName, graphYName, graphZName	
+			
+			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
+			
+			if (!cmpstr(subwindowName, "SubViewField"))
+				graphXName = windowName + "#" + "GraphViewField"
+				graphYName = graphXName
+				graphZName = graphXName
+				subwindow = 1
+			else
+				graphXName = "FirstIntegralX"
+				graphYName = "FirstIntegralY"
+				graphZName = "FirstIntegralZ"
+				subwindow = 0
+			endif
+						
+			PlotFieldIntegral(graphXName, graphYName, graphZName, subwindow, secondIntegral=1)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function CAMTO_SubViewField_FirstIntTable(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+			
+			WAVE posX, Int_Bx, Int_By, Int_Bz
+			
+			Edit/N=FirstIntegral/K=1 posX, Int_Bx, Int_By, Int_Bz
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function CAMTO_SubViewField_SecondIntTable(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (CheckFolder() == -1)
+				return -1
+			endif
+			
+			WAVE posX, Int2_Bx, Int2_By, Int2_Bz
+			
+			Edit/N=SecondIntegral/K=1 posX, Int2_Bx, Int2_By, Int2_Bz
 			
 			break
 	endswitch
@@ -3558,16 +3817,65 @@ Static Function DeleteTracesFromGraph(graphName)
 End
 
 
+Static Function ConfigureGraph(graphName, xlabel, ylabel)
+	string graphName, xlabel, ylabel
+	
+	WAVE colorGrid = root:wavesCAMTO:colorGrid	
+
+	Label/W=$graphName bottom xlabel
+	Label/W=$graphName left ylabel		
+	ModifyGraph/W=$graphName grid=1
+	ModifyGraph/W=$graphName gridRGB=(colorGrid[0], colorGrid[1], colorGrid[2])
+	
+	return 0
+
+End
+
+
+Static Function ChangeTraceColor(graphName, traceName, component)
+	string graphName, traceName, component
+	
+	WAVE colorX = root:wavesCAMTO:colorX
+	WAVE colorY = root:wavesCAMTO:colorY
+	WAVE colorZ = root:wavesCAMTO:colorZ
+
+	strswitch(component)
+		case "x":
+			ModifyGraph/W=$graphName rgb($traceName)=(colorX[0], colorX[1], colorX[2])
+			break
+		
+		case "y":
+			ModifyGraph/W=$graphName rgb($traceName)=(colorY[0], colorY[1], colorY[2])
+			break
+		
+		case "z":
+			ModifyGraph/W=$graphName rgb($traceName)=(colorZ[0], colorZ[1], colorZ[2])
+			break
+	
+	endswitch
+	
+	return 0
+	
+End
+
+
 Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName, subwindow)
 	string graphXName, graphYName, graphZName
 	variable subwindow
+	
+	NVAR tol = root:varsCAMTO:POSITION_TOLERANCE
 
 	NVAR plotX = :varsFieldmap:VIEW_PLOT_X
 	NVAR appendField =:varsFieldmap:VIEW_APPEND_FIELD
-	
-	WAVE posL
-	
-	string posXStr, posXStrmm, traceNames, tnX, tnY, tnZ
+	NVAR fieldX =:varsFieldmap:FIELD_X
+	NVAR fieldY =:varsFieldmap:FIELD_Y
+	NVAR fieldZ =:varsFieldmap:FIELD_Z
+
+	WAVE posX, posL
+
+	variable i
+	string posXStr, posXStrmm, traceNames
+	string tnX, tnY, tnZ, wnX, wnY, wnZ
 		
 	if (!appendField)
 		if (subwindow)
@@ -3584,6 +3892,15 @@ Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName,
 			Display/N=$graphZName/K=1
 			
 		endif
+	
+	else
+		traceNames = TraceNameList(graphXName, ";", 1)
+		if (strsearch(traceNames, "horizontalProfile_Bx", 0) != -1)
+			DeleteTracesFromGraph(graphXName)
+			DeleteTracesFromGraph(graphYName)
+			DeleteTracesFromGraph(graphZName)			
+		endif
+	
 	endif
 
 	posXStrmm = num2str(plotX)
@@ -3593,47 +3910,218 @@ Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName,
 	
 	traceNames = TraceNameList(graphXName, ";", 1)
 	if (strsearch(traceNames, tnX, 0) != -1)
-		DoAlert 1, "Field already on the graph. Append anyway?" 
-		if (V_flag == 2)
-			return -1
-		endif
+		return -1
 	endif
 
 	posXStr = num2str(plotX/1000)
-	
-	WAVE waveBx = $"Bx_X" + posXStr
-	Appendtograph/W=$graphXName waveBx/TN=$tnX vs posL
-	ModifyGraph rgb($tnX)=(65000,0,0)
-
-	WAVE waveBy = $"By_X" + posXStr
-	Appendtograph/W=$graphYName waveBy/TN=$tnY vs posL
-	ModifyGraph rgb($tnY)=(0,40000,0)
-
-	WAVE waveBz = $"Bz_X" + posXStr
-	Appendtograph/W=$graphZName waveBz/TN=$tnZ vs posL
-	ModifyGraph rgb($tnZ)=(0,0,65000)
-	
-	if (subwindow)
-		Label/W=$graphXName bottom "Longitudinal Position [m]"
-		Label/W=$graphXName left "Field [T]"
-		ModifyGraph/W=$graphXName grid=1
-		ModifyGraph/W=$graphXName gridRGB=(35000,35000,35000)
+	wnX = "Bx_X" + posXStr
+	wnY = "By_X" + posXStr
+	wnZ = "Bz_X" + posXStr
+ 	
+ 	FindValue/T=(tol)/V=(plotX/1000) posX
+	if (V_Value != -1)
+		WAVE waveBx = $wnX
+		WAVE waveBy = $wnY
+		WAVE waveBz = $wnZ
 	
 	else
-		Label/W=$graphXName bottom "Longitudinal Position [m]"
-		Label/W=$graphXName left "Field Bx [T]"
-		ModifyGraph/W=$graphXName grid=1
-		ModifyGraph/W=$graphXName gridRGB=(35000,35000,35000)
+		Make/O/N=(numpnts(posL)) $wnX
+		Make/O/N=(numpnts(posL)) $wnY
+		Make/O/N=(numpnts(posL)) $wnZ
+		WAVE waveBx = $wnX
+		WAVE waveBy = $wnY
+		WAVE waveBz = $wnZ
+		
+		for(i=0; i<numpnts(posL); i++)
+			GetFieldAtPoint(plotX/1000, posL[i])
+			waveBx[i] = fieldX
+			waveBy[i] = fieldY
+			waveBz[i] = fieldZ
+		endfor	
 	
-		Label/W=$graphYName bottom "Longitudinal Position [m]"
-		Label/W=$graphYName left "Field By [T]"
-		ModifyGraph/W=$graphYName grid=1
-		ModifyGraph/W=$graphYName gridRGB=(35000,35000,35000)	
+	endif
 	
-		Label/W=$graphZName bottom "Longitudinal Position [m]"
-		Label/W=$graphZName left "Field Bz[T]"		
-		ModifyGraph/W=$graphZName grid=1
-		ModifyGraph/W=$graphZName gridRGB=(35000,35000,35000)
+	Appendtograph/W=$graphXName waveBx/TN=$tnX vs posL
+	ChangeTraceColor(graphXName, tnX, "x")
+	
+	Appendtograph/W=$graphYName waveBy/TN=$tnY vs posL
+	ChangeTraceColor(graphYName, tnY, "y")
+	
+	Appendtograph/W=$graphZName waveBz/TN=$tnZ vs posL
+	ChangeTraceColor(graphZName, tnZ, "z")
+	
+	if (subwindow)
+		ConfigureGraph(graphXName, "Longitudinal Position [m]", "Field [T]")
+	
+	else
+		ConfigureGraph(graphXName, "Longitudinal Position [m]", "Field Bx[T]")
+		ConfigureGraph(graphYName, "Longitudinal Position [m]", "Field By[T]")
+		ConfigureGraph(graphZName, "Longitudinal Position [m]", "Field Bz[T]")
+	endif
+
+End
+
+
+Static Function PlotFieldHorizontalProfile(graphXName, graphYName, graphZName, subwindow)
+	string graphXName, graphYName, graphZName
+	variable subwindow
+
+	NVAR fieldX =:varsFieldmap:FIELD_X
+	NVAR fieldY =:varsFieldmap:FIELD_Y
+	NVAR fieldZ =:varsFieldmap:FIELD_Z
+
+	NVAR startX = :varsFieldmap:LOAD_START_X
+	NVAR endX = :varsFieldmap:LOAD_END_X
+	NVAR stepX = :varsFieldmap:LOAD_STEP_X
+	
+	NVAR plotStartX = :varsFieldmap:VIEW_PLOT_START_X
+	NVAR plotEndX = :varsFieldmap:VIEW_PLOT_END_X
+	NVAR plotStepX = :varsFieldmap:VIEW_PLOT_STEP_X
+	NVAR homX = :varsFieldmap:VIEW_HOM_X
+	NVAR homY = :varsFieldmap:VIEW_HOM_Y
+	NVAR homZ = :varsFieldmap:VIEW_HOM_Z
+	NVAR plotL = :varsFieldmap:VIEW_PLOT_L
+
+	variable i, nptsX
+	string wnX, wnY, wnZ
+		
+	if (subwindow)
+		DeleteTracesFromGraph(graphXName)
+		DeleteTracesFromGraph(graphYName)
+		DeleteTracesFromGraph(graphZName)
+	
+	else
+		DoWindow/K $graphXName
+		DoWindow/K $graphYName
+		DoWindow/K $graphZName
+		
+		Display/N=$graphXName/K=1
+		Display/N=$graphYName/K=1
+		Display/N=$graphZName/K=1
+		
+	endif
+
+	Make/D/O horizontalProfile_posX
+	if (plotStartX == startX && plotEndX == endX && plotStepX == stepX)
+		WAVE posX
+		Duplicate/O posX, horizontalProfile_posX
+		nptsX = numpnts(horizontalProfile_posX)
+	
+	else
+		if (plotStepX == 0)
+		   plotStepX = 1
+		endif
+		nptsX = Round((plotEndX - plotStartX)/plotStepX + 1)
+		Redimension/N=(nptsX) horizontalProfile_posX
+		horizontalProfile_posX = (plotStartX + plotStepX*p) / 1000
+	
+	endif
+
+	wnX = "horizontalProfile_Bx"
+	wnY = "horizontalProfile_By"
+	wnZ = "horizontalProfile_Bz"
+	Make/O/N=(nptsX) $wnX
+	Make/O/N=(nptsX) $wnY
+	Make/O/N=(nptsX) $wnZ
+	WAVE waveBx = $wnX
+	WAVE waveBy = $wnY
+	WAVE waveBz = $wnZ
+
+	for(i=0; i<nptsX; i++)
+		GetFieldAtPoint(horizontalProfile_posX[i], plotL/1000)
+		waveBx[i] = fieldX
+		waveBy[i] = fieldY
+		waveBz[i] = fieldZ
+	endfor	
+
+	homX = 100*Abs((WaveMax(waveBx) - WaveMin(waveBx))/WaveMax(waveBx))
+	homY = 100*Abs((WaveMax(waveBy) - WaveMin(waveBy))/WaveMax(waveBy))
+	homZ = 100*Abs((WaveMax(waveBz) - WaveMin(waveBz))/WaveMax(waveBz))
+
+	Appendtograph/W=$graphXName waveBx vs horizontalProfile_posX
+	ChangeTraceColor(graphXName, wnX, "x")
+	
+	Appendtograph/W=$graphYName waveBy vs horizontalProfile_posX
+	ChangeTraceColor(graphYName, wnY, "y")
+	
+	Appendtograph/W=$graphZName waveBz vs horizontalProfile_posX
+	ChangeTraceColor(graphZName, wnZ, "z")
+	
+	if (subwindow)
+		ConfigureGraph(graphXName, "Horizontal Position [m]", "Field [T]")
+	
+	else
+		ConfigureGraph(graphXName, "Horizontal Position [m]", "Field Bx[T]")
+		ConfigureGraph(graphYName, "Horizontal Position [m]", "Field By[T]")
+		ConfigureGraph(graphZName, "Horizontal Position [m]", "Field Bz[T]")
+
+	endif
+
+End
+
+
+Static Function PlotFieldIntegral(graphXName, graphYName, graphZName, subwindow, [secondIntegral])
+	string graphXName, graphYName, graphZName
+	variable subwindow, secondIntegral
+
+	if (ParamIsDefault(secondIntegral))
+		secondIntegral = 0
+	endif
+
+	WAVE posX
+	
+	string wnX, wnY, wnZ, ylabel, yunit
+	
+	if (subwindow)
+		DeleteTracesFromGraph(graphXName)
+		DeleteTracesFromGraph(graphYName)
+		DeleteTracesFromGraph(graphZName)
+	
+	else
+		DoWindow/K $graphXName
+		DoWindow/K $graphYName
+		DoWindow/K $graphZName
+		
+		Display/N=$graphXName/K=1
+		Display/N=$graphYName/K=1
+		Display/N=$graphZName/K=1
+		
+	endif
+
+	if (secondIntegral)
+		wnX = "Int2_Bx"
+		wnY = "Int2_By"
+		wnZ = "Int2_Bz"
+		ylabel = "Second Integral"
+		yunit = "[T.m²]"
+	else
+		wnX = "Int_Bx"
+		wnY = "Int_By"
+		wnZ = "Int_Bz"
+		ylabel = "First Integral"	
+		yunit = "[T.m]"
+	endif
+	
+	WAVE waveBx = $wnX
+	WAVE waveBy = $wnY
+	WAVE waveBz = $wnZ
+
+	Appendtograph/W=$graphXName waveBx vs posX
+	ChangeTraceColor(graphXName, wnX, "x")
+	
+	Appendtograph/W=$graphYName waveBy vs posX
+	ChangeTraceColor(graphYName, wnY, "y")
+	
+	Appendtograph/W=$graphZName waveBz vs posX
+	ChangeTraceColor(graphZName, wnZ, "z")
+	
+	if (subwindow)
+		ConfigureGraph(graphXName, "Horizontal Position [m]", (ylabel + " " + yunit))
+	
+	else
+		ConfigureGraph(graphXName, "Horizontal Position [m]", (ylabel + " Bx " + yunit))
+		ConfigureGraph(graphYName, "Horizontal Position [m]", (ylabel + " By " + yunit))
+		ConfigureGraph(graphZName, "Horizontal Position [m]", (ylabel + " Bz " + yunit))
 
 	endif
 
