@@ -7,23 +7,23 @@
 
 Menu "CAMTO 14.0.0"
 	"Initialize CAMTO", CAMTO_Init()
-	"Global Parameters", CAMTO_Params()
-	"Field Specification", CAMTO_Spec()
-	"Load Fieldmap", CAMTO_Load()
-	"Export Field Data", CAMTO_Export()
-	"View Magnetic Field", CAMTO_ViewField()
-	"Hall Probe Correction", CAMTO_HallProbe()
-	"Integrals and Multipoles", CAMTO_Multipoles()
-	"Particle Energy", CAMTO_Energy()
-	"Trajectories", CAMTO_Traj()
-	"Dynamic Multipoles", CAMTO_DynMultipoles()
-	"Find Peaks and Zeros", CAMTO_Peaks()
-	"Phase Error", CAMTO_PhaseError()
-	"Results", CAMTO_Results()
-	"Insertion Devices Results", CAMTO_ID()
-	"Compare Results", CAMTO_Compare()
-	"Get Variable From Fieldmaps", CAMTO_GetVariable()
-	"Load Scan", CAMTO_Scan()
+	"Global Parameters", CAMTO_Params_Panel()
+	"Field Specification", CAMTO_Spec_Panel()
+	"Load Fieldmap", CAMTO_Load_Panel()
+	"Export Field Data", CAMTO_Export_Panel()
+	"View Magnetic Field", CAMTO_ViewField_Panel()
+//	"Hall Probe Correction", CAMTO_HallProbe()
+//	"Integrals and Multipoles", CAMTO_Multipoles()
+//	"Particle Energy", CAMTO_Energy()
+	"Trajectories", CAMTO_Traj_Panel()
+//	"Dynamic Multipoles", CAMTO_DynMultipoles()
+//	"Find Peaks and Zeros", CAMTO_Peaks()
+//	"Phase Error", CAMTO_PhaseError()
+	"Results", CAMTO_Results_Panel()
+//	"Insertion Devices Results", CAMTO_ID()
+//	"Compare Results", CAMTO_Compare()
+//	"Get Variable From Fieldmaps", CAMTO_GetVariable()
+//	"Load Scan", CAMTO_Scan()
 	"Help", CAMTO_Help()
 End
 
@@ -216,7 +216,7 @@ Static Function UpdateFieldmapFolders()
 End
 
 
-Function CAMTO_Params() : Panel
+Function CAMTO_Params_Panel() : Panel
 	
 	string windowName = "Params"
 	string windowTitle = "Global Parameters"
@@ -231,7 +231,7 @@ Function CAMTO_Params() : Panel
 	endif
 	
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(80,60,405,270) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(80,60,405,275) as windowTitle
 	SetDrawLayer UserBack
 
 	NVAR particleEnergy = root:varsCAMTO:PARTICLE_ENERGY	
@@ -247,36 +247,35 @@ Function CAMTO_Params() : Panel
 	l1 = 5
 	l2 = 320
 
-	TitleBox tbxTitle, pos={0,h}, size={320,25}, anchor=MT, title="Global Parameters"
-	TitleBox tbxTitle, fsize=18, fstyle=1, frame=0
+	TitleBox tbxTitle, pos={0,h}, size={320,25}, anchor=MT, fsize=18, fstyle=1, frame=0, title="Global Parameters"
 	h += 35
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 	
-	SetVariable svarParticleEnergy, pos={m,h}, size={210,15}, value=_NUM:particleEnergy, title="Particle Energy [GeV]"
-	ValDisplay vdispParticleEnergy, pos={m+220,h}, size={100,15}, limits={0,0,0}, barmisc={0,1000}, mode=5
+	SetVariable svarParticleEnergy, pos={m,h}, size={210,20}, value=_NUM:particleEnergy, title="Particle Energy [GeV]"
+	ValDisplay vdispParticleEnergy, pos={m+220,h}, size={100,20}, limits={0,0,0}, barmisc={0,1000}, mode=5
 	ValDisplay vdispParticleEnergy, value=#"root:varsCAMTO:PARTICLE_ENERGY"
 	h += 25
 	
-	SetVariable svarParticleCharge, pos={m,h}, size={210,15}, value=_NUM:particleCharge, title="Particle Charge [C]"
-	ValDisplay vdispParticleCharge, pos={m+220,h}, size={100,15}, limits={0,0,0}, barmisc={0,1000}, mode=5
+	SetVariable svarParticleCharge, pos={m,h}, size={210,20}, value=_NUM:particleCharge, title="Particle Charge [C]"
+	ValDisplay vdispParticleCharge, pos={m+220,h}, size={100,20}, limits={0,0,0}, barmisc={0,1000}, mode=5
 	ValDisplay vdispParticleCharge, value=#"root:varsCAMTO:PARTICLE_CHARGE"
 	h += 25
 	
-	SetVariable svarParticleMass, pos={m,h}, size={210,15}, value=_NUM:particleMass, title="Particle Mass [Kg]"
-	ValDisplay vdispParticleMass, pos={m+220,h}, size={100,15}, limits={0,0,0}, barmisc={0,1000}, mode=5
+	SetVariable svarParticleMass, pos={m,h}, size={210,20}, value=_NUM:particleMass, title="Particle Mass [Kg]"
+	ValDisplay vdispParticleMass, pos={m+220,h}, size={100,20}, limits={0,0,0}, barmisc={0,1000}, mode=5
 	ValDisplay vdispParticleMass, value=#"root:varsCAMTO:PARTICLE_MASS"
 	h += 25
 	
-	SetVariable svarLightSpeed, pos={m,h}, size={210,15}, value=_NUM:lightSpeed, title="Speed of Light [m/s]"
-	ValDisplay vdispLightSpeed, pos={m+220,h}, size={100,15}, limits={0,0,0}, barmisc={0,1000}, mode=5
+	SetVariable svarLightSpeed, pos={m,h}, size={210,20}, value=_NUM:lightSpeed, title="Speed of Light [m/s]"
+	ValDisplay vdispLightSpeed, pos={m+220,h}, size={100,20}, limits={0,0,0}, barmisc={0,1000}, mode=5
 	ValDisplay vdispLightSpeed, value= #"root:varsCAMTO:LIGHT_SPEED"
 	h += 25
 	
-	SetVariable svarTrajectoryStep, pos={m,h}, size={210,15}, value=_NUM:trajectoryStep, title="Trajectory Step [m]"
-	ValDisplay vdispTrajectoryStep, pos={m+220,h}, size={100,15}, limits={0,0,0}, barmisc={0,1000}, mode=5
+	SetVariable svarTrajectoryStep, pos={m,h}, size={210,20}, value=_NUM:trajectoryStep, title="Trajectory Step [m]"
+	ValDisplay vdispTrajectoryStep, pos={m+220,h}, size={100,20}, limits={0,0,0}, barmisc={0,1000}, mode=5
 	ValDisplay vdispTrajectoryStep, value=#"root:varsCAMTO:TRAJECTORY_STEP"
 	h += 30
 
@@ -284,9 +283,9 @@ Function CAMTO_Params() : Panel
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
-	Button btnQuit, pos={45,h}, size={100,25}, fsize=15, fstyle=1, proc=CAMTO_Params_Quit, title="Quit"
-	Button btnChange, pos={175,h}, size={100,25}, fsize=15, fstyle=1, proc=CAMTO_Params_Change, title="Change"
-	h += 35
+	Button btnQuit, pos={45,h}, size={100,30}, fsize=14, fstyle=1, proc=CAMTO_Params_BtnQuit, title="Quit"
+	Button btnChange, pos={175,h}, size={100,30}, fsize=14, fstyle=1, proc=CAMTO_Params_BtnChange, title="Change"
+	h += 40
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
@@ -296,7 +295,7 @@ Function CAMTO_Params() : Panel
 End
 
 
-Function CAMTO_Params_Quit(ba) : ButtonControl
+Function CAMTO_Params_BtnQuit(ba) : ButtonControl
 	struct WMButtonAction &ba
 	
 	switch(ba.eventCode)
@@ -309,7 +308,7 @@ Function CAMTO_Params_Quit(ba) : ButtonControl
 End
 
 
-Function CAMTO_Params_Change(ba) : ButtonControl
+Function CAMTO_Params_BtnChange(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	NVAR particleEnergy = root:varsCAMTO:PARTICLE_ENERGY	
@@ -344,7 +343,7 @@ Function CAMTO_Params_Change(ba) : ButtonControl
 End
 
 
-Function CAMTO_Spec() : Panel
+Function CAMTO_Spec_Panel() : Panel
 
 	string windowName = "Spec"
 	string windowTitle = "Field Specification"
@@ -359,7 +358,7 @@ Function CAMTO_Spec() : Panel
 	endif
 	
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(240,60,1000,550)
+	NewPanel/K=1/N=$windowName/W=(240,60,1000,555) as windowTitle
 	SetDrawLayer UserBack
 
 	NVAR skew = root:varsCAMTO:SPEC_SKEW
@@ -373,7 +372,7 @@ Function CAMTO_Spec() : Panel
 
 	TitleBox tbxTitle1, pos={0,h}, size={380,25}, anchor=MT, fsize=18, fstyle=1, frame=0, title="Main Parameters"
 	TitleBox tbxTitle2, pos={380,h}, size={380,25}, anchor=MT, fsize=18, fstyle=1, frame=0, title="Multipole Errors"
-	h += 40
+	h += 35
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2/2,h-5
@@ -381,28 +380,28 @@ Function CAMTO_Spec() : Panel
 	DrawRect l2/2,h1,l2,h-5
 	h1 = h-5
 
-	SetVariable svarMainMultipole, pos={m,h}, size={170,20}, limits={0,15,1}, title="Main Harmonic"
+	SetVariable svarMainMultipole, pos={m,h+4}, size={170,20}, limits={0,15,1}, title="Main Harmonic"
 	SetVariable svarMainMultipole, value=root:varsCAMTO:SPEC_MAIN_MULTIPOLE
-	PopupMenu popupSkew, pos={m+180,h}, size={120,20}, proc=CAMTO_Spec_MainComponent, title=""
+	PopupMenu popupSkew, pos={m+180,h+5}, size={120,20}, proc=CAMTO_Spec_PopupMainComponent, title=""
 	PopupMenu popupSkew, value= #"\"Normal;Skew\"", mode=skew
 	h += 40
 
 	TitleBox tbxTitle3, pos={m,h}, fsize=14, fstyle=1, frame=0, title="Normal Integrated Multipoles"
-	SetVariable svarNumberMultipoles, pos={m+240,h}, size={80,15}, limits={0,4,1}, proc=CAMTO_Spec_RowsMultipolesTable, title="rows"
+	SetVariable svarNumberMultipoles, pos={m+240,h}, size={80,20}, limits={0,4,1}, proc=CAMTO_Spec_SvarRowsNormal, title="rows"
 	SetVariable svarNumberMultipoles, value=root:varsCAMTO:SPEC_NR_NORMAL_MULTIPOLES
 	h += 25
 	
-	TitleBox tbxTitle4, pos={m,h}, size={130,20}, anchor=MC, fsize=12, fstyle=1, frame=0, title="n"
-	TitleBox tbxTitle5, pos={m+150,h}, size={170,20}, anchor=MC, fsize=12, fstyle=1, frame=0, title="Integrated Bn"
+	TitleBox tbxTitleNormalN, pos={m,h}, size={130,20}, anchor=MC, frame=0, title="n"
+	TitleBox tbxTitleNormalBn, pos={m+150,h}, size={170,20}, anchor=MC, frame=0, title="Integrated Bn"
 	h += 165
 
 	TitleBox tbxTitle6, pos={m,h}, fsize=14, fstyle=1, frame=0, title="Skew Integrated Multipoles"
-	SetVariable svarNumberSkewMultipoles, pos={m+240,h}, size={80,15}, limits={0,4,1}, proc=CAMTO_Spec_RowsSkewTable, title="rows"
+	SetVariable svarNumberSkewMultipoles, pos={m+240,h}, size={80,20}, limits={0,4,1}, proc=CAMTO_Spec_SvarRowsSkew, title="rows"
 	SetVariable svarNumberSkewMultipoles, value=root:varsCAMTO:SPEC_NR_SKEW_MULTIPOLES
 	h += 25
 	
-	TitleBox tbxTitle7, pos={m,h}, size={130,20}, anchor=MC, fsize=12, fstyle=1, frame=0, title="n"
-	TitleBox tbxTitle8, pos={m+150,h}, size={170,20}, anchor=MC, fsize=12, fstyle=1, frame=0, title="Integrated An"
+	TitleBox tbxTitleSkewN, pos={m,h}, size={130,20}, anchor=MC, frame=0, title="n"
+	TitleBox tbxTitleSkewAn, pos={m+150,h}, size={170,20}, anchor=MC, frame=0, title="Integrated An"
 	
 	h = 50
 	SetVariable svarReferenceRadius, pos={m+380,h}, size={250,20}, limits={0,inf,1}, title="Reference Radius [mm]"
@@ -410,15 +409,15 @@ Function CAMTO_Spec() : Panel
 	h += 30
 	
 	TitleBox tbxTitle9, pos={m+380,h}, fsize=14, fstyle=1, frame=0, title="Norm. Integrated Multipole Errors"
-	SetVariable svarNumberMultipoleErrors, pos={m+380+240,h}, size={80,15}, limits={1,15,1}, proc=CAMTO_Spec_RowsErrorsTable, title="rows"
+	SetVariable svarNumberMultipoleErrors, pos={m+380+240,h}, size={80,20}, limits={1,15,1}, proc=CAMTO_Spec_SvarRowsErrors, title="rows"
 	SetVariable svarNumberMultipoleErrors, value=root:varsCAMTO:SPEC_NR_MULTIPOLE_ERRORS
 	h += 20
 	
-	TitleBox tbxTitle10, pos={m+380,h}, size={60,40}, anchor=MC, fsize=12, fstyle=1, frame=0, title="n"
-	TitleBox tbxTitle11, pos={m+380+70,h}, size={60,40}, anchor=MC, fsize=12, fstyle=1, frame=0, title="Systematic\nNormal"
-	TitleBox tbxTitle12, pos={m+380+140,h}, size={60,40}, anchor=MC, fsize=12, fstyle=1, frame=0, title="Systematic\nSkew"
-	TitleBox tbxTitle13, pos={m+380+210,h}, size={60,40}, anchor=MC, fsize=12, fstyle=1, frame=0, title="Random\nNormal"
-	TitleBox tbxTitle14, pos={m+380+280,h}, size={60,40}, anchor=MC, fsize=12, fstyle=1, frame=0, title="Random\nSkew"
+	TitleBox tbxTitle10, pos={m+380,h}, size={60,40}, anchor=MC, frame=0, title="n"
+	TitleBox tbxTitle11, pos={m+380+70,h}, size={60,40}, anchor=MC, frame=0, title="Systematic\nNormal"
+	TitleBox tbxTitle12, pos={m+380+140,h}, size={60,40}, anchor=MC, frame=0, title="Systematic\nSkew"
+	TitleBox tbxTitle13, pos={m+380+210,h}, size={60,40}, anchor=MC, frame=0, title="Random\nNormal"
+	TitleBox tbxTitle14, pos={m+380+280,h}, size={60,40}, anchor=MC, frame=0, title="Random\nSkew"
 	h = 455
 	
 	SetDrawEnv fillpat=0
@@ -427,22 +426,23 @@ Function CAMTO_Spec() : Panel
 	DrawRect l2/2,h1,l2,h-5
 	h1 = h-5
 	
-	Button btnUpdateSpec, pos={m+110,h}, size={500,25}, anchor=MT, fsize=15, fstyle=1, proc=CAMTO_Spec_UpdateSpec, title="Update Field Specification"
-	h += 35
+	Button btnUpdateSpec, pos={m+110,h}, size={500,30}, fsize=14, fstyle=1, title="Update Field Specification"
+	Button btnUpdateSpec, proc=CAMTO_Spec_BtnUpdateSpec
+	h += 40
 	
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 
-	UpdateTableMultipoles()
-	UpdateTableSkew()		
-	UpdateTableErrors()
+	UpdateSpecNormal()
+	UpdateSpecSkew()		
+	UpdateSpecErrors()
 	
 	return 0
 
 EndMacro
 
 
-Function CAMTO_Spec_MainComponent(pa) : PopupMenuControl
+Function CAMTO_Spec_PopupMainComponent(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 	
 	NVAR skew = root:varsCAMTO:SKEW
@@ -457,42 +457,42 @@ Function CAMTO_Spec_MainComponent(pa) : PopupMenuControl
 End
 
 
-Function CAMTO_Spec_RowsMultipolesTable(sa): SetVariableControl
+Function CAMTO_Spec_SvarRowsNormal(sa): SetVariableControl
 	struct WMSetVariableAction &sa
 	
-	UpdateTableMultipoles(nrRows=sa.dval)
+	UpdateSpecNormal(nrRows=sa.dval)
 	
 	return 0
 	
 End
 
 
-Function CAMTO_Spec_RowsSkewTable(sa): SetVariableControl
+Function CAMTO_Spec_SvarRowsSkew(sa): SetVariableControl
 	struct WMSetVariableAction &sa
 	
-	UpdateTableSkew(nrRows=sa.dval)
+	UpdateSpecSkew(nrRows=sa.dval)
 	
 	return 0
 		
 End
 
 
-Function CAMTO_Spec_RowsErrorsTable(sa): SetVariableControl
+Function CAMTO_Spec_SvarRowsErrors(sa): SetVariableControl
 	struct WMSetVariableAction &sa
 	
-	UpdateTableErrors(nrRows=sa.dval)
+	UpdateSpecErrors(nrRows=sa.dval)
 	
 	return 0
 
 End
 
 
-Function CAMTO_Spec_UpdateSpec(ba) : ButtonControl
+Function CAMTO_Spec_BtnUpdateSpec(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:
-			CalculateResFieldSpec()
+			CalcResFieldSpec()
 			print "Field specification updated!"
 			break
 	endswitch
@@ -502,7 +502,7 @@ Function CAMTO_Spec_UpdateSpec(ba) : ButtonControl
 End
 
 
-Function CAMTO_Spec_TableFormat(sa): SetVariableControl
+Function CAMTO_Spec_SvarTableFormat(sa): SetVariableControl
 	struct WMSetVariableAction &sa
 	
 	if (sa.dval == 0)
@@ -516,7 +516,7 @@ Function CAMTO_Spec_TableFormat(sa): SetVariableControl
 End
 
 
-Static Function UpdateTableMultipoles([nrRows])
+Static Function UpdateSpecNormal([nrRows])
 	variable nrRows
 
 	variable i, space, prevNrRows
@@ -535,11 +535,11 @@ Static Function UpdateTableMultipoles([nrRows])
 	endif
 
 	if (nrRows == 0)
-		TitleBox tbxTitle4, win=$windowName, disable=1
-		TitleBox tbxTitle5, win=$windowName, disable=1
+		TitleBox tbxTitleNormalN, win=$windowName, disable=1
+		TitleBox tbxTitleNormalBn, win=$windowName, disable=1
 	else
-		TitleBox tbxTitle4, win=$windowName, disable=0
-		TitleBox tbxTitle5, win=$windowName, disable=0	
+		TitleBox tbxTitleNormalN, win=$windowName, disable=0
+		TitleBox tbxTitleNormalBn, win=$windowName, disable=0	
 	endif
 	
 	for (i=0; i<prevNrRows; i=i+1)
@@ -565,7 +565,7 @@ Static Function UpdateTableMultipoles([nrRows])
 End
 
 
-Static Function UpdateTableSkew([nrRows])
+Static Function UpdateSpecSkew([nrRows])
 	variable nrRows
 
 	variable i, space, prevNrRows
@@ -584,11 +584,11 @@ Static Function UpdateTableSkew([nrRows])
 	endif
 
 	if (nrRows == 0)
-		TitleBox tbxTitle7, win=$windowName, disable=1
-		TitleBox tbxTitle8, win=$windowName, disable=1
+		TitleBox tbxTitleSkewN, win=$windowName, disable=1
+		TitleBox tbxTitleSkewAn, win=$windowName, disable=1
 	else
-		TitleBox tbxTitle7, win=$windowName, disable=0
-		TitleBox tbxTitle8, win=$windowName, disable=0	
+		TitleBox tbxTitleSkewN, win=$windowName, disable=0
+		TitleBox tbxTitleSkewAn, win=$windowName, disable=0	
 	endif
 	
 	for (i=0; i<prevNrRows; i=i+1)
@@ -614,7 +614,7 @@ Static Function UpdateTableSkew([nrRows])
 End
 
 
-Static Function UpdateTableErrors([nrRows])
+Static Function UpdateSpecErrors([nrRows])
 	variable nrRows
 
 	variable i, space, prevNrRows
@@ -657,7 +657,7 @@ Static Function UpdateTableErrors([nrRows])
 		else
 			SetVariable $(variableName), win=$windowName, format="% 2.1e"
 		endif
-		SetVariable $(variableName), win=$windowName, value=multipoleErrors[i][1], proc=CAMTO_Spec_TableFormat
+		SetVariable $(variableName), win=$windowName, value=multipoleErrors[i][1], proc=CAMTO_Spec_SvarTableFormat
 		
 		variableName = "svar_errors_" + num2str(i) + "_sys_skew"
 		SetVariable $(variableName), win=$windowName, pos={160+380,(140+i*space)}, size={60,20}, title=" ", limits={-inf,inf,0}, disable=0
@@ -666,7 +666,7 @@ Static Function UpdateTableErrors([nrRows])
 		else
 			SetVariable $(variableName), win=$windowName, format="% 2.1e"
 		endif
-		SetVariable $(variableName), win=$windowName, value=multipoleErrors[i][2], proc=CAMTO_Spec_TableFormat
+		SetVariable $(variableName), win=$windowName, value=multipoleErrors[i][2], proc=CAMTO_Spec_SvarTableFormat
 		
 		variableName = "svar_errors_" + num2str(i) + "_rnd_normal"
 		SetVariable $(variableName), win=$windowName, pos={230+380,(140+i*space)}, size={60,20}, title=" ", limits={-inf,inf,0}, disable=0
@@ -675,7 +675,7 @@ Static Function UpdateTableErrors([nrRows])
 		else
 			SetVariable $(variableName), win=$windowName, format="% 2.1e"
 		endif
-		SetVariable $(variableName), win=$windowName, value=multipoleErrors[i][3], proc=CAMTO_Spec_TableFormat
+		SetVariable $(variableName), win=$windowName, value=multipoleErrors[i][3], proc=CAMTO_Spec_SvarTableFormat
 		
 		variableName = "svar_errors_" + num2str(i) + "_rnd_skew"
 		SetVariable $(variableName), win=$windowName, pos={300+380,(140+i*space)}, size={60,20}, title=" ", limits={-inf,inf,0}, disable=0
@@ -684,7 +684,7 @@ Static Function UpdateTableErrors([nrRows])
 		else
 			SetVariable $(variableName), win=$windowName, format="% 2.1e"
 		endif
-		SetVariable $(variableName), win=$windowName, value=multipoleErrors[i][4], proc=CAMTO_Spec_TableFormat
+		SetVariable $(variableName), win=$windowName, value=multipoleErrors[i][4], proc=CAMTO_Spec_SvarTableFormat
 		
 	endfor
 	
@@ -693,7 +693,7 @@ Static Function UpdateTableErrors([nrRows])
 End
 
 
-Static Function CalculateResFieldSpec()
+Static Function CalcResFieldSpec()
 
 	NVAR r0 = root:varsCAMTO:SPEC_REFERENCE_RADIUS
 	NVAR main = root:varsCAMTO:SPEC_MAIN_MULTIPOLE
@@ -762,9 +762,9 @@ Static Function CalculateResFieldSpec()
 	Redimension/N=(sizeSkewRms) skewRmsMonomials
 	Redimension/N=(sizeSkewRms) skewRmsMultipoles 	
 		
-	CalculateResFieldSpecAux("Normal", main, r0, residualPos, normalSysMonomials, normalSysMultipoles, normalRmsMonomials, normalRmsMultipoles)
+	CalcResFieldSpecAux("Normal", main, r0, residualPos, normalSysMonomials, normalSysMultipoles, normalRmsMonomials, normalRmsMultipoles)
 	
-	CalculateResFieldSpecAux("Skew", main, r0, residualPos, skewSysMonomials, skewSysMultipoles, skewRmsMonomials, skewRmsMultipoles)
+	CalcResFieldSpecAux("Skew", main, r0, residualPos, skewSysMonomials, skewSysMultipoles, skewRmsMonomials, skewRmsMultipoles)
 	
 	Killwaves/Z normalSysMonomials, normalSysMultipoles, normalRmsMonomials, normalRmsMultipoles
 	Killwaves/Z skewSysMonomials, skewSysMultipoles, skewRmsMonomials, skewRmsMultipoles
@@ -776,7 +776,7 @@ Static Function CalculateResFieldSpec()
 End
 
 
-Static Function CalculateResFieldSpecAux(component, main, r0, pos, sysMonomials, sysMultipoles, rmsMonomials, rmsMultipoles)
+Static Function CalcResFieldSpecAux(component, main, r0, pos, sysMonomials, sysMultipoles, rmsMonomials, rmsMultipoles)
 	string component
 	variable main, r0
 	WAVE pos, sysMonomials, sysMultipoles, rmsMonomials, rmsMultipoles
@@ -854,7 +854,7 @@ Static Function CalculateResFieldSpecAux(component, main, r0, pos, sysMonomials,
 End
 
 
-Function CAMTO_Load() : Panel
+Function CAMTO_Load_Panel() : Panel
 	
 	string windowName = "Load"
 	string windowTitle = "Load Fieldmap"
@@ -869,7 +869,7 @@ Function CAMTO_Load() : Panel
 	endif
 	
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(750,60,1190,580) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(750,60,1190,605) as windowTitle
 	SetDrawLayer UserBack
 	
 	variable m, h, h1, l1, l2 
@@ -879,77 +879,88 @@ Function CAMTO_Load() : Panel
 	l1 = 5
 	l2 = 435
 
-	TitleBox tbxTitle1, pos={m,h+20}, size={80,40}, fsize=14, fstyle=1, frame=0, title="\t Select \r \tFolder"
-	CheckBox chbAutomaticFolderName, pos={m+80,h}, size={120,15}, value=1, mode=1, proc=CAMTO_Load_SelectFolder, title=" Automatic"
+	TitleBox tbxTitle1, pos={0,h}, size={430,25}, anchor=MT, fsize=18, fstyle=1, frame=0, title="Load Fieldmap"
+	h += 35
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	TitleBox tbxTitle2, pos={m,h+20}, size={80,40}, fsize=14, fstyle=1, frame=0, title="\t Select \r \tFolder"
+	CheckBox chbAutomaticFolderName, pos={m+80,h}, size={120,20}, value=1, mode=1, proc=CAMTO_Load_ChbSelectFolder, title=" Automatic"
 	h +=30
 
-	CheckBox chbNewFolderName, pos={m+80,h}, size={120,15}, value=0, mode=1, proc=CAMTO_Load_SelectFolder, title=" New Folder"
+	CheckBox chbNewFolderName, pos={m+80,h}, size={120,20}, value=0, mode=1, proc=CAMTO_Load_ChbSelectFolder, title=" New Folder"
 	SetVariable svarNewFolderName, pos={m+210,h}, size={170,20}, disable=1, value=root:varsCAMTO:FIELDMAP_NEW_FOLDER, title=" "
 	h +=30
 	
-	CheckBox chbExistingFolderName, pos={m+80,h}, size={120,15}, value=0, mode=1, proc=CAMTO_Load_SelectFolder, title=" Existing Folder"
-	PopupMenu popupFieldmapFolder, pos={m+210,h-2}, size={170,15}, bodyWidth=150, mode=0, disable=1, proc=CAMTO_Load_ChangeDir, title=" "
+	CheckBox chbExistingFolderName, pos={m+80,h}, size={120,20}, value=0, mode=1, proc=CAMTO_Load_ChbSelectFolder, title=" Existing Folder"
+	PopupMenu popupFieldmapFolder, pos={m+210,h-2}, size={170,20}, bodyWidth=150, mode=0, disable=1, proc=CAMTO_Load_PopupChangeDir, title=" "
 	h += 30
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
-	TitleBox tbxTitle2, pos={0,h}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Rename Selected Folder"
+	TitleBox tbxTitle3, pos={0,h}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Rename Selected Folder"
 	h += 30
 	
-	SetVariable svarRename, pos={m,h}, size={290,20}, disable=2, value=_STR:"", title="New Name"
-	Button btnRename, pos={m+300,h-1}, size={80,20}, fstyle=1, disable=2, proc=CAMTO_Load_Rename, title="Do it"
+	SetVariable svarRename, pos={m,h}, size={290,20}, value=_STR:"", title="New Name"
+	Button btnRename, pos={m+300,h-1}, size={80,20}, fstyle=1, proc=CAMTO_Load_BtnRename, title="Do it"
 	h += 30
 	
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
-	TitleBox tbxTitle3, pos={0,h}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Fieldmap"
+	TitleBox tbxTitle4, pos={0,h}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Fieldmap"
 	h += 30
 
-	PopupMenu popupBeamDirection, pos={m,h}, size={140,25}, mode=0, proc=CAMTO_Load_BeamDirection, title="Beam Direction"
+	PopupMenu popupBeamDirection, pos={m,h}, size={140,25}, mode=0, proc=CAMTO_Load_PopupBeamDirection, title="Beam Direction"
 	PopupMenu popupBeamDirection, value=#"\"Y-Axis;Z-Axis\""
-	PopupMenu popupStaticTransient, pos={m+220,h}, size={115,25}, mode=0, proc=CAMTO_Load_StaticTransient, title="Data Type"
+	PopupMenu popupStaticTransient, pos={m+220,h}, size={115,25}, mode=0, proc=CAMTO_Load_PopupStaticTransient, title="Data Type"
 	PopupMenu popupStaticTransient, value=#"\"Static;Transient\""
 	h += 30
 
-	TitleBox tbxTitle4, pos={0,h}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Symmetries"
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	TitleBox tbxTitle5, pos={0,h}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Symmetries"
 	h += 30
 
-	CheckBox chbSymLongitudinal, pos={m,h}, size={170,20}, value=0, proc=CAMTO_Load_SymLongitudinal, title=" Along Beam Direction"
-	PopupMenu popupSymLongitudinalBC, pos={m+180,h-2}, size={160,20}, proc=CAMTO_Load_SymLongitudinalBC, title="Boundary Condition"
-	PopupMenu popupSymLongitudinalBC,  disable=2, value=#"\"Normal;Tangential\"", mode=2
+	CheckBox chbSymLongitudinal, pos={m,h}, size={170,20}, value=0, proc=CAMTO_Load_PopupSymLongitudinal, title=" Along Beam Direction"
+	PopupMenu popupSymLongitudinalBC, pos={m+180,h-2}, size={160,20}, proc=CAMTO_Load_PopupSymLongitudinalBC, title="Boundary Condition"
+	PopupMenu popupSymLongitudinalBC,  value=#"\"Normal;Tangential\"", mode=2
 	h += 30
 
-	CheckBox chbSymHorizontal, pos={m,h}, size={170,20}, value=0, proc=CAMTO_Load_SymHorizontal, title=" Along Horizontal Direction"
-	PopupMenu popupSymHorizontalBC, pos={m+180,h-2}, size={160,20}, proc=CAMTO_Load_SymHorizontalBC, title="Boundary Condition At 90°"
-	PopupMenu popupSymHorizontalBC, disable=2, value=#"\"Normal;Tangential\"", mode=0
+	CheckBox chbSymHorizontal, pos={m,h}, size={170,20}, value=0, proc=CAMTO_Load_PopupSymHorizontal, title=" Along Horizontal Direction"
+	PopupMenu popupSymHorizontalBC, pos={m+180,h-2}, size={160,20}, proc=CAMTO_Load_PopupSymHorizontalBC, title="Boundary Condition At 90°"
+	PopupMenu popupSymHorizontalBC, value=#"\"Normal;Tangential\"", mode=0
 	h += 30
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
-	TitleBox tbxTitleX, pos={m+30,h}, size={60,25}, fsize=20, frame=0, disable=0, title="X - axis"
-	TitleBox tbxTitleY, pos={m+170,h}, size={60,25}, fsize=20, frame=0, disable=2, title="Y - axis"
-	TitleBox tbxTitleZ, pos={m+310,h}, size={60,25}, fsize=20, frame=0, disable=0, title="Z - axis"
+	TitleBox tbxTitleX, pos={m+30,h}, size={60,25}, fsize=20, frame=0, title="X - axis"
+	TitleBox tbxTitleY, pos={m+170,h}, size={60,25}, fsize=20, frame=0, title="Y - axis"
+	TitleBox tbxTitleZ, pos={m+310,h}, size={60,25}, fsize=20, frame=0, title="Z - axis"
 	h += 40
 	
-	ValDisplay vdispStartX, pos={m,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="Start"
-	ValDisplay vdispStartY, pos={m+140,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="Start"
-	ValDisplay vdispStartZ, pos={m+280,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="Start"
+	ValDisplay vdispStartX, pos={m,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="Start"
+	ValDisplay vdispStartY, pos={m+140,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="Start"
+	ValDisplay vdispStartZ, pos={m+280,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="Start"
 	h += 40
 	
-	ValDisplay vdispEndX, pos={m,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="End"
-	ValDisplay vdispEndY, pos={m+140,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="End"
-	ValDisplay vdispEndZ, pos={m+280,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="End"
+	ValDisplay vdispEndX, pos={m,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="End"
+	ValDisplay vdispEndY, pos={m+140,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="End"
+	ValDisplay vdispEndZ, pos={m+280,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="End"
 	h += 40
 	
-	ValDisplay vdispStepX, pos={m,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="Step"
-	ValDisplay vdispStepY, pos={m+140,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="Step"
-	ValDisplay vdispStepZ, pos={m+280,h}, size={110,15}, disable=2, limits={0,0,0}, barmisc={0,1000}, title="Step"
+	ValDisplay vdispStepX, pos={m,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="Step"
+	ValDisplay vdispStepY, pos={m+140,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="Step"
+	ValDisplay vdispStepZ, pos={m+280,h}, size={110,20}, limits={0,0,0}, barmisc={0,1000}, title="Step"
 	h += 40
 	
 	SetDrawEnv fillpat=0
@@ -960,9 +971,9 @@ Function CAMTO_Load() : Panel
 	DrawRect 2*l2/3,h1,l2,h-5
 	h1 = h-5
 
-	Button btnLoad, pos={m,h}, size={190,40}, fstyle=1, proc=CAMTO_Load_LoadFieldmap, title="Load Magnetic Field"
-	Button btnClear, pos={m+210,h}, size={190,40}, fstyle=1, proc=CAMTO_Load_ClearFieldmap, disable=2, title="Clear Field"
-	h += 50
+	Button btnLoad, pos={m,h}, size={190,30}, fsize=14, fstyle=1, proc=CAMTO_Load_BtnLoadFieldmap, title="Load Magnetic Field"
+	Button btnClear, pos={m+210,h}, size={190,30}, fsize=14, fstyle=1, proc=CAMTO_Load_BtnClearFieldmap, title="Clear Field"
+	h += 40
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
@@ -1000,7 +1011,7 @@ Static Function UpdatePanelLoad()
 		CheckBox chbExistingFolderName, win=$windowName, value=1, disable=0
 
 		string fieldmapList = GetfieldmapFolders()
-		PopupMenu popupFieldmapFolder, win=$windowName, disable=0, value=#("\"" + fieldmapList + "\"")
+		PopupMenu popupFieldmapFolder, win=$windowName, value=#("\"" + fieldmapList + "\""), disable=0
 		SetVariable svarNewFolderName, win=$windowName, disable=1
 		SetVariable svarRename, win=$windowName, disable=0
 		Button btnRename, win=$windowName, disable=0	
@@ -1041,9 +1052,9 @@ Static Function UpdatePanelLoad()
 			symmetryHorizontalBC = localSymmetryHorizontalBC
 		endif
 
-		ValDisplay vdispStartX, win=$windowName, disable=0, value=#("root:" + df + ":varsFieldmap:LOAD_START_X" )
-		ValDisplay vdispEndX, win=$windowName, disable=0, value=#("root:" + df + ":varsFieldmap:LOAD_END_X")
-		ValDisplay vdispStepX, win=$windowName, disable=0, value=#("root:" + df + ":varsFieldmap:LOAD_STEP_X")
+		ValDisplay vdispStartX, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_START_X" )
+		ValDisplay vdispEndX, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_END_X")
+		ValDisplay vdispStepX, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_STEP_X")
 		ValDisplay vdispStartY, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_START_Y")
 		ValDisplay vdispEndY, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_END_Y")
 		ValDisplay vdispStepY, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_STEP_Y")
@@ -1074,9 +1085,9 @@ Static Function UpdatePanelLoad()
 		endif
 
 	else
-		ValDisplay vdispStartX, win=$windowName, disable=0, value=_NUM:0
-		ValDisplay vdispEndX, win=$windowName, disable=0, value=_NUM:0
-		ValDisplay vdispStepX, win=$windowName, disable=0, value=_NUM:1
+		ValDisplay vdispStartX, win=$windowName, value=_NUM:0
+		ValDisplay vdispEndX, win=$windowName, value=_NUM:0
+		ValDisplay vdispStepX, win=$windowName, value=_NUM:1
 		ValDisplay vdispStartY, win=$windowName, value=_NUM:0
 		ValDisplay vdispEndY, win=$windowName, value=_NUM:0
 		ValDisplay vdispStepY, win=$windowName, value=_NUM:1
@@ -1108,7 +1119,7 @@ Static Function UpdatePanelLoad()
 End
 
 
-Function CAMTO_Load_SelectFolder(ca) : CheckBoxControl
+Function CAMTO_Load_ChbSelectFolder(ca) : CheckBoxControl
 	STRUCT WMCheckboxAction& ca
 	
 	string fieldmapList
@@ -1127,15 +1138,15 @@ Function CAMTO_Load_SelectFolder(ca) : CheckBoxControl
 					Button btnRename, win=$ca.win, disable=2
 					Button btnClear, win=$ca.win, disable=2
 
-					ValDisplay vdispStartX, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispEndX, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispStepX, win=$ca.win, disable=2, value=_NUM:1
-					ValDisplay vdispStartY, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispEndY, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispStepY, win=$ca.win, disable=2, value=_NUM:1
-					ValDisplay vdispStartZ, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispEndZ, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispStepZ, win=$ca.win, disable=2, value=_NUM:1
+					ValDisplay vdispStartX, win=$ca.win, value=_NUM:0
+					ValDisplay vdispEndX, win=$ca.win, value=_NUM:0
+					ValDisplay vdispStepX, win=$ca.win, value=_NUM:1
+					ValDisplay vdispStartY, win=$ca.win, value=_NUM:0
+					ValDisplay vdispEndY, win=$ca.win, value=_NUM:0
+					ValDisplay vdispStepY, win=$ca.win, value=_NUM:1
+					ValDisplay vdispStartZ, win=$ca.win, value=_NUM:0
+					ValDisplay vdispEndZ, win=$ca.win, value=_NUM:0
+					ValDisplay vdispStepZ, win=$ca.win, value=_NUM:1
 
 					break
 			
@@ -1148,15 +1159,15 @@ Function CAMTO_Load_SelectFolder(ca) : CheckBoxControl
 					Button btnRename, win=$ca.win, disable=2
 					Button btnClear, win=$ca.win, disable=2
 
-					ValDisplay vdispStartX, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispEndX, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispStepX, win=$ca.win, disable=2, value=_NUM:1
-					ValDisplay vdispStartY, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispEndY, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispStepY, win=$ca.win, disable=2, value=_NUM:1
-					ValDisplay vdispStartZ, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispEndZ, win=$ca.win, disable=2, value=_NUM:0
-					ValDisplay vdispStepZ, win=$ca.win, disable=2, value=_NUM:1
+					ValDisplay vdispStartX, win=$ca.win, value=_NUM:0
+					ValDisplay vdispEndX, win=$ca.win, value=_NUM:0
+					ValDisplay vdispStepX, win=$ca.win, value=_NUM:1
+					ValDisplay vdispStartY, win=$ca.win, value=_NUM:0
+					ValDisplay vdispEndY, win=$ca.win, value=_NUM:0
+					ValDisplay vdispStepY, win=$ca.win, value=_NUM:1
+					ValDisplay vdispStartZ, win=$ca.win, value=_NUM:0
+					ValDisplay vdispEndZ, win=$ca.win, value=_NUM:0
+					ValDisplay vdispStepZ, win=$ca.win, value=_NUM:1
 
 					break
 				
@@ -1186,7 +1197,7 @@ Function CAMTO_Load_SelectFolder(ca) : CheckBoxControl
 End
 
 
-Function CAMTO_Load_ChangeDir(pa) : PopupMenuControl
+Function CAMTO_Load_PopupChangeDir(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 
 	SVAR fieldmapFolder= root:varsCAMTO:FIELDMAP_FOLDER
@@ -1215,7 +1226,7 @@ Function CAMTO_Load_ChangeDir(pa) : PopupMenuControl
 End
 
 
-Function CAMTO_Load_BeamDirection(pa) : PopupMenuControl
+Function CAMTO_Load_PopupBeamDirection(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 
 	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
@@ -1257,7 +1268,7 @@ Function CAMTO_Load_BeamDirection(pa) : PopupMenuControl
 End
 
 
-Function CAMTO_Load_StaticTransient(pa) : PopupMenuControl
+Function CAMTO_Load_PopupStaticTransient(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 
 	NVAR staticTransient = root:varsCAMTO:LOAD_STATIC_TRANSIENT
@@ -1276,7 +1287,7 @@ Function CAMTO_Load_StaticTransient(pa) : PopupMenuControl
 End
 
 
-Function CAMTO_Load_SymLongitudinal(ca) : CheckBoxControl
+Function CAMTO_Load_PopupSymLongitudinal(ca) : CheckBoxControl
 	STRUCT WMCheckboxAction& ca
 	
 	switch(ca.eventCode)
@@ -1296,7 +1307,7 @@ Function CAMTO_Load_SymLongitudinal(ca) : CheckBoxControl
 End
 
 
-Function CAMTO_Load_SymHorizontal(ca) : CheckBoxControl
+Function CAMTO_Load_PopupSymHorizontal(ca) : CheckBoxControl
 	STRUCT WMCheckboxAction& ca
 	
 	switch(ca.eventCode)
@@ -1316,7 +1327,7 @@ Function CAMTO_Load_SymHorizontal(ca) : CheckBoxControl
 End
 
 
-Function CAMTO_Load_SymLongitudinalBC(pa) : PopupMenuControl
+Function CAMTO_Load_PopupSymLongitudinalBC(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 
 	NVAR symLongitudinalBC = root:varsCAMTO:LOAD_SYMMETRY_LONGITUDINAL_BC
@@ -1335,7 +1346,7 @@ Function CAMTO_Load_SymLongitudinalBC(pa) : PopupMenuControl
 End
 
 
-Function CAMTO_Load_SymHorizontalBC(pa) : PopupMenuControl
+Function CAMTO_Load_PopupSymHorizontalBC(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 
 	NVAR symHorizontalBC = root:varsCAMTO:LOAD_SYMMETRY_HORIZONTAL_BC
@@ -1355,7 +1366,7 @@ Function CAMTO_Load_SymHorizontalBC(pa) : PopupMenuControl
 End
 
 
-Function CAMTO_Load_Rename(ba) : ButtonControl
+Function CAMTO_Load_BtnRename(ba) : ButtonControl
 	struct WMButtonAction &ba
 	
 	SVAR fieldmapFolder = root:varsCAMTO:FIELDMAP_FOLDER
@@ -1392,7 +1403,7 @@ Function CAMTO_Load_Rename(ba) : ButtonControl
 End
 
 
-Function CAMTO_Load_LoadFieldmap(ba) : ButtonControl
+Function CAMTO_Load_BtnLoadFieldmap(ba) : ButtonControl
 	struct WMButtonAction &ba
 	
 	SVAR fieldmapNewFolder = root:varsCAMTO:FIELDMAP_NEW_FOLDER
@@ -1447,7 +1458,7 @@ Function CAMTO_Load_LoadFieldmap(ba) : ButtonControl
 End
 
 
-Function CAMTO_Load_ClearFieldmap(ba) : ButtonControl
+Function CAMTO_Load_BtnClearFieldmap(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
@@ -1459,7 +1470,7 @@ Function CAMTO_Load_ClearFieldmap(ba) : ButtonControl
 	
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 
@@ -1563,12 +1574,13 @@ End
 Static Function UpdatePanels()
 	UpdatePanelLoad()
 	UpdatePanelExport()
+	UpdatePanelViewField()
+	UpdatePanelTraj()
+	UpdatePanelResults()
 //	UpdateHallProbePanel()
 //	UpdateIntegralsMultipolesPanel()
-//	UpdateTrajectoriesPanel()
 //	UpdateDynMultipolesPanel()
 //	UpdateFindPeaksPanel()
-//	UpdateResultsPanel()
 //	UpdateCompareResultsPanel()
 //	UpdateFindPeaksPanel()
 //	UpdatePhaseErrorPanel()
@@ -1577,7 +1589,7 @@ Static Function UpdatePanels()
 End
 
 
-Static Function CheckFolder()
+Static Function IsCorrectFolder()
 	
 	string currentDf = GetDataFolder(0)
 	
@@ -1690,6 +1702,18 @@ Static Function InitializeFieldmapVariables()
 	variable/G VIEW_HOM_Y
 	variable/G VIEW_HOM_Z
 	variable/G VIEW_APPEND_FIELD = 0
+
+	variable/G TRAJ_CALC_METHOD = 2
+	variable/G TRAJ_OUT_MATRIX = 1
+	variable/G TRAJ_SINGLE_MULTI = 1
+	variable/G TRAJ_NEGATIVE_DIRECTION = 0
+	variable/G TRAJ_START_X
+	variable/G TRAJ_END_X
+	variable/G TRAJ_STEP_X
+	variable/G TRAJ_START_L
+	variable/G TRAJ_END_L
+	variable/G TRAJ_HORIZONTAL_ANGLE
+	variable/G TRAJ_VERTICAL_ANGLE
 
 //	variable/G StartYZ = 0
 //	variable/G EndYZ = 0
@@ -1897,6 +1921,7 @@ Static Function UpdatePositionVariables()
 	
 	UpdatePositionVariablesExport()
 	UpdatePositionVariablesViewField()
+	UpdatePositionVariablesTraj()
 
 //	NVAR GridMin     = :varsFieldmap:GridMin
 //	NVAR GridMax 	 = :varsFieldmap:GridMax
@@ -1997,6 +2022,39 @@ Static Function UpdatePositionVariablesViewField()
 End 
 
 
+Static Function UpdatePositionVariablesTraj()
+	NVAR tol = root:varsCAMTO:POSITION_TOLERANCE
+	
+	NVAR startX = :varsFieldmap:LOAD_START_X
+	NVAR endX = :varsFieldmap:LOAD_END_X
+	NVAR stepX = :varsFieldmap:LOAD_STEP_X
+	NVAR startL = :varsFieldmap:LOAD_START_L
+	NVAR endL = :varsFieldmap:LOAD_END_L
+
+	NVAR trajStartX = :varsFieldmap:TRAJ_START_X
+	NVAR trajEndX = :varsFieldmap:TRAJ_END_X
+	NVAR trajStepX = :varsFieldmap:TRAJ_STEP_X
+	NVAR trajStartL = :varsFieldmap:TRAJ_START_L
+	NVAR trajEndL = :varsFieldmap:TRAJ_END_L
+
+	WAVE posX
+
+	trajStartX = startX
+	trajEndX = endX
+	trajStepX = stepX
+	trajStartL = startL
+	trajEndL = endL
+
+	FindValue/T=(tol)/V=0 posX
+	if (V_Value != -1)
+		trajStartX = 0
+	endif
+
+	return 0
+	
+End 
+
+
 Static Function LoadFieldmap([filename, overwrite])
 	string filename
 	variable overwrite
@@ -2055,7 +2113,7 @@ Static Function LoadFieldmap([filename, overwrite])
 	variable symmetryBxX, symmetryByX, symmetryBzX
 	string waveStr, waveStrAux, posXStr
 
-	if (CheckFolder() == -1)
+	if (IsCorrectFolder() == -1)
 		return -1
 	endif
 
@@ -2354,7 +2412,7 @@ Static Function LoadFieldmap([filename, overwrite])
 	Killwaves/Z waveXUnique, waveYUnique, waveZUnique
 	
 	dataLoaded = 1
-	CalculateFieldIntegrals()
+	CalcFieldIntegrals()
 	UpdatePositionVariables()
 	
 	return 0
@@ -2362,7 +2420,7 @@ Static Function LoadFieldmap([filename, overwrite])
 End
 
 
-Static Function CalculateFieldIntegrals()
+Static Function CalcFieldIntegrals()
  	WAVE posX, posL
 
  	variable i, nptsX	
@@ -2415,38 +2473,52 @@ Static Function CalculateFieldIntegrals()
 End
 
 
-Static Function AddCurrentFieldmapDisplay(windowName, m, h, lt)
+Static Function AddFieldmapOptions(windowName, h, l1, l2, [copyConfigProc, applyToAllProc])
 	string windowName
-	variable m, h, lt
-	
-	variable l = lt - 2*m
+	variable h, l1, l2
+	string copyConfigProc, applyToAllProc
 
-	SetVariable svarCurrentFieldmap, win=$windowName, pos={m, h}, size={l,20}, noedit=1, title="Current Fieldmap "
+	if (ParamIsDefault(copyConfigProc))
+		copyConfigProc = ""
+	endif
+	
+	if (ParamIsDefault(applyToAllProc))
+		applyToAllProc = ""
+	endif
+
+	variable m, h1, lb
+	h1 = h
+	m = l1 + 15
+	lb = l2 - 2*m 
+	
+	h += 10
+	SetVariable svarCurrentFieldmap, win=$windowName, pos={m, h}, size={lb,20}, noedit=1, title="Current Fieldmap "
 	SetVariable svarCurrentFieldmap, win=$windowName, value=root:varsCAMTO:FIELDMAP_FOLDER
-	h += 30
+	h += 25
+	
+	if (strlen(copyConfigProc)!=0)
+		TitleBox tbxCopyConfig, win=$windowName, pos={m,h}, size={140,20}, frame=0, title="Copy Configuration From "
+		PopupMenu popupCopyConfig, win=$windowName, pos={m+150,h},size={lb-150,20}, bodyWidth=lb-150, mode=0, title=" "
+		PopupMenu popupCopyConfig, proc=$copyConfigProc
+		h += 25
+	endif
+	
+	if (strlen(applyToAllProc)!=0)
+		Button btnApplyToAll, win=$windowName, pos={m,h}, size={lb,25}, fsize=14, fstyle=1, title="Apply To All Fieldmaps"
+		Button btnApplyToAll, proc=$applyToAllProc
+		h += 30
+	endif
+	
+	h += 5
+	SetDrawEnv/W=$windowName fillpat=0
+	DrawRect/W=$windowName l1,h1,l2,h-5
 	
 	return h
 
 End
 
-Static Function AddCopyConfigOptions(windowName, m, h, lt)
-	string windowName
-	variable m, h, lt
-	
-	variable l = lt - 2*m
 
-	h = AddCurrentFieldmapDisplay(windowName, m, h, lt)
-	
-	TitleBox tbxCopyConfig, win=$windowName, pos={m,h}, size={140,20}, frame=0, title="Copy Configuration From "
-	PopupMenu popupCopyConfig, win=$windowName, pos={m+150,h},size={l-150,20}, bodyWidth=l-150, disable=2, mode=0, title=" "
-	h += 30
-	
-	return h
-
-End
-
-
-Static Function UpdateCopyConfigOptions(windowName)
+Static Function UpdateFieldmapOptions(windowName)
 	string windowName
 
 	NVAR fieldmapCount = root:varsCAMTO:FIELDMAP_COUNT
@@ -2455,9 +2527,28 @@ Static Function UpdateCopyConfigOptions(windowName)
 	
 	if (fieldmapCount > 1)
 		fieldmapList = GetFieldmapFolders()
-		PopupMenu popupCopyConfig, win=$windowName, disable=0, value= #("\"" + fieldmapList + "\"")
+		
+		ControlInfo/W=$windowName popupCopyConfig
+		if (V_Flag != 0)
+			PopupMenu popupCopyConfig, win=$windowName, disable=0, value= #("\"" + fieldmapList + "\"")
+		endif
+		
+		ControlInfo/W=$windowName btnApplyToAll
+		if (V_Flag != 0)
+			Button btnApplyToAll, win=$windowName, disable=0
+		endif
+	
 	else
-		PopupMenu popupCopyConfig, win=$windowName, disable=2
+		ControlInfo/W=$windowName popupCopyConfig
+		if (V_Flag != 0)
+			PopupMenu popupCopyConfig, win=$windowName, disable=2
+		endif
+		
+		ControlInfo/W=$windowName btnApplyToAll
+		if (V_Flag != 0)
+			Button btnApplyToAll, win=$windowName, disable=2
+		endif
+	
 	endif
 
 	return 0
@@ -2465,7 +2556,7 @@ Static Function UpdateCopyConfigOptions(windowName)
 End
 
 
-Function CAMTO_Export() : Panel
+Function CAMTO_Export_Panel() : Panel
 	
 	string windowName = "Export"
 	string windowTitle = "Export Field Data"
@@ -2476,7 +2567,7 @@ Function CAMTO_Export() : Panel
 	endif
 
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(1230,60,1670,405) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(1230,60,1670,400) as windowTitle
 	SetDrawLayer UserBack
 	
 	variable m, h, h1, l1, l2, l 
@@ -2486,38 +2577,44 @@ Function CAMTO_Export() : Panel
 	l1 = 5
 	l2 = 435
 
-	TitleBox tbxTitle1, pos={0,h+5}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Export Field"
+	TitleBox tbxTitle1, pos={0,h}, size={440,20}, anchor=MT, fsize=18, frame=0, fstyle=1, title="Export Field"
 	h += 35
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	h += 5
 	
 	TitleBox  tbxTitle3, pos={m,h},size={120,20}, frame=0, title="Field Components "
-	CheckBox chbExportBx, pos={m+120,h}, size={40,20}, disable=2, title=" Bx "
-	CheckBox chbExportBy, pos={m+170,h}, size={40,20}, disable=2, title=" By "
-	CheckBox chbExportBz, pos={m+220,h}, size={40,20}, disable=2, title=" Bz "
-	Button btnUpdatePositions, pos={m+270,h-1}, size={130,20}, fstyle=1, disable=2, proc=CAMTO_Export_UpdatePositions, title="Update Positions"
+	CheckBox chbExportBx, pos={m+120,h}, size={40,20}, title=" Bx "
+	CheckBox chbExportBy, pos={m+170,h}, size={40,20}, title=" By "
+	CheckBox chbExportBz, pos={m+220,h}, size={40,20}, title=" Bz "
+	Button btnUpdatePositions, pos={m+270,h-1}, size={130,20}, fstyle=1, title="Update Positions"
+	Button btnUpdatePositions, proc=CAMTO_Export_BtnUpdatePositions
 	h += 30
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
-	TitleBox tbxTitleX, pos={m+30,h}, size={60,25}, fsize=20, frame=0, disable=0, title="X - axis"
-	TitleBox tbxTitleY, pos={m+170,h}, size={60,25}, fsize=20, frame=0, disable=2, title="Y - axis"
-	TitleBox tbxTitleZ, pos={m+310,h}, size={60,25}, fsize=20, frame=0, disable=0, title="Z - axis"
+	TitleBox tbxTitleX, pos={m+30,h}, size={60,25}, fsize=20, frame=0, title="X - axis"
+	TitleBox tbxTitleY, pos={m+170,h}, size={60,25}, fsize=20, frame=0, title="Y - axis"
+	TitleBox tbxTitleZ, pos={m+310,h}, size={60,25}, fsize=20, frame=0, title="Z - axis"
 	h += 40
 	
-	SetVariable svarStartX, pos={m,h}, size={110,15}, disable=2, limits={0,0,0}, title="Start"
-	SetVariable svarStartY, pos={m+140,h}, size={110,15}, disable=2, limits={0,0,0}, title="Start"
-	SetVariable svarStartZ, pos={m+280,h}, size={110,15}, disable=2, limits={0,0,0}, title="Start"
+	SetVariable svarStartX, pos={m,h}, size={110,20}, limits={0,0,0}, title="Start"
+	SetVariable svarStartY, pos={m+140,h}, size={110,20}, limits={0,0,0}, title="Start"
+	SetVariable svarStartZ, pos={m+280,h}, size={110,20}, limits={0,0,0}, title="Start"
 	h += 40
 	
-	SetVariable svarEndX, pos={m,h}, size={110,15}, disable=2, limits={0,0,0}, title="End"
-	SetVariable svarEndY, pos={m+140,h}, size={110,15}, disable=2, limits={0,0,0}, title="End"
-	SetVariable svarEndZ, pos={m+280,h}, size={110,15}, disable=2, limits={0,0,0}, title="End"
+	SetVariable svarEndX, pos={m,h}, size={110,20}, limits={0,0,0}, title="End"
+	SetVariable svarEndY, pos={m+140,h}, size={110,20}, limits={0,0,0}, title="End"
+	SetVariable svarEndZ, pos={m+280,h}, size={110,20}, limits={0,0,0}, title="End"
 	h += 40
 	
-	SetVariable svarStepX, pos={m,h}, size={110,15}, disable=2, limits={0,0,0}, title="Step"
-	SetVariable svarStepY, pos={m+140,h}, size={110,15}, disable=2, limits={0,0,0}, title="Step"
-	SetVariable svarStepZ, pos={m+280,h}, size={110,15}, disable=2, limits={0,0,0}, title="Step"
+	SetVariable svarStepX, pos={m,h}, size={110,20}, limits={0,0,0}, title="Step"
+	SetVariable svarStepY, pos={m+140,h}, size={110,20}, limits={0,0,0}, title="Step"
+	SetVariable svarStepZ, pos={m+280,h}, size={110,20}, limits={0,0,0}, title="Step"
 	h += 40
 		
 	SetDrawEnv fillpat=0
@@ -2528,20 +2625,17 @@ Function CAMTO_Export() : Panel
 	DrawRect 2*l2/3,h1,l2,h-5
 	h1 = h-5
 
-	Button btnExportFieldmap, pos={m,h}, size={190,40}, fstyle=1, disable=2, proc=CAMTO_Export_ExportFieldmapFormat, title="Export in Fieldmap Format"
-	Button btnExportSpectra, pos={m+210,h}, size={190,40}, fstyle=1, disable=2, proc=CAMTO_Export_ExportSpectraFormat, title="Export in Spectra Format"
-	h += 50
+	Button btnExportFieldmap, pos={m-5,h}, size={195,30}, fsize=14, fstyle=1, title="Export in Fieldmap Format"
+	Button btnExportFieldmap, proc=CAMTO_Export_BtnExportFieldmap
+	Button btnExportSpectra, pos={m+210,h}, size={195,30}, fsize=14, fstyle=1, title="Export in Spectra Format"
+	Button btnExportSpectra, proc=CAMTO_Export_BtnExportSpectra
+	h += 40
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 	
-	h = AddCopyConfigOptions(windowName, m, h, l2-l1)
-	PopupMenu popupCopyConfig, proc=CAMTO_Export_CopyConfig
-
-	SetDrawEnv fillpat=0
-	DrawRect l1,h1,l2,h-5
-	h1 = h-5
+	h = AddFieldmapOptions(windowName, h1, l1, l2, copyConfigProc="CAMTO_Export_PopupCopyConfig")
 
 	UpdatePanelExport()
 
@@ -2560,7 +2654,7 @@ Static Function UpdatePanelExport()
 		return -1
 	endif
 
-	UpdateCopyConfigOptions(windowName)
+	UpdateFieldmapOptions(windowName)
 	
 	if (strlen(df) > 0 && cmpstr(df, "_none_")!=0)				
 		NVAR beamDirection = root:$(df):varsFieldmap:LOAD_BEAM_DIRECTION
@@ -2574,60 +2668,62 @@ Static Function UpdatePanelExport()
 		NVAR exportStartX = root:$(df):varsFieldmap:EXPORT_START_X
 		NVAR exportEndX = root:$(df):varsFieldmap:EXPORT_END_X
 		NVAR exportStepX = root:$(df):varsFieldmap:EXPORT_STEP_X
-	
 		NVAR exportStartY = root:$(df):varsFieldmap:EXPORT_START_Y
 		NVAR exportEndY = root:$(df):varsFieldmap:EXPORT_END_Y
 		NVAR exportStepY = root:$(df):varsFieldmap:EXPORT_STEP_Y
-	
 		NVAR exportStartZ = root:$(df):varsFieldmap:EXPORT_START_Z
 		NVAR exportEndZ = root:$(df):varsFieldmap:EXPORT_END_Z
 		NVAR exportStepZ = root:$(df):varsFieldmap:EXPORT_STEP_Z
-		
 		NVAR exportBx = root:$(df):varsFieldmap:EXPORT_BX
 		NVAR exportBy = root:$(df):varsFieldmap:EXPORT_BY
 		NVAR exportBz = root:$(df):varsFieldmap:EXPORT_BZ
 			
-		SetVariable svarStartX, win=$windowName, value=exportStartX, disable=0, limits={startX, endX, 1}
-		SetVariable svarEndX, win=$windowName, value=exportEndX, disable=0, limits={startX, endX, 1}
-		SetVariable svarStepX, win=$windowName, value=exportStepX, disable=0, limits={0, (endX - startX), 1}
+		SetVariable svarStartX, win=$windowName, value=exportStartX, limits={startX, endX, 1}
+		SetVariable svarEndX, win=$windowName, value=exportEndX, limits={startX, endX, 1}
+		SetVariable svarStepX, win=$windowName, value=exportStepX, limits={0, (endX - startX), 1}
 
-		SetVariable svarStartY, win=$windowName, value=exportStartY, disable=0, limits={startY, endY, 1}
-		SetVariable svarEndY, win=$windowName, value=exportEndY, disable=0, limits={startY, endY, 1}
-		SetVariable svarStepY, win=$windowName, value=exportStepY, disable=0, limits={0, (endY - startY), 1}
+		SetVariable svarStartY, win=$windowName, value=exportStartY, limits={startY, endY, 1}
+		SetVariable svarEndY, win=$windowName, value=exportEndY, limits={startY, endY, 1}
+		SetVariable svarStepY, win=$windowName, value=exportStepY, limits={0, (endY - startY), 1}
 
-		SetVariable svarStartZ, win=$windowName, value=exportStartZ, disable=0, limits={startZ, endZ, 1}
-		SetVariable svarEndZ, win=$windowName, value=exportEndZ, disable=0, limits={startZ, endZ, 1}
-		SetVariable svarStepZ, win=$windowName, value=exportStepZ, disable=0, limits={0, (endZ - startZ), 1}
+		SetVariable svarStartZ, win=$windowName, value=exportStartZ, limits={startZ, endZ, 1}
+		SetVariable svarEndZ, win=$windowName, value=exportEndZ, limits={startZ, endZ, 1}
+		SetVariable svarStepZ, win=$windowName, value=exportStepZ, limits={0, (endZ - startZ), 1}
 
-		CheckBox chbExportBx, win=$windowName, variable=exportBx, disable=0
-		CheckBox chbExportBy, win=$windowName, variable=exportBy, disable=0
-		CheckBox chbExportBz, win=$windowName, variable=exportBz, disable=0
-	
 		if (beamDirection == 1)
-		 	TitleBox tbxTitleY, win=$windowName, disable=0
 		 	TitleBox tbxTitleZ, win=$windowName, disable=2
 		 	SetVariable svarStartZ, win=$windowName, disable=2
 		 	SetVariable svarEndZ, win=$windowName, disable=2
 		 	SetVariable svarStepZ, win=$windowName, disable=2
+		 	TitleBox tbxTitleY, win=$windowName, disable=0
+		 	SetVariable svarStartY, win=$windowName, disable=0
+		 	SetVariable svarEndY, win=$windowName, disable=0
+		 	SetVariable svarStepY, win=$windowName, disable=0
 		else
-		 	TitleBox tbxTitleZ, win=$windowName, disable=0
 		 	TitleBox tbxTitleY, win=$windowName, disable=2
 		 	SetVariable svarStartY, win=$windowName, disable=2
 		 	SetVariable svarEndY, win=$windowName, disable=2
 		 	SetVariable svarStepY, win=$windowName, disable=2 
+		 	TitleBox tbxTitleZ, win=$windowName, disable=0
+		 	SetVariable svarStartZ, win=$windowName, disable=0
+		 	SetVariable svarEndZ, win=$windowName, disable=0
+		 	SetVariable svarStepZ, win=$windowName, disable=0
 		endif
-		
+
+		CheckBox chbExportBx, win=$windowName, variable=exportBx, disable=0
+		CheckBox chbExportBy, win=$windowName, variable=exportBy, disable=0
+		CheckBox chbExportBz, win=$windowName, variable=exportBz, disable=0		
 		Button btnUpdatePositions, win=$windowName, disable=0
 		Button btnExportFieldmap, win=$windowName, disable=0
 		Button btnExportSpectra, win=$windowName, disable=0
-		
+			
 	else
-		Button btnUpdatePositions, win=$windowName, disable=2
-		Button btnExportFieldmap, win=$windowName, disable=2
-		Button btnExportSpectra, win=$windowName, disable=2
 		CheckBox chbExportBx, win=$windowName, disable=2
 		CheckBox chbExportBy, win=$windowName, disable=2
 		CheckBox chbExportBz, win=$windowName, disable=2
+		Button btnUpdatePositions, win=$windowName, disable=2
+		Button btnExportFieldmap, win=$windowName, disable=2
+		Button btnExportSpectra, win=$windowName, disable=2
 	
 	endif
 	
@@ -2636,14 +2732,14 @@ Static Function UpdatePanelExport()
 End
 
 
-Function CAMTO_Export_CopyConfig(pa) : PopupMenuControl
+Function CAMTO_Export_PopupCopyConfig(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 
 	SVAR fieldmapCopy = root:varsCAMTO:FIELDMAP_COPY
 
 	switch(pa.eventCode)
 		case 2:
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 
@@ -2675,7 +2771,7 @@ Static Function CopyConfigExport()
 		NVAR temp_dfc = root:$(dfc):varsFieldmap:EXPORT_START_X
 		temp_df = temp_dfc
 
-		NVAR temp = :varsFieldmap:EXPORT_END_X
+		NVAR temp_df = :varsFieldmap:EXPORT_END_X
 		NVAR temp_dfc = root:$(dfc):varsFieldmap:EXPORT_END_X
 		temp_df = temp_dfc
 
@@ -2729,12 +2825,12 @@ Static Function CopyConfigExport()
 End
 
 
-Function CAMTO_Export_UpdatePositions(ba) : ButtonControl
+Function CAMTO_Export_BtnUpdatePositions(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 			
@@ -2748,16 +2844,16 @@ Function CAMTO_Export_UpdatePositions(ba) : ButtonControl
 End
 
 
-Function CAMTO_Export_ExportFieldmapFormat(ba) : ButtonControl
+Function CAMTO_Export_BtnExportFieldmap(ba) : ButtonControl
 	struct WMButtonAction &ba
 	
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 
-			ExportFieldmapFormat()
+			ExportFieldmap()
 			
 			break
 	endswitch
@@ -2767,16 +2863,16 @@ Function CAMTO_Export_ExportFieldmapFormat(ba) : ButtonControl
 End
 
 
-Function CAMTO_Export_ExportSpectraFormat(ba) : ButtonControl
+Function CAMTO_Export_BtnExportSpectra(ba) : ButtonControl
 	struct WMButtonAction &ba
 	
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 
-			ExportSpectraFormat()
+			ExportSpectra()
 			
 			break
 	endswitch
@@ -2786,7 +2882,7 @@ Function CAMTO_Export_ExportSpectraFormat(ba) : ButtonControl
 End
 
 
-Static Function GetFieldAtPoint(px, pl)
+Static Function CalcFieldAtPoint(px, pl)
 	variable px, pl //horizontal and longitudinal positions in meters
 	
 	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
@@ -3043,7 +3139,7 @@ Static Function IncludeFieldmapHeader(fullPath)
 End
 
 
-Static Function ExportFieldmapFormat()
+Static Function ExportFieldmap()
 
 	SVAR fieldmapFilepath = :varsFieldmap:FIELDMAP_FILEPATH
 	NVAR beamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
@@ -3175,7 +3271,7 @@ Static Function ExportFieldmapFormat()
 			for (i=0; i<nptsX; i=i+1)
 				xpos = (startX + i*stepX)
 
-				GetFieldAtPoint(xpos/1000, lpos/1000)
+				CalcFieldAtPoint(xpos/1000, lpos/1000)
 				
 				Px[count] = xpos
 				if (beamDirection == 1)
@@ -3229,7 +3325,7 @@ Static Function ExportFieldmapFormat()
 End
 
 
-Static Function ExportSpectraFormat()
+Static Function ExportSpectra()
 	
 	SVAR fieldmapFilepath = :varsFieldmap:FIELDMAP_FILEPATH
 	NVAR beamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
@@ -3301,7 +3397,7 @@ Static Function ExportSpectraFormat()
 			for (j=0; j<nptsL; j++)
 				lpos = (startL + j*stepL)
 				
-				GetFieldAtPoint(xpos/1000, lpos/1000)
+				CalcFieldAtPoint(xpos/1000, lpos/1000)
 				
 				Bx[count] = FieldX			
 				By[count] = FieldY
@@ -3365,7 +3461,7 @@ Static Function ExportSpectraFormat()
 End
 
 
-Function CAMTO_ViewField() : Panel
+Function CAMTO_ViewField_Panel() : Panel
 	
 	string windowName = "ViewField"
 	string graphName = "GraphViewField"
@@ -3383,21 +3479,19 @@ Function CAMTO_ViewField() : Panel
 	WAVE colorZ = root:wavesCAMTO:colorZ
 	
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(200,150,1500,670) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(200,150,1500,625) as windowTitle
 	SetDrawLayer UserBack
 		
-	CAMTO_SubViewField(windowName, 0, 0)
+	CAMTO_SubViewField_Panel(windowName, 0, 0)
 	
-	Display/W=(370,10,1290,510)/HOST=$windowName/N=$graphName	
+	Display/W=(370,10,1290,465)/HOST=$windowName/N=$graphName	
 
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Bx \r", annotationStr, colorX[0], colorX[1], colorX[2]
 	sprintf annotationStr, "%s\\K(%d,%d,%d) By \r", annotationStr, colorY[0], colorY[1], colorY[2]
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Bz", annotationStr, colorZ[0], colorZ[1], colorZ[2]
 	TextBox/W=$windowName#$graphName/A=LT/C/N=$annotationName annotationStr
 	
-	AddCurrentFieldmapDisplay(windowName, 20, 490, 360)
-	SetDrawEnv/W=$windowName fillpat=0
-	DrawRect/W=$windowName 8,480,350,515
+	AddFieldmapOptions(windowName, 435, 5, 350)
 
 	UpdatePanelViewField()
 
@@ -3406,13 +3500,13 @@ Function CAMTO_ViewField() : Panel
 End
 
 
-Function CAMTO_SubViewField(windowName, startH, startV)
+Function CAMTO_SubViewField_Panel(windowName, startH, startV)
 	string windowName
 	variable startH, startV
 
 	string subwindowName = "SubViewField"
 	
-	NewPanel/W=(startH, startV, startH+360, startV+480)/HOST=$windowName/N=$subwindowName
+	NewPanel/W=(startH, startV, startH+360, startV+435)/HOST=$windowName/N=$subwindowName
 	SetDrawLayer UserBack
 		
 	variable m, h, h1, l1, l2, l 
@@ -3423,37 +3517,38 @@ Function CAMTO_SubViewField(windowName, startH, startV)
 	l2 = 350
 
 	TitleBox tbxTitle1, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Field At Point"
-	h += 30
+	h += 25
 	
 	SetVariable svarPosX, pos={m,h+10}, size={140,20}, title="Pos X [mm]"
 	SetVariable svarPosL, pos={m,h+40}, size={140,20}, title="Pos L [mm]"
 	ValDisplay vdispFieldX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field X [T]"
 	ValDisplay vdispFieldY, pos={m+150,h+25}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field Y [T]"
 	ValDisplay vdispFieldZ, pos={m+150,h+50}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field Z [T]"
-	h += 80
+	h += 75
 
-	Button btnFieldAtPoint, pos={m,h}, size={320,25}, fstyle=1, proc=CAMTO_SubViewField_FieldAtPoint, title="Get Field at Point"
-	h += 40
+	Button btnFieldAtPoint, pos={m,h}, size={320,25}, fstyle=1, title="Get Field at Point"
+	Button btnFieldAtPoint, proc=CAMTO_SubViewField_BtnFieldAtPoint
+	h += 35
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 	
 	TitleBox tbxTitle2, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Longitudinal Profile"
-	h += 30
+	h += 25
 	
 	Button btnLongitudinalProfile, pos={m,h}, size={150,25}, fstyle=1, title="Show field at X [mm] ="
-	Button btnLongitudinalProfile, proc=CAMTO_SubViewField_LProfile
+	Button btnLongitudinalProfile, proc=CAMTO_SubViewField_BtnLProfile
 	SetVariable svarPlotX, pos={m+160,h+4}, size={80,25}, title=" "
 	CheckBox chbAppend, pos={m+250,h+5}, size={80,25}, title="Append"
-	h += 40
+	h += 35
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
 	TitleBox tbxTitle3, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Horizontal Profile"
-	h += 30
+	h += 25
 
 	SetVariable svarPlotStartX, pos={m,h}, size={140,20}, title="Start X [mm]"
 	ValDisplay vdispHomX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. X [%]"
@@ -3468,24 +3563,28 @@ Function CAMTO_SubViewField(windowName, startH, startV)
 	h += 25
 	
 	Button btnHorizontalProfile, pos={m,h}, size={240,25}, fstyle=1, title="Show field and homogeneity at L [mm] ="
-	Button btnHorizontalProfile, proc=CAMTO_SubViewField_XProfile
+	Button btnHorizontalProfile, proc=CAMTO_SubViewField_BtnXProfile
 	SetVariable svarPlotL, pos={m+250,h+4}, size={70,25}, title=" "
-	h += 40
+	h += 35
 	
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
 	TitleBox tbxTitle4, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Field Integrals"
-	h += 30
+	h += 25
 
-	Button btnFirstInt, pos={m,h}, size={210,25}, fstyle=1, proc=CAMTO_SubViewField_FirstInt, title="Show First Integrals over lines"
-	Button btnFirstIntTable, pos={m+220,h}, size={100,25}, fstyle=1, proc=CAMTO_SubViewField_FirstIntTable, title="Show Table"
+	Button btnFirstInt, pos={m,h}, size={210,25}, fstyle=1, title="Show First Integrals over lines"
+	Button btnFirstInt, proc=CAMTO_SubViewField_BtnFirstInt
+	Button btnFirstIntTable, pos={m+220,h}, size={100,25}, fstyle=1, title="Show Table"
+	Button btnFirstIntTable, proc=CAMTO_SubViewField_BtnFirstIntTable
 	h += 30
 	
-	Button btnSecondInt, pos={m,h}, size={210,25}, fstyle=1, proc=CAMTO_SubViewField_SecondInt, title="Show Second Integrals over lines"
-	Button btnSecondIntTable, pos={m+220,h}, size={100,25}, fstyle=1, proc=CAMTO_SubViewField_SecondIntTable, title="Show Table"
-	h += 40
+	Button btnSecondInt, pos={m,h}, size={210,25}, fstyle=1, title="Show Second Integrals over lines"
+	Button btnSecondInt, proc=CAMTO_SubViewField_BtnSecondInt
+	Button btnSecondIntTable, pos={m+220,h}, size={100,25}, fstyle=1, title="Show Table"
+	Button btnSecondIntTable, proc=CAMTO_SubViewField_BtnSecondIntTable
+	h += 35
 
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
@@ -3525,37 +3624,32 @@ Static Function UpdatePanelSubViewField(windowName)
 		NVAR startL = root:$(df):varsFieldmap:LOAD_START_L
 		NVAR endL = root:$(df):varsFieldmap:LOAD_END_L
 		NVAR stepL = root:$(df):varsFieldmap:LOAD_STEP_L
-
+ 
 		NVAR posX = root:$(df):varsFieldmap:VIEW_POS_X
-		NVAR posL = root:$(df):varsFieldmap:VIEW_POS_L
-		
+		NVAR posL = root:$(df):varsFieldmap:VIEW_POS_L	
 		NVAR plotX = root:$(df):varsFieldmap:VIEW_PLOT_X
 		NVAR appendField = root:$(df):varsFieldmap:VIEW_APPEND_FIELD
-		
 		NVAR plotStartX = root:$(df):varsFieldmap:VIEW_PLOT_START_X
 		NVAR plotEndX = root:$(df):varsFieldmap:VIEW_PLOT_END_X
 		NVAR plotStepX = root:$(df):varsFieldmap:VIEW_PLOT_STEP_X
 		NVAR plotL = root:$(df):varsFieldmap:VIEW_PLOT_L
 						
-		SetVariable svarPosX, win=$windowName#$subwindowName, value=posX, disable=0, limits={startX, endX, stepX}
-		SetVariable svarPosL, win=$windowName#$subwindowName, value=posL, disable=0, limits={startL, endL, stepL}
-
+		SetVariable svarPosX, win=$windowName#$subwindowName, value=posX, limits={startX, endX, stepX}
+		SetVariable svarPosL, win=$windowName#$subwindowName, value=posL, limits={startL, endL, stepL}
+		SetVariable svarPlotX, win=$windowName#$subwindowName, value=plotX, limits={startX, endX, stepX}
+		SetVariable svarPlotStartX, win=$windowName#$subwindowName, value=plotStartX, limits={startX, endX, stepX}
+		SetVariable svarPlotEndX, win=$windowName#$subwindowName, value=plotEndX, limits={startX, endX, stepX}
+		SetVariable svarPlotStepX, win=$windowName#$subwindowName, value=plotStepX, limits={0, (endX - startX), 1}
+		SetVariable svarPlotL, win=$windowName#$subwindowName, value=plotL, limits={startL, endL, stepL}
+		
 		ValDisplay vdispFieldX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_X")
 		ValDisplay vdispFieldY, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_Y")
 		ValDisplay vdispFieldZ, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_Z")
-
-		SetVariable svarPlotX, win=$windowName#$subwindowName, value=plotX, disable=0, limits={startX, endX, stepX}
-		CheckBox chbAppend, win=$windowName#$subwindowName, variable=appendField, disable=0
-		
-		SetVariable svarPlotStartX, win=$windowName#$subwindowName, value=plotStartX, disable=0, limits={startX, endX, stepX}
-		SetVariable svarPlotEndX, win=$windowName#$subwindowName, value=plotEndX, disable=0, limits={startX, endX, stepX}
-		SetVariable svarPlotStepX, win=$windowName#$subwindowName, value=plotStepX, disable=0, limits={0, (endX - startX), 1}
-		SetVariable svarPlotL, win=$windowName#$subwindowName, value=plotL, disable=0, limits={startL, endL, stepL}
-		
 		ValDisplay vdispHomX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_X")
 		ValDisplay vdispHomY, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_Y")
 		ValDisplay vdispHomZ, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_Z")
-		
+
+		CheckBox chbAppend, win=$windowName#$subwindowName, variable=appendField, disable=0		
 		Button btnFieldAtPoint, win=$windowName#$subwindowName, disable=0
 		Button btnLongitudinalProfile, win=$windowName#$subwindowName, disable=0
 		Button btnHorizontalProfile, win=$windowName#$subwindowName, disable=0
@@ -3565,6 +3659,7 @@ Static Function UpdatePanelSubViewField(windowName)
 		Button btnSecondIntTable, win=$windowName#$subwindowName, disable=0
 		
 	else
+		CheckBox chbAppend, win=$windowName#$subwindowName, disable=2
 		Button btnFieldAtPoint, win=$windowName#$subwindowName, disable=2
 		Button btnLongitudinalProfile, win=$windowName#$subwindowName, disable=2
 		Button btnHorizontalProfile, win=$windowName#$subwindowName, disable=2
@@ -3572,7 +3667,6 @@ Static Function UpdatePanelSubViewField(windowName)
 		Button btnFirstIntTable, win=$windowName#$subwindowName, disable=2
 		Button btnSecondInt, win=$windowName#$subwindowName, disable=2
 		Button btnSecondIntTable, win=$windowName#$subwindowName, disable=2
-		CheckBox chbAppend, win=$windowName#$subwindowName, disable=2
 	
 	endif
 
@@ -3581,12 +3675,12 @@ Static Function UpdatePanelSubViewField(windowName)
 End
 
 
-Function CAMTO_SubViewField_FieldAtPoint(ba) : ButtonControl
+Function CAMTO_SubViewField_BtnFieldAtPoint(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 		
@@ -3599,7 +3693,7 @@ Function CAMTO_SubViewField_FieldAtPoint(ba) : ButtonControl
 			NVAR viewFieldY = :varsFieldmap:VIEW_FIELD_Y
 			NVAR viewFieldZ = :varsFieldmap:VIEW_FIELD_Z	
 			
-			GetFieldAtPoint(posX/1000, posL/1000)
+			CalcFieldAtPoint(posX/1000, posL/1000)
 			
 			viewFieldX = fieldX
 			viewFieldY = fieldY
@@ -3613,12 +3707,12 @@ Function CAMTO_SubViewField_FieldAtPoint(ba) : ButtonControl
 End
 
 
-Function CAMTO_SubViewField_LProfile(ba) : ButtonControl
+Function CAMTO_SubViewField_BtnLProfile(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 			
@@ -3627,7 +3721,7 @@ Function CAMTO_SubViewField_LProfile(ba) : ButtonControl
 			
 			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
 			
-			if (!cmpstr(subwindowName, "SubViewField"))
+			if (!cmpstr(windowName, "ViewField"))
 				graphXName = windowName + "#" + "GraphViewField"
 				graphYName = graphXName
 				graphZName = graphXName
@@ -3649,12 +3743,12 @@ Function CAMTO_SubViewField_LProfile(ba) : ButtonControl
 End
 
 
-Function CAMTO_SubViewField_XProfile(ba) : ButtonControl
+Function CAMTO_SubViewField_BtnXProfile(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 			
@@ -3663,7 +3757,7 @@ Function CAMTO_SubViewField_XProfile(ba) : ButtonControl
 			
 			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
 			
-			if (!cmpstr(subwindowName, "SubViewField"))
+			if (!cmpstr(windowName, "ViewField"))
 				graphXName = windowName + "#" + "GraphViewField"
 				graphYName = graphXName
 				graphZName = graphXName
@@ -3685,12 +3779,12 @@ Function CAMTO_SubViewField_XProfile(ba) : ButtonControl
 End
 
 
-Function CAMTO_SubViewField_FirstInt(ba) : ButtonControl
+Function CAMTO_SubViewField_BtnFirstInt(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 			
@@ -3699,7 +3793,7 @@ Function CAMTO_SubViewField_FirstInt(ba) : ButtonControl
 			
 			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
 			
-			if (!cmpstr(subwindowName, "SubViewField"))
+			if (!cmpstr(windowName, "ViewField"))
 				graphXName = windowName + "#" + "GraphViewField"
 				graphYName = graphXName
 				graphZName = graphXName
@@ -3721,12 +3815,12 @@ Function CAMTO_SubViewField_FirstInt(ba) : ButtonControl
 End
 
 
-Function CAMTO_SubViewField_SecondInt(ba) : ButtonControl
+Function CAMTO_SubViewField_BtnSecondInt(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 			
@@ -3735,7 +3829,7 @@ Function CAMTO_SubViewField_SecondInt(ba) : ButtonControl
 			
 			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
 			
-			if (!cmpstr(subwindowName, "SubViewField"))
+			if (!cmpstr(windowName, "ViewField"))
 				graphXName = windowName + "#" + "GraphViewField"
 				graphYName = graphXName
 				graphZName = graphXName
@@ -3757,12 +3851,12 @@ Function CAMTO_SubViewField_SecondInt(ba) : ButtonControl
 End
 
 
-Function CAMTO_SubViewField_FirstIntTable(ba) : ButtonControl
+Function CAMTO_SubViewField_BtnFirstIntTable(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 			
@@ -3778,12 +3872,12 @@ Function CAMTO_SubViewField_FirstIntTable(ba) : ButtonControl
 End
 
 
-Function CAMTO_SubViewField_SecondIntTable(ba) : ButtonControl
+Function CAMTO_SubViewField_BtnSecondIntTable(ba) : ButtonControl
 	struct WMButtonAction &ba
 
 	switch(ba.eventCode)
 		case 2:		
-			if (CheckFolder() == -1)
+			if (IsCorrectFolder() == -1)
 				return -1
 			endif
 			
@@ -3797,6 +3891,7 @@ Function CAMTO_SubViewField_SecondIntTable(ba) : ButtonControl
 	return 0
 
 End
+
 
 Static Function DeleteTracesFromGraph(graphName)
 	string graphName
@@ -3876,33 +3971,34 @@ Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName,
 	variable i
 	string posXStr, posXStrmm, traceNames
 	string tnX, tnY, tnZ, wnX, wnY, wnZ
-		
-	if (!appendField)
-		if (subwindow)
+	
+	if (subwindow)
+		traceNames = TraceNameList(graphXName, ";", 1)
+		if (!appendField || strsearch(traceNames, "horizontalProfile_Bx", 0) != -1)
 			DeleteTracesFromGraph(graphXName)
 			DeleteTracesFromGraph(graphYName)
 			DeleteTracesFromGraph(graphZName)
-		else
-			DoWindow/K $graphXName
-			DoWindow/K $graphYName
-			DoWindow/K $graphZName
-			
-			Display/N=$graphXName/K=1
-			Display/N=$graphYName/K=1
-			Display/N=$graphZName/K=1
-			
 		endif
 	
 	else
-		traceNames = TraceNameList(graphXName, ";", 1)
-		if (strsearch(traceNames, "horizontalProfile_Bx", 0) != -1)
-			DeleteTracesFromGraph(graphXName)
-			DeleteTracesFromGraph(graphYName)
-			DeleteTracesFromGraph(graphZName)			
+		if (!appendField)
+			DoWindow/K $graphXName
+			DoWindow/K $graphYName
+			DoWindow/K $graphZName
 		endif
-	
+		
+		DoWindow/F $graphXName
+		DoWindow/F $graphYName
+		DoWindow/F $graphZName
+		
+		if(V_Flag == 0)
+			Display/N=$graphXName/K=1
+			Display/N=$graphYName/K=1
+			Display/N=$graphZName/K=1
+		endif
+			
 	endif
-
+	
 	posXStrmm = num2str(plotX)
 	tnX = "Bx x=" + posXStrmm + "mm"
 	tnY = "By x=" + posXStrmm + "mm"
@@ -3933,7 +4029,7 @@ Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName,
 		WAVE waveBz = $wnZ
 		
 		for(i=0; i<numpnts(posL); i++)
-			GetFieldAtPoint(plotX/1000, posL[i])
+			CalcFieldAtPoint(plotX/1000, posL[i])
 			waveBx[i] = fieldX
 			waveBy[i] = fieldY
 			waveBz[i] = fieldZ
@@ -3984,7 +4080,7 @@ Static Function PlotFieldHorizontalProfile(graphXName, graphYName, graphZName, s
 
 	variable i, nptsX
 	string wnX, wnY, wnZ
-		
+
 	if (subwindow)
 		DeleteTracesFromGraph(graphXName)
 		DeleteTracesFromGraph(graphYName)
@@ -4028,7 +4124,7 @@ Static Function PlotFieldHorizontalProfile(graphXName, graphYName, graphZName, s
 	WAVE waveBz = $wnZ
 
 	for(i=0; i<nptsX; i++)
-		GetFieldAtPoint(horizontalProfile_posX[i], plotL/1000)
+		CalcFieldAtPoint(horizontalProfile_posX[i], plotL/1000)
 		waveBx[i] = fieldX
 		waveBy[i] = fieldY
 		waveBz[i] = fieldZ
@@ -4126,8 +4222,507 @@ Static Function PlotFieldIntegral(graphXName, graphYName, graphZName, subwindow,
 	endif
 
 End
-//Ok até aqui!!
 
+
+Function CAMTO_Traj_Panel() : Panel
+	
+	string windowName = "Traj"
+	string windowTitle = "Trajectories"
+	
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return -1
+	endif
+
+	DoWindow/K $windowName
+	NewPanel/K=1/N=$windowName/W=(440,250,765,795) as windowTitle
+	SetDrawLayer UserBack
+	
+	variable m, h, h1, l1, l2, l 
+	m = 20	
+	h = 10
+	h1 = 5	
+	l1 = 5
+	l2 = 320
+
+	TitleBox tbxTitle1, pos={0,h}, size={320,25}, fsize=18, frame=0, fstyle=1, anchor=MT, title="Particle Trajectory"
+	h += 35
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	PopupMenu popupCalcMethod, pos={m,h}, size={280,20}, bodyWidth=160, title="Calculation Method "
+	PopupMenu popupCalcMethod, mode=1, popvalue="Analytical", value=#"\"Analytical;Runge_Kutta\""
+	PopupMenu popupCalcMethod, proc=CAMTO_Traj_PopupCalcMethod
+	h += 25
+	
+	CheckBox chbOutMatrix, pos={m,h}, size={290,20}, title=" Use constant field if trajectory is out of field matrix"
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	TitleBox tbxTitle2, pos={0,h}, size={320,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Horizontal Position"
+	h += 25
+
+	PopupMenu popupSingleMulti, pos={m,h}, size={280,20}, bodyWidth=160, title="Number of Particles "
+	PopupMenu popupSingleMulti, mode=1, popvalue="Single-Particle", value=#"\"Single-Particle;Multi-Particle\""
+	PopupMenu popupSingleMulti, proc=CAMTO_Traj_PopupSingleMulti
+	h += 25
+
+	SetVariable svarStartX, pos={m,h}, size={290,20}, title="Start X [mm] "
+	h += 25
+	
+	SetVariable svarEndX, pos={m,h}, size={290,20}, title="End X [mm] "
+	h += 25
+	
+	SetVariable svarStepX, pos={m,h}, size={290,20}, title="Step X [mm] "
+	h += 30
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	TitleBox tbxTitle3, pos={0,h}, size={320,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Longitudinal Position"
+	h += 25
+	
+	SetVariable svarStartL, pos={m,h}, size={290,20}, title="Start L [mm] "
+	h += 25
+	
+	SetVariable svarEndL, pos={m,h}, size={290,20}, title="End L [mm] "
+	h += 25
+	
+	CheckBox chbNegativeDirection, pos={m,h}, size={290,20}, title=" Calculate negative and positive trajectories"
+	CheckBox chbNegativeDirection, proc=CAMTO_Traj_ChbNegativeDirection
+	h += 30
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	TitleBox tbxTitle4, pos={0,h}, size={320,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Initial Angles"
+	h += 25
+	
+	SetVariable svarHorizontalAngle, pos={m,h}, size={290,20}, title="Horizontal Angle [°]:"
+	h += 25
+
+	SetVariable svarVerticalAngle, pos={m,h}, size={290,20}, title="Vertical Angle [°]:"
+	h += 30
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+		
+	Button btnTrajectory, pos={m,h}, size={285,30}, fsize=14, fstyle=1, title="Calculate Trajectories"
+	Button btnTrajectory, proc=CAMTO_Traj_BtnCalcTrajectory
+	h += 40
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	h = AddFieldmapOptions(windowName, h1, l1, l2, copyConfigProc="CAMTO_Traj_PopupCopyConfig", applyToAllProc="CAMTO_Traj_BtnApplyToAll")
+
+	UpdatePanelTraj()
+
+	return 0
+			
+End
+
+
+Static Function UpdatePanelTraj()
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+
+	string windowName = "Traj"
+
+	if (WinType(windowName)==0)
+		return -1
+	endif
+	
+	UpdateFieldmapOptions(windowName)
+	
+	if (strlen(df) > 0)
+		NVAR calcMethod = root:$(df):varsFieldmap:TRAJ_CALC_METHOD
+		NVAR singleMulti = root:$(df):varsFieldmap:TRAJ_SINGLE_MULTI
+		NVAR outMatrix = root:$(df):varsFieldmap:TRAJ_OUT_MATRIX
+		NVAR negativeDirection = root:$(df):varsFieldmap:TRAJ_NEGATIVE_DIRECTION
+		NVAR startX = root:$(df):varsFieldmap:TRAJ_START_X
+		NVAR endX = root:$(df):varsFieldmap:TRAJ_END_X
+		NVAR stepX = root:$(df):varsFieldmap:TRAJ_STEP_X
+		NVAR startL = root:$(df):varsFieldmap:TRAJ_START_L
+		NVAR endL = root:$(df):varsFieldmap:TRAJ_END_L
+		NVAR horizontalAngle = root:$(df):varsFieldmap:TRAJ_HORIZONTAL_ANGLE
+		NVAR verticalAngle = root:$(df):varsFieldmap:TRAJ_VERTICAL_ANGLE
+	
+		SetVariable svarStartX, win=$windowName, value=startX
+		SetVariable svarEndX, win=$windowName, value=endX
+		SetVariable svarStepX, win=$windowName, value=stepX
+		SetVariable svarStartL, win=$windowName, value=startL
+		SetVariable svarEndL, win=$windowName, value=endL	
+		SetVariable svarHorizontalAngle, win=$windowName, value=horizontalAngle
+		SetVariable svarVerticalAngle, win=$windowName, value=verticalAngle
+	
+		if (singleMulti == 1)
+			SetVariable svarEndX, win=$windowName, disable=2
+			SetVariable svarStepX, win=$windowName, disable=2
+		else
+			SetVariable svarEndX, win=$windowName, disable=0
+			SetVariable svarStepX, win=$windowName, disable=0
+		endif
+
+		PopupMenu popupCalcMethod, win=$windowName, mode=calcMethod, disable=0
+		PopupMenu popupSingleMulti, win=$windowName, mode=singleMulti, disable=0
+		CheckBox chbOutMatrix, win=$windowName, variable=outMatrix, disable=0
+		CheckBox chbNegativeDirection, win=$windowName, variable=negativeDirection, disable=0				
+		Button btnTrajectory, win=$windowName, disable=0
+	
+	else
+	
+		PopupMenu popupCalcMethod, win=$windowName, disable=2
+		PopupMenu popupSingleMulti, win=$windowName, disable=2
+		CheckBox chbOutMatrix, win=$windowName, disable=2
+		CheckBox chbNegativeDirection, win=$windowName, disable=2
+		Button btnTrajectory, win=$windowName, disable=2
+		
+	endif
+		
+End
+
+
+Function CAMTO_Traj_PopupCopyConfig(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+
+	SVAR fieldmapCopy = root:varsCAMTO:FIELDMAP_COPY
+
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			fieldmapCopy = pa.popStr
+			
+			CopyConfigTraj()
+			UpdatePanelTraj()
+			
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+
+Static Function CopyConfigTraj()
+	
+	SVAR dfc = root:varsCAMTO:FIELDMAP_COPY
+
+	WAVE/T fieldmapFolders= root:wavesCAMTO:fieldmapFolders
+	
+	UpdateFieldmapFolders()	
+	FindValue/Text=dfc/TXOP=4 fieldmapFolders
+	
+	if (V_Value!=-1)	
+		NVAR temp_df = :varsFieldmap:TRAJ_SINGLE_MULTI
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_SINGLE_MULTI
+		temp_df = temp_dfc
+		
+		NVAR temp_df = :varsFieldmap:TRAJ_OUT_MATRIX
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_OUT_MATRIX
+		temp_df = temp_dfc		
+
+		NVAR temp_df = :varsFieldmap:TRAJ_NEGATIVE_DIRECTION
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_NEGATIVE_DIRECTION
+		temp_df = temp_dfc	
+
+		NVAR temp_df = :varsFieldmap:TRAJ_CALC_METHOD
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_CALC_METHOD
+		temp_df = temp_dfc		
+		
+		NVAR temp_df = :varsFieldmap:TRAJ_START_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_START_X
+		temp_df = temp_dfc		
+		
+		NVAR temp_df = :varsFieldmap:TRAJ_END_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_END_X
+		temp_df = temp_dfc		
+
+		NVAR temp_df = :varsFieldmap:TRAJ_STEP_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_STEP_X
+		temp_df = temp_dfc		
+		
+		NVAR temp_df = :varsFieldmap:TRAJ_START_L
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_START_L
+		temp_df = temp_dfc		
+
+		NVAR temp_df = :varsFieldmap:TRAJ_END_L
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_END_L
+		temp_df = temp_dfc		
+
+		NVAR temp_df = :varsFieldmap:TRAJ_HORIZONTAL_ANGLE
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_HORIZONTAL_ANGLE
+		temp_df = temp_dfc		
+
+		NVAR temp_df = :varsFieldmap:TRAJ_VERTICAL_ANGLE
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_VERTICAL_ANGLE
+		temp_df = temp_dfc
+				
+	else
+		DoAlert 0, "Data folder not found."
+		return -1
+	endif
+	
+	return 0
+		
+End
+
+
+Function CAMTO_Traj_PopupSingleMulti(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+
+	NVAR singleMulti = :varsFieldmap:TRAJ_SINGLE_MULTI
+
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			if (pa.popNum == 1)
+				SetVariable svarEndX, win=$pa.win, disable = 2
+				SetVariable svarStepX, win=$pa.win, disable = 2	
+			else
+				SetVariable svarEndX, win=$pa.win, disable = 0
+				SetVariable svarStepX, win=$pa.win, disable = 0
+			endif
+
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+
+Function CAMTO_Traj_PopupCalcMethod(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+
+	NVAR calcMethod = :varsFieldmap:TRAJ_CALC_METHOD
+
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			calcMethod = pa.popNum
+
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+
+Function CAMTO_Traj_ChbNegativeDirection(ca) : CheckBoxControl
+	STRUCT WMCheckboxAction& ca
+	
+	NVAR startL = :varsFieldmap:TRAJ_START_L
+
+	switch(ca.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			if (ca.checked)
+				startL = 0
+			endif
+			
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+
+Function CAMTO_Results_Panel() : Panel
+	
+	string windowName = "Results"
+	string windowTitle = "Results"
+
+		
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return -1
+	endif
+
+	DoWindow/K $windowName
+	NewPanel/K=1/N=$windowName/W=(1200,60,1560,785) as windowTitle
+	SetDrawLayer UserBack
+		
+	CAMTO_SubViewField_Panel(windowName, 0, 0)
+	
+	UpdatePanelResults()
+	
+	return 0
+			
+End
+
+
+Static Function UpdatePanelResults()
+
+	string windowName = "Results"
+
+	if (WinType(windowName)==0)
+		return -1
+	endif
+	
+	UpdatePanelSubViewField(windowName)
+	
+	return 0
+
+End
+// Ok até aqui
+
+
+//Window Results() : Panel
+//	PauseUpdate; Silent 1		// building window...
+//
+//	if (DataFolderExists("root:varsCAMTO")==0)
+//		DoAlert 0, "CAMTO variables not found."
+//		return 
+//	endif
+//
+//	CloseWindow("Results")
+//
+//	NewPanel/K=1/W=(1235,60,1573,785)
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,5,333,125
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,125,333,158
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,158,333,275
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,275,333,310
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,310,333,345
+//	SetDrawEnv fillpat= 0
+//	DrawRect 3,345,333,445
+//	SetDrawEnv fillpat= 0		
+//	DrawRect 3,445,333,595
+//	SetDrawEnv fillpat= 0		
+//	DrawRect 3,595,333,690
+//	SetDrawEnv fillpat= 0		
+//	DrawRect 3,690,333,720
+//	
+//	TitleBox field_title,pos={120,10},size={127,16},fsize=16,fstyle=1,frame=0, title="Field Profile"
+//	
+//	SetVariable PosXField,pos={10,40},size={140,18},title="Pos X [mm]:"
+//	SetVariable PosYZField,pos={10,70},size={140,18},title="Pos YZ [mm]:"
+//			
+//	ValDisplay FieldinPointX,pos={160,32},size={165,17},title="Field X [T]:"
+//	ValDisplay FieldinPointX,limits={0,0,0},barmisc={0,1000}
+//	ValDisplay FieldinPointY,pos={160,55},size={165,17},title="Field Y  [T]:"
+//	ValDisplay FieldinPointY,limits={0,0,0},barmisc={0,1000}
+//	ValDisplay FieldinPointZ,pos={160,78},size={165,17},title="Field Z  [T]:"
+//	ValDisplay FieldinPointZ,limits={0,0,0},barmisc={0,1000}
+//			
+//	Button field_point,pos={16,97},size={306,24},proc=Field_in_Point,title="Calculate the field in a point"
+//	Button field_point,fstyle=1
+//	
+//	Button field_Xline,pos={16,130},size={110,24},proc=Field_in_X_Line,title="Show field in X ="
+//	Button field_Xline,fstyle=1
+//	SetVariable PosXFieldLine,pos={130,134},size={80,18},title="[mm]:"
+//	CheckBox graphappend, pos={220,136}, title="Append to Graph"
+//	
+//	SetVariable StartXProfile,pos={16,170},size={134,18},title="Start X [mm]:"
+//	SetVariable EndXProfile,pos={16,195},size={134,18},title="End X [mm]:"
+//	SetVariable PosYZProfile,pos={16,221},size={134,18},title="Pos YZ [mm]:"
+//		
+//	ValDisplay FieldHomX,pos={160,171},size={165,17},title="Homog. X [T]:"
+//	ValDisplay FieldHomX,limits={0,0,0},barmisc={0,1000}
+//	ValDisplay FieldinPointY1,pos={160,194},size={165,17},title="Homog. Y [T]:"
+//	ValDisplay FieldinPointY1,limits={0,0,0},barmisc={0,1000}
+//	ValDisplay FieldinPointZ1,pos={160,217},size={165,17},title="Homog. Z [T]:"
+//	ValDisplay FieldinPointZ1,limits={0,0,0},barmisc={0,1000}
+//		
+//	Button field_profile,pos={11,246},size={230,24},proc=Field_Profile,title="Show Field Profile and Homogeneity"
+//	Button field_profile,fstyle=1
+//	Button field_profile_table,pos={247,246},size={80,24},proc=Field_Profile_Table,title="Show Table"
+//	Button field_profile_table,fstyle=1
+//	
+//	Button show_integrals,pos={11,281},size={230,24},proc=ShowIntegrals,title="Show First Integrals over lines"
+//	Button show_integrals,fstyle=1
+//	Button show_integrals_table,pos={247,281},size={80,24},proc=show_integrals_Table,title="Show Table"
+//	Button show_integrals_table,fstyle=1	
+//	
+//	Button show_integrals2,pos={11,316},size={230,24},proc=ShowIntegrals2,title="Show Second Integrals over lines"
+//	Button show_integrals2,fstyle=1
+//	Button show_integrals2_table,pos={247,316},size={80,24},proc=show_integrals2_Table,title="Show Table"
+//	Button show_integrals2_table,fstyle=1
+//	
+//	Button show_multipoles,pos={11,351},size={316,24},proc=ShowMultipoles,title="Show Multipoles Table"
+//	Button show_multipoles,fstyle=1
+//	
+//	Button show_multipoleprofile,pos={11,384},size={230,24},proc=ShowMultipoleProfile,title="Show Multipole Profile: K = "
+//	Button show_multipoleprofile,fstyle=1
+//	SetVariable mnumber,pos={247,387},size={80,18},title=" "
+//	
+//	Button show_residmultipoles,pos={11,416},size={230,24},proc=ShowResidMultipoles,title="Show Residual Multipoles"
+//	Button show_residmultipoles,fstyle=1
+//	Button show_residmultipoles_table,pos={247,416},size={80,24},proc=ShowResidMultipoles_Table,title="Show Table"
+//	Button show_residmultipoles_table,fstyle=1
+//	
+//	TitleBox traj_title1,pos={100,451},size={127,16},fsize=16,fstyle=1,frame=0, title="Particle Trajectory"
+//	
+//	Button show_trajectories,pos={11,476},size={180,24},proc=ShowTrajectories,title="Show Trajectories"
+//	Button show_trajectories,fstyle=1
+//	CheckBox referencelines,pos={200,482},size={130,24},title=" Add Reference Lines"
+//	
+//	Button show_deflections,pos={11,506},size={230,24},proc=ShowDeflections,title="Show Deflections"
+//	Button show_deflections,fstyle=1
+//	Button show_deflections_Table,pos={247,506},size={80,24},proc=show_deflections_Table,title="Show Table"
+//	Button show_deflections_Table,fstyle=1	
+//	
+//	Button show_integralstraj,pos={11,536},size={230,24},proc=ShowIntegralsTraj,title="Show First Integrals over trajectory"
+//	Button show_integralstraj,fstyle=1
+//	Button show_integralstraj_Table,pos={247,536},size={80,24},proc=show_integralstraj_Table,title="Show Table"
+//	Button show_integralstraj_Table,fstyle=1	
+//	
+//	Button show_integrals2traj,pos={11,566},size={230,24},proc=ShowIntegrals2Traj,title="Show Second Integrals over trajectory"
+//	Button show_integrals2traj,fstyle=1
+//	Button show_integrals2traj_Table,pos={247,566},size={80,24},proc=show_integrals2traj_Table,title="Show Table"
+//	Button show_integrals2traj_Table,fstyle=1	
+//	
+//	Button show_dynmultipoles,pos={11,600},size={316,24},proc=ShowDynMultipoles,title="Show Dynamic Multipoles Table"
+//	Button show_dynmultipoles,fstyle=1
+//	
+//	Button show_dynmultipoleprofile,pos={11,630},size={230,24},proc=ShowDynMultipoleProfile,title="Show Dynamic Multipole Profile: K = "
+//	Button show_dynmultipoleprofile,fstyle=1
+//	SetVariable mtrajnumber,pos={247,633},size={80,18},title=" "
+//		
+//	Button show_residdynmultipoles,pos={11,660},size={230,24},proc=ShowResidDynMultipoles,title="Show Residual Dynamic Multipoles"
+//	Button show_residdynmultipoles,fstyle=1
+//	Button show_residdynmultipoles_table,pos={247,660},size={80,24},proc=ShowResidDynMultipoles_Table,title="Show Table"
+//	Button show_residdynmultipoles_table,fstyle=1
+//
+//	SetVariable fieldmapdir,pos={20,697},size={300,18},fstyle=1,title="Fieldmap directory: "
+//	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FIELDMAP_FOLDER
+//	
+//	UpdateFieldmapFolders()
+//	UpdateResultsPanel()
+//		 
+//EndMacro
 
 //Window Integrals_Multipoles() : Panel
 //	PauseUpdate; Silent 1		// building window...
@@ -4814,78 +5409,6 @@ End
 //End
 //
 //
-//Function IntegralsCalculation()
-//
-//	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
-//      
-//	NVAR NPointsX = :varsFieldmap:NPointsX
-//	NVAR NPointsYZ = :varsFieldmap:NPointsYZ	
-//
-//	variable i, j
-//	string Raia
-// 	string RaiaInt
-// 	
-// 	Wave C_PosX
-// 	
-//	Make/D/O/N=(NPointsX) IntBx_X	
-//	Make/D/O/N=(NPointsX) IntBy_X	
-//	Make/D/O/N=(NPointsX) IntBz_X	
-//
-//	Make/D/O/N=(NPointsX) Int2Bx_X	
-//	Make/D/O/N=(NPointsX) Int2By_X	
-//	Make/D/O/N=(NPointsX) Int2Bz_X	
-//	
-//	//Primeira Integral
-//	for (j=0;j<NPointsX;j=j+1)
-//		Raia = "RaiaBx_X" + num2str(C_PosX[j]) 
-//		RaiaInt = "RaiaBx_X" + num2str(C_PosX[j]) + "_int"
-//		Wave Tmp = $Raia
-//		Integrate/METH=1 Tmp/X=C_PosYZ/D=$RaiaInt
-//		Wave Tmp = $RaiaInt		
-//		IntBx_X[j] = Tmp[NPointsYZ]
-//		
-//		Raia = "RaiaBy_X" + num2str(C_PosX[j])
-//		RaiaInt = "RaiaBy_X" + num2str(C_PosX[j]) + "_int"
-//		Wave Tmp = $Raia
-//		Integrate/METH=1 Tmp/X=C_PosYZ/D=$RaiaInt
-//		Wave Tmp = $RaiaInt				
-//		IntBy_X[j] = Tmp[NPointsYZ]				
-//
-//		Raia = "RaiaBz_X" + num2str(C_PosX[j])
-//		RaiaInt = "RaiaBz_X" + num2str(C_PosX[j]) + "_int"
-//		Wave Tmp = $Raia
-//		Integrate/METH=1 Tmp/X=C_PosYZ/D=$RaiaInt		
-//		Wave Tmp = $RaiaInt				
-//		IntBz_X[j] = Tmp[NPointsYZ]		
-//	endfor	
-//	
-//	//Segunda Integral
-//	for (j=0;j<NPointsX;j=j+1)
-//		Raia = "RaiaBx_X" + num2str(C_PosX[j])  + "_int"
-//		RaiaInt = "RaiaBx_X" + num2str(C_PosX[j]) + "_int2"
-//		Wave Tmp = $Raia
-//		Integrate/METH=1 Tmp/X=C_PosYZ/D=$RaiaInt
-//		Wave Tmp = $RaiaInt	
-//		Int2Bx_X[j] = Tmp[NPointsYZ]	
-//		
-//		Raia = "RaiaBy_X" + num2str(C_PosX[j]) + "_int"
-//		RaiaInt = "RaiaBy_X" + num2str(C_PosX[j]) + "_int2"
-//		Wave Tmp = $Raia
-//		Integrate/METH=1 Tmp/X=C_PosYZ/D=$RaiaInt		
-//		Wave Tmp = $RaiaInt
-//		Int2By_X[j] = Tmp[NPointsYZ]
-//
-//		Raia = "RaiaBz_X" + num2str(C_PosX[j]) + "_int"
-//		RaiaInt = "RaiaBz_X" + num2str(C_PosX[j]) + "_int2"
-//		Wave Tmp = $Raia
-//		Integrate/METH=1 Tmp/X=C_PosYZ/D=$RaiaInt					
-//		Wave Tmp = $RaiaInt		
-//		Int2Bz_X[j] = Tmp[NPointsYZ]						
-//	endfor	
-//	
-//End
-//
-//
 //Function EquallySpaced(w)
 //	Wave w
 //	
@@ -5373,233 +5896,7 @@ End
 //End
 //
 //
-//Window Trajectories() : Panel
-//	PauseUpdate; Silent 1		// building window...
-//
-//	if (DataFolderExists("root:varsCAMTO")==0)
-//		DoAlert 0, "CAMTO variables not found."
-//		return 
-//	endif
-//
-//	CloseWindow("Trajectories")
-//
-//	NewPanel/K=1/W=(440,250,750,700)
-//	SetDrawLayer UserBack
-//	SetDrawEnv fillpat= 0
-//	DrawRect 5,2,304,40
-//	SetDrawEnv fillpat= 0
-//	DrawRect 5,40,304,77
-//	SetDrawEnv fillpat= 0
-//	DrawRect 5,77,304,111
-//	SetDrawEnv fillpat= 0
-//	DrawRect 5,111,304,201
-//	SetDrawEnv fillpat= 0
-//	DrawRect 5,201,304,257
-//	SetDrawEnv fillpat= 0
-//	DrawRect 5,257,304,318
-//	SetDrawEnv fillpat= 0
-//	DrawRect 5,318,304,355
-//	SetDrawEnv fillpat= 0
-//	DrawRect 5,355,304,445
-//			
-//	PopupMenu popupSingleMulti,pos={38,11},size={224,23},proc=PopupSingleMulti,title="Number of Particles:"
-//	PopupMenu popupSingleMulti,mode=1,popvalue="Single-Particle",value= #"\"Single-Particle;Multi-Particles\""
-//		
-//	CheckBox check_field,pos={15,51},size={286,15},title="Use constant field if trajectory is out of field matrix"
-//	
-//	SetVariable trajstartx1,pos={26,86},size={250,18},title="Entrance Angle XY(Z) [°]:"
-//	SetVariable trajstartx,pos={26,122},size={250,18},title="Multi-Particle Start X [mm]:"
-//	SetVariable trajendx,pos={26,149},size={250,18},title="Multi-Particle End X [mm]:"
-//	SetVariable trajstepsx,pos={26,176},size={250,18},title="Multi-Particle Steps X [mm]:"
-//	
-//	SetVariable trajstartyz,pos={25,211},size={250,18},title="Start Particle YZ [mm]:"
-//	SetVariable trajendyz,pos={25,235},size={250,18},title="End Particle YZ [mm]:"
-//
-//	PopupMenu popupAnalitico_RungeKutta,pos={38,264},size={220,23},proc=PopupAnalitico_RungeKutta,title="Calculation Method:"
-//	PopupMenu popupAnalitico_RungeKutta,mode=2,popvalue="Analytical",value= #"\"Analytical;Runge_Kutta_1º\""
-//	
-//	CheckBox check_negpostraj,pos={30,290},size={286,15},title="Calculate negative and positive trajectories"
-//	
-//	Button CalcTraj,pos={27,325},size={250,25},proc=TrajectoriesCalculationProc,title="Trajectories Calculation"
-//	Button CalcTraj,fsize=15,fstyle=1
-//			
-//	SetVariable fieldmapdir,pos={15,360},size={280,18},title="Field Map Directory: "
-//	SetVariable fieldmapdir,noedit=1,value=root:varsCAMTO:FIELDMAP_FOLDER
-//	TitleBox copy_title,pos={15,390},size={145,18},frame=0,title="Copy Configuration from:"
-//	PopupMenu copy_dir,pos={160,388},size={135,18},bodyWidth=135,mode=0,proc=CopyTrajectoriesConfig,title=" "
-//	Button apply_to_all,pos={15,414},size={280,25},fstyle=1,proc=CalcTrajectoriesToAll,title="Calculate Trajectories for All Field Maps"
-//
-//	UpdateFieldmapFolders()
-//	UpdateTrajectoriesPanel()
-//	
-//EndMacro
-//
-//
-//Function UpdateTrajectoriesPanel()
-//	
-//	string panel_name
-//	panel_name = WinList("Trajectories",";","")	
-//	if (stringmatch(panel_name, "Trajectories;")==0)
-//		return -1
-//	endif
-//	
-//	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
-//	
-//	NVAR fieldmapCount = root:varsCAMTO:FIELDMAP_COUNT
-//	if (fieldmapCount > 1)
-//		string FieldmapList = getFieldmapDirs()
-//		PopupMenu copy_dir,win=Trajectories,disable=0,value= #("\"" + FieldmapList + "\"")
-//		Button apply_to_all,win=Trajectories,disable=0
-//	else
-//		PopupMenu copy_dir,win=Trajectories,disable=2		
-//		Button apply_to_all,win=Trajectories,disable=2
-//	endif
-//		
-//	if (strlen(df) > 0)
-//	
-//		NVAR Single_Multi = root:$(df):varsFieldmap:Single_Multi
-//		NVAR Checkfield = root:$(df):varsFieldmap:Checkfield
-//		NVAR CheckNegPosTraj = root:$(df):varsFieldmap:CheckNegPosTraj
-//		NVAR Analitico_RungeKutta = root:$(df):varsFieldmap:Analitico_RungeKutta
-//				
-//		Button CalcTraj,win=Trajectories,disable=0
-//		
-//		PopupMenu popupSingleMulti,win=Trajectories,disable=0, mode=Single_Multi
-//		
-//		CheckBox check_field,win=Trajectories,disable=0, variable=root:$(df):varsFieldmap:Checkfield, value=Checkfield
-//		CheckBox check_negpostraj,win=Trajectories,disable=0, variable=root:$(df):varsFieldmap:CheckNegPosTraj, value=CheckNegPosTraj
-//		
-//		SetVariable trajstartx1,win=Trajectories,value= root:$(df):varsFieldmap:EntranceAngle
-//		SetVariable trajstartx,win=Trajectories, value= root:$(df):varsFieldmap:StartXTraj
-//		SetVariable trajendx,win=Trajectories,   value= root:$(df):varsFieldmap:EndXTraj
-//		SetVariable trajstepsx,win=Trajectories, value= root:$(df):varsFieldmap:StepsXTraj
-//		
-//		SetVariable trajstartyz,win=Trajectories,value= root:$(df):varsFieldmap:StartYZTraj
-//		SetVariable trajendyz,win=Trajectories,  value= root:$(df):varsFieldmap:EndYZTraj	
-//	
-//		PopupMenu popupAnalitico_RungeKutta,win=Trajectories,disable=0,mode=Analitico_RungeKutta
-//
-//		if (Single_Multi == 1)
-//			SetVariable trajendx,win=Trajectories, disable = 2
-//			SetVariable trajstepsx,win=Trajectories, disable = 2
-//		else
-//			SetVariable trajendx,win=Trajectories, disable = 0
-//			SetVariable trajstepsx,win=Trajectories, disable = 0
-//		endif
-//	
-//	else
-//	
-//		PopupMenu popupSingleMulti,win=Trajectories,disable=2
-//		CheckBox check_field,win=Trajectories,disable=2
-//		CheckBox check_negpostraj,win=Trajectories,disable=2
-//		PopupMenu popupAnalitico_RungeKutta,win=Trajectories,disable=2
-//		Button CalcTraj,win=Trajectories,disable=2
-//		
-//	endif
-//		
-//End
-//
-//
-//Function CopyTrajectoriesConfig(ctrlName,popNum,popStr) : PopupMenuControl
-//	String ctrlName
-//	Variable popNum
-//	String popStr
-//	
-//	SelectCopyDirectory(popNum,popStr)
-//
-//	SVAR dfc = root:varsCAMTO:FieldmapCopy
-//	CopyTrajectoriesConfig_(dfc)
-//	
-//	UpdateTrajectoriesPanel()
-//
-//End
-//
-//
-//Function CopyTrajectoriesConfig_(dfc)
-//	string dfc
-//	
-//	SVAR df  = root:varsCAMTO:FIELDMAP_FOLDER
-//	Wave/T fieldmapFolders= root:wavesCAMTO:fieldmapFolders
-//	
-//	UpdateFieldmapFolders()	
-//	FindValue/Text=dfc/TXOP=4 fieldmapFolders
-//	
-//	if (V_Value!=-1)	
-//		NVAR temp_df  = root:$(df):varsFieldmap:Single_Multi
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:Single_Multi
-//		temp_df = temp_dfc
-//		
-//		NVAR temp_df  = root:$(df):varsFieldmap:Checkfield
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:Checkfield
-//		temp_df = temp_dfc		
-//
-//		NVAR temp_df  = root:$(df):varsFieldmap:CheckNegPosTraj
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:CheckNegPosTraj
-//		temp_df = temp_dfc	
-//
-//		NVAR temp_df  = root:$(df):varsFieldmap:Analitico_RungeKutta
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:Analitico_RungeKutta
-//		temp_df = temp_dfc		
-//		
-//		NVAR temp_df  = root:$(df):varsFieldmap:EntranceAngle
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:EntranceAngle
-//		temp_df = temp_dfc		
-//
-//		NVAR temp_df  = root:$(df):varsFieldmap:StartXTraj
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:StartXTraj
-//		temp_df = temp_dfc		
-//		
-//		NVAR temp_df  = root:$(df):varsFieldmap:EndXTraj
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:EndXTraj
-//		temp_df = temp_dfc		
-//
-//		NVAR temp_df  = root:$(df):varsFieldmap:StepsXTraj
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:StepsXTraj
-//		temp_df = temp_dfc		
-//		
-//		NVAR temp_df  = root:$(df):varsFieldmap:StartYZTraj
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:StartYZTraj
-//		temp_df = temp_dfc		
-//
-//		NVAR temp_df  = root:$(df):varsFieldmap:EndYZTraj	
-//		NVAR temp_dfc = root:$(dfc):varsFieldmap:EndYZTraj	
-//		temp_df = temp_dfc		
-//				
-//	else
-//		DoAlert 0, "Data folder not found."
-//	endif
-//		
-//End
-//
-//
-//Function PopupSingleMulti(ctrlName,popNum,popStr) : PopupMenuControl
-//	String ctrlName
-//	Variable popNum
-//	String popStr
-//	
-//	NVAR Single_Multi = :varsFieldmap:Single_Multi
-//	Single_Multi = popNum
-//	
-//	if (popnum == 1)
-//		SetVariable trajendx disable = 2
-//		SetVariable trajstepsx disable = 2	
-//	else
-//		SetVariable trajendx disable = 0
-//		SetVariable trajstepsx disable = 0
-//	endif
-//End
-//
-//
-//Function PopupAnalitico_RungeKutta(ctrlName,popNum,popStr) : PopupMenuControl
-//	String ctrlName
-//	Variable popNum
-//	String popStr
-//
-//	NVAR Analitico_RungeKutta = :varsFieldmap:Analitico_RungeKutta
-//	Analitico_RungeKutta = popNum
-//	
-//End
-//
+
 //
 //Function MakeTrajNamesWave(pos_str)
 //	string pos_str
