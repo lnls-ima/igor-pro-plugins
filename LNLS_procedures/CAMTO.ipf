@@ -13,9 +13,8 @@ Menu "CAMTO 14.0.0"
 	"Export Field Data", CAMTO_Export_Panel()
 	"View Magnetic Field", CAMTO_ViewField_Panel()
 //	"Hall Probe Correction", CAMTO_HallProbe()
-//	"Integrals and Multipoles", CAMTO_Multipoles()
-//	"Particle Energy", CAMTO_Energy()
 	"Trajectories", CAMTO_Traj_Panel()
+//	"Integrals and Multipoles", CAMTO_Multipoles()
 //	"Dynamic Multipoles", CAMTO_DynMultipoles()
 //	"Find Peaks and Zeros", CAMTO_Peaks()
 //	"Phase Error", CAMTO_PhaseError()
@@ -66,7 +65,6 @@ Function CAMTO_Init()
 	
 	string/G CAMTO_VERSION = "14.0.0"
 
-	variable/G PARTICLE_ENERGY = 3.0	
 	variable/G PARTICLE_CHARGE = -1.602177E-19
 	variable/G PARTICLE_MASS = 9.109389E-31
 	variable/G LIGHT_SPEED = 2.99792458E+08
@@ -89,12 +87,12 @@ Function CAMTO_Init()
 	variable/G SPEC_NR_SKEW_MULTIPOLES = 0
 	variable/G SPEC_NR_MULTIPOLE_ERRORS = 10
 
-	variable/G LOAD_BEAM_DIRECTION = 2
 	variable/G LOAD_STATIC_TRANSIENT = 1
 	variable/G LOAD_SYMMETRY_LONGITUDINAL = 0
 	variable/G LOAD_SYMMETRY_HORIZONTAL = 0
-	variable/G LOAD_SYMMETRY_LONGITUDINAL_BC = 2
-	variable/G LOAD_SYMMETRY_HORIZONTAL_BC = 1 
+	variable/G LOAD_BEAM_DIRECTION = 2 // 1: Y-Axis, 2: Z-Axis
+	variable/G LOAD_SYMMETRY_LONGITUDINAL_BC = 2 // 1: Normal, 2: Tangencial
+	variable/G LOAD_SYMMETRY_HORIZONTAL_BC = 1 // 1: Normal, 2: Tangencial
 
 //	variable/G COMPARE_POS_H = 0
 //	variable/G COMPARE_POS_START_H = 0
@@ -231,10 +229,9 @@ Function CAMTO_Params_Panel() : Panel
 	endif
 	
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(80,60,405,275) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(80,60,405,250) as windowTitle
 	SetDrawLayer UserBack
 
-	NVAR particleEnergy = root:varsCAMTO:PARTICLE_ENERGY	
 	NVAR particleCharge = root:varsCAMTO:PARTICLE_CHARGE
 	NVAR particleMass = root:varsCAMTO:PARTICLE_MASS
 	NVAR lightSpeed = root:varsCAMTO:LIGHT_SPEED
@@ -253,11 +250,6 @@ Function CAMTO_Params_Panel() : Panel
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
-	
-	SetVariable svarParticleEnergy, pos={m,h}, size={210,20}, value=_NUM:particleEnergy, title="Particle Energy [GeV]"
-	ValDisplay vdispParticleEnergy, pos={m+220,h}, size={100,20}, limits={0,0,0}, barmisc={0,1000}, mode=5
-	ValDisplay vdispParticleEnergy, value=#"root:varsCAMTO:PARTICLE_ENERGY"
-	h += 25
 	
 	SetVariable svarParticleCharge, pos={m,h}, size={210,20}, value=_NUM:particleCharge, title="Particle Charge [C]"
 	ValDisplay vdispParticleCharge, pos={m+220,h}, size={100,20}, limits={0,0,0}, barmisc={0,1000}, mode=5
@@ -311,7 +303,6 @@ End
 Function CAMTO_Params_BtnChange(ba) : ButtonControl
 	struct WMButtonAction &ba
 
-	NVAR particleEnergy = root:varsCAMTO:PARTICLE_ENERGY	
 	NVAR particleCharge = root:varsCAMTO:PARTICLE_CHARGE
 	NVAR particleMass = root:varsCAMTO:PARTICLE_MASS
 	NVAR lightSpeed = root:varsCAMTO:LIGHT_SPEED
@@ -319,10 +310,7 @@ Function CAMTO_Params_BtnChange(ba) : ButtonControl
 	NVAR fieldmapCount = root:varsCAMTO:FIELDMAP_COUNT
 
 	switch(ba.eventCode)
-		case 2:
-    		ControlInfo/W=$ba.win svarParticleEnergy
-    		particleEnergy = V_Value
-    		
+		case 2:	
     		ControlInfo/W=$ba.win svarParticleCharge
     		particleCharge = V_Value
     		  
@@ -1637,6 +1625,7 @@ Static Function InitializeFieldmapVariables()
 	
 	variable/G DATA_LOADED = 0
 	variable/G IRREGULAR_GRID = 0
+	
 	variable/G LOAD_TIME_INSTANT = 0
 	variable/G LOAD_BEAM_DIRECTION
 	variable/G LOAD_STATIC_TRANSIENT
@@ -1703,9 +1692,11 @@ Static Function InitializeFieldmapVariables()
 	variable/G VIEW_HOM_Z
 	variable/G VIEW_APPEND_FIELD = 0
 
-	variable/G TRAJ_CALC_METHOD = 2
-	variable/G TRAJ_OUT_MATRIX = 1
-	variable/G TRAJ_SINGLE_MULTI = 1
+	variable/G TRAJ_PARTICLE_ENERGY = 3.0	// [GeV]
+	variable/G TRAJ_CALC_METHOD = 2 // 1: Analytical, 2: Runge-Kutta
+	variable/G TRAJ_SINGLE_MULTI = 1 // 1: Single Particle, 2: Multi Particle
+	variable/G TRAJ_IGNORE_OUT_MATRIX = 1
+	variable/G TRAJ_OUT_MATRIX_ERROR = 0
 	variable/G TRAJ_NEGATIVE_DIRECTION = 0
 	variable/G TRAJ_START_X
 	variable/G TRAJ_END_X
@@ -4235,7 +4226,7 @@ Function CAMTO_Traj_Panel() : Panel
 	endif
 
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(440,250,765,795) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(440,200,765,770) as windowTitle
 	SetDrawLayer UserBack
 	
 	variable m, h, h1, l1, l2, l 
@@ -4256,8 +4247,11 @@ Function CAMTO_Traj_Panel() : Panel
 	PopupMenu popupCalcMethod, mode=1, popvalue="Analytical", value=#"\"Analytical;Runge_Kutta\""
 	PopupMenu popupCalcMethod, proc=CAMTO_Traj_PopupCalcMethod
 	h += 25
+
+	SetVariable svarEnergy, pos={m,h}, size={280,20}, title="Particle Eenergy [GeV] "
+	h += 25
 	
-	CheckBox chbOutMatrix, pos={m,h}, size={290,20}, title=" Use constant field if trajectory is out of field matrix"
+	CheckBox chbIgnoreOutMatrix, pos={m,h}, size={290,20}, title=" Use constant field if trajectory is out of field matrix"
 	h += 30
 	
 	SetDrawEnv fillpat=0
@@ -4316,7 +4310,7 @@ Function CAMTO_Traj_Panel() : Panel
 	h1 = h-5
 		
 	Button btnTrajectory, pos={m,h}, size={285,30}, fsize=14, fstyle=1, title="Calculate Trajectories"
-	Button btnTrajectory, proc=CAMTO_Traj_BtnCalcTrajectory
+	Button btnTrajectory, proc=CAMTO_Traj_BtnCalcTrajectories
 	h += 40
 
 	SetDrawEnv fillpat=0
@@ -4345,9 +4339,10 @@ Static Function UpdatePanelTraj()
 	UpdateFieldmapOptions(windowName)
 	
 	if (strlen(df) > 0)
+		NVAR particleEnergy = root:$(df):varsFieldmap:TRAJ_PARTICLE_ENERGY
 		NVAR calcMethod = root:$(df):varsFieldmap:TRAJ_CALC_METHOD
 		NVAR singleMulti = root:$(df):varsFieldmap:TRAJ_SINGLE_MULTI
-		NVAR outMatrix = root:$(df):varsFieldmap:TRAJ_OUT_MATRIX
+		NVAR ignoreOutMatrix = root:$(df):varsFieldmap:TRAJ_IGNORE_OUT_MATRIX
 		NVAR negativeDirection = root:$(df):varsFieldmap:TRAJ_NEGATIVE_DIRECTION
 		NVAR startX = root:$(df):varsFieldmap:TRAJ_START_X
 		NVAR endX = root:$(df):varsFieldmap:TRAJ_END_X
@@ -4357,6 +4352,7 @@ Static Function UpdatePanelTraj()
 		NVAR horizontalAngle = root:$(df):varsFieldmap:TRAJ_HORIZONTAL_ANGLE
 		NVAR verticalAngle = root:$(df):varsFieldmap:TRAJ_VERTICAL_ANGLE
 	
+		SetVariable svarEnergy, win=$windowName, value=particleEnergy
 		SetVariable svarStartX, win=$windowName, value=startX
 		SetVariable svarEndX, win=$windowName, value=endX
 		SetVariable svarStepX, win=$windowName, value=stepX
@@ -4375,7 +4371,7 @@ Static Function UpdatePanelTraj()
 
 		PopupMenu popupCalcMethod, win=$windowName, mode=calcMethod, disable=0
 		PopupMenu popupSingleMulti, win=$windowName, mode=singleMulti, disable=0
-		CheckBox chbOutMatrix, win=$windowName, variable=outMatrix, disable=0
+		CheckBox chbIgnoreOutMatrix, win=$windowName, variable=outMatrix, disable=0
 		CheckBox chbNegativeDirection, win=$windowName, variable=negativeDirection, disable=0				
 		Button btnTrajectory, win=$windowName, disable=0
 	
@@ -4383,7 +4379,7 @@ Static Function UpdatePanelTraj()
 	
 		PopupMenu popupCalcMethod, win=$windowName, disable=2
 		PopupMenu popupSingleMulti, win=$windowName, disable=2
-		CheckBox chbOutMatrix, win=$windowName, disable=2
+		CheckBox chbIgnoreOutMatrix, win=$windowName, disable=2
 		CheckBox chbNegativeDirection, win=$windowName, disable=2
 		Button btnTrajectory, win=$windowName, disable=2
 		
@@ -4427,12 +4423,16 @@ Static Function CopyConfigTraj()
 	FindValue/Text=dfc/TXOP=4 fieldmapFolders
 	
 	if (V_Value!=-1)	
+		NVAR temp_df = :varsFieldmap:TRAJ_PARTICLE_ENERGY
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_TRAJ_PARTICLE_ENERGY
+		temp_df = temp_dfc
+
 		NVAR temp_df = :varsFieldmap:TRAJ_SINGLE_MULTI
 		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_SINGLE_MULTI
 		temp_df = temp_dfc
 		
-		NVAR temp_df = :varsFieldmap:TRAJ_OUT_MATRIX
-		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_OUT_MATRIX
+		NVAR temp_df = :varsFieldmap:TRAJ_IGNORE_OUT_MATRIX
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_IGNORE_OUT_MATRIX
 		temp_df = temp_dfc		
 
 		NVAR temp_df = :varsFieldmap:TRAJ_NEGATIVE_DIRECTION
@@ -4553,6 +4553,954 @@ Function CAMTO_Traj_ChbNegativeDirection(ca) : CheckBoxControl
 	return 0
 
 End
+
+
+Function CAMTO_Traj_BtnCalcTrajectories(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			CalcTrajectories()
+			UpdateResultsPanel()
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Static Function CalcTrajRungeKutta(px, py, pz)
+	variable px, py, pz
+
+	NVAR particleCharge = root:varsCAMTO:PARTICLE_CHARGE
+	NVAR particleMass = root:varsCAMTO:PARTICLE_MASS
+	NVAR lightSpeed = root:varsCAMTO:LIGHT_SPEED
+	NVAR trajectoryStep = root:varsCAMTO:TRAJECTORY_STEP
+	
+	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
+	NVAR particleEnergy = :varsFieldmap:TRAJ_PARTICLE_ENERGY
+	NVAR ignoreOutMatrix = :varsFieldmap:TRAJ_IGNORE_OUT_MATRIX
+	NVAR outMatrixError = :varsFieldmap:TRAJ_OUT_MATRIX_ERROR
+	NVAR startX = :varsFieldmap:TRAJ_START_X
+	NVAR endX = :varsFieldmap:TRAJ_END_X
+	NVAR stepX = :varsFieldmap:TRAJ_STEP_X
+	NVAR startL = :varsFieldmap:TRAJ_START_L
+	NVAR endL = :varsFieldmap:TRAJ_END_L
+	NVAR horizontalAngle = :varsFieldmap:TRAJ_HORIZONTAL_ANGLE
+	NVAR verticalAngle = :varsFieldmap:TRAJ_VERTICAL_ANGLE
+		
+	NVAR fieldX = :varsFieldmap:FIELD_X
+	NVAR fieldY = :varsFieldmap:FIELD_Y
+	NVAR fieldZ = :varsFieldmap:FIELD_Z
+
+	WAVE posX
+
+	variable i, j, k
+	variable pxmin, pxmax
+	variable iTraj, iTrajError, pl
+	variable vx, vy, vz
+	variable fx, fy, fz
+	variable gama, chargeVelocity, t
+
+	gama = particleEnergy*1E9*abs(particleCharge)/(particleMass * lightSpeed^2)
+	chargeVelocity = Sqrt((1 - 1/gama^2)*lightSpeed^2)
+	t = trajectoryStep/chargeVelocity
+	if (startL > endL)
+		t = -1*t
+	endif
+
+	pxmin = posX[0]
+	pxmax = posX[numpnts(posX)-1]
+
+	vx = sin(horizontalAngle*pi/180)*chargeVelocity
+	if (beamDirection == 1)
+		vy = cos(horizontalAngle*pi/180)*chargeVelocity
+		vz = 0
+	else
+		vy = 0
+		vz = cos(horizontalAngle*pi/180)*chargeVelocity
+	endif	
+	
+	iTraj = abs((endL/1000 - startL/1000)/trajectoryStep) + 1	
+	iTrajError = 0
+	
+	Make/O/N=(2*iTraj) trajX
+	Make/O/N=(2*iTraj) trajY
+	Make/O/N=(2*iTraj) trajZ
+	Make/O/N=(2*iTraj) trajVx
+	Make/O/N=(2*iTraj) trajVy
+	Make/O/N=(2*iTraj) trajVz
+	Make/O/N=(2*iTraj) trajBx
+	Make/O/N=(2*iTraj) trajBy
+	Make/O/N=(2*iTraj) trajBz	
+
+	trajX[0] = px
+	trajY[0] = py
+	trajZ[0] = pz
+	trajVx[0] = vx
+	trajVy[0] = vy
+	trajVz[0] = vz
+			
+	for (k=1; k<iTraj; k++)
+		if ((px < pxmin || px > pxmax) && ignoreOutMatrix==0)
+			outMatrixError = 1
+			iTrajError = k-1
+		endif
+		
+		if (beamDirection == 1)			
+			CalcFieldAtPoint(px, py)
+		else
+			CalcFieldAtPoint(px, pz)			
+		endif
+		
+		trajBx[k-1] = fieldX
+		trajBy[k-1] = fieldY
+		trajBz[k-1] = fieldZ
+	
+		fx = particleCharge * (vy*fieldZ - vz*fieldY)
+		fy = particleCharge * (vz*fieldX - vx*fieldZ)
+		fz = particleCharge * (vx*fieldY - vy*fieldX)
+
+		px = px + t*vx
+		py = py + t*vy
+		pz = pz + t*vz
+		
+		vx = vx + fx * t/(particleMass*gama)
+		vy = vy + fy * t/(particleMass*gama)
+		vz = vz + fz * t/(particleMass*gama)
+		
+		trajX[k] = px
+		trajY[k] = py
+		trajZ[k] = pz
+		trajVx[k] = vx
+		trajVy[k] = vy
+		trajVz[k] = vz
+		
+		if (beamDirection == 1)			
+			pl = py
+		else
+			pl = pz			
+		endif
+		
+		if ((t >= 0 && pl >= endL/1000) || (t < 0 && pl <= endL/1000))
+			break
+		endif
+	
+	endfor
+
+	iTraj = k
+	if (outMatrixError)
+		iTraj = iTraj - iTrajError
+	endif
+	
+	Redimension/N=(iTraj) trajX
+	Redimension/N=(iTraj) trajY
+	Redimension/N=(iTraj) trajZ
+	Redimension/N=(iTraj) trajVx
+	Redimension/N=(iTraj) trajVy
+	Redimension/N=(iTraj) trajVz
+	Redimension/N=(iTraj) trajBx
+	Redimension/N=(iTraj) trajBy
+	Redimension/N=(iTraj) trajBz		
+	
+End
+
+
+Static Function CalcTrajectories()
+   	NVAR Charge     = root:varsCAMTO:Charge
+	NVAR Mass       = root:varsCAMTO:Mass
+	NVAR LightSpeed = root:varsCAMTO:LightSpeed
+	
+	variable energy = GetParticleEnergy()
+
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
+	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
+	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
+   
+   NVAR CheckNegPosTraj = :varsFieldmap:CheckNegPosTraj
+	NVAR Single_Multi  = :varsFieldmap:Single_Multi   
+	NVAR BeamDirection = :varsFieldmap:BeamDirection    	
+	
+	NVAR StartXTraj    = :varsFieldmap:StartXTraj 
+	NVAR EndXTraj      = :varsFieldmap:EndXTraj 
+	NVAR StepsXTraj    = :varsFieldmap:StepsXTraj 
+	NVAR NPointsXTraj  = :varsFieldmap:NPointsXTraj
+
+	NVAR StartYZTraj = :varsFieldmap:StartYZTraj 
+	NVAR EndYZTraj   = :varsFieldmap:EndYZTraj
+	NVAR iTraj       = :varsFieldmap:iTraj 	
+
+	variable i, j, initial_endyz
+	string pos_str, add_str_1, add_str_2
+	string NameTraj, NameTrajInt, NameTrajInt2, NameTrajPos, NameTrajTmp1, NameTrajTmp2
+	
+	initial_endyz = EndYZTraj
+	
+	if (CheckNegPosTraj == 1)
+		if (StartYZTraj != 0)
+			DoAlert 0, "The initial longitudinal position must be zero."
+			return -1
+		endif
+	
+		add_str_1 = "_Tmp1"
+		add_str_2 = "_Tmp2"
+					
+		TrajectoriesCalculation()
+		wave PosXTraj
+
+		for (j=0; j<NPointsXTraj; j+=1)				
+			pos_str = num2str(PosXTraj[j])
+			MakeTrajNamesWave(pos_str)
+			Wave/T TrajNames
+			
+			for (i=0; i<numpnts(TrajNames); i+=1)
+				NameTraj = TrajNames[i]
+				NameTrajTmp1 = NameTraj + add_str_1		
+				if (StartYZTraj > EndYZTraj)
+					Duplicate/D/O/R=(1, numpnts($NameTraj)) $NameTraj $NameTrajTmp1	
+					Reverse $NameTrajTmp1
+				else
+					Duplicate/D/O $NameTraj $NameTrajTmp1	
+				endif
+			endfor
+			
+		endfor
+
+		EndYZTraj = -EndYZTraj
+		TrajectoriesCalculation()
+	
+		for (j=0; j<NPointsXTraj; j+=1)		
+			pos_str = num2str(PosXTraj[j])
+			MakeTrajNamesWave(pos_str)
+			Wave/T TrajNames
+			
+			for (i=0; i<numpnts(TrajNames); i+=1)
+				NameTraj = TrajNames[i]
+				NameTrajTmp2 = NameTraj + add_str_2		
+				if (StartYZTraj > EndYZTraj)
+					Duplicate/D/O/R=(1, numpnts($NameTraj)) $NameTraj $NameTrajTmp2	
+					Reverse $NameTrajTmp2
+				else
+					Duplicate/D/O $NameTraj $NameTrajTmp2
+				endif
+			endfor				
+			
+		endfor
+		
+		for (j=0; j<NPointsXTraj; j+=1)
+			pos_str = num2str(PosXTraj[j])
+			MakeTrajNamesWave(pos_str)
+			Wave/T TrajNames	
+			
+			for (i=0; i<numpnts(TrajNames); i+=1)
+				NameTraj = TrajNames[i]
+				NameTrajTmp1 = NameTraj + add_str_1
+				NameTrajTmp2 = NameTraj + add_str_2
+				if (StartYZTraj > EndYZTraj)
+					Concatenate/NP/KILL/O {$NameTrajTmp2, $NameTrajTmp1}, $NameTraj
+				else
+					Concatenate/NP/KILL/O {$NameTrajTmp1, $NameTrajTmp2}, $NameTraj
+				endif
+			endfor
+		
+		endfor
+		
+		iTraj = 2*iTraj - 1
+	else
+		TrajectoriesCalculation()
+		wave PosXTraj	
+	endif
+
+	Make/O/D/N=(NPointsXTraj)IntBx_X_Traj = 0
+	Make/O/D/N=(NPointsXTraj)IntBy_X_Traj = 0
+	Make/O/D/N=(NPointsXTraj)IntBz_X_Traj = 0		
+
+	Make/O/D/N=(NPointsXTraj)Int2Bx_X_Traj = 0
+	Make/O/D/N=(NPointsXTraj)Int2By_X_Traj = 0
+	Make/O/D/N=(NPointsXTraj)Int2Bz_X_Traj = 0
+	
+	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_X = 0
+	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_Y = 0
+	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_Z = 0	
+
+	Make/O/D/N=(NPointsXTraj) Deflection_X = 0
+	Make/O/D/N=(NPointsXTraj) Deflection_Y = 0
+	Make/O/D/N=(NPointsXTraj) Deflection_Z = 0	
+
+	for (j=0; j<NPointsXTraj; j+=1)
+		pos_str = num2str(PosXTraj[j])
+		
+		Wave Vel_X = $("Vel_X" + pos_str)
+		Wave Vel_Y = $("Vel_Y" + pos_str)
+		Wave Vel_Z = $("Vel_Z" + pos_str)
+
+		if (BeamDirection == 1)
+   			NameTrajPos = "TrajY" + pos_str
+   		else
+   			NameTrajPos = "TrajZ" + pos_str
+		endif
+		
+		NameTraj = "VetorCampoX" + pos_str
+		NameTrajInt = NameTraj + "_int"
+		NameTrajInt2 = NameTraj + "_int2"	
+		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
+		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	  
+
+		Wave Tmp =  $NameTrajInt
+		IntBx_X_Traj[j] = Tmp[iTraj]
+		Wave Tmp =  $NameTrajInt2
+		Int2Bx_X_Traj[j] = Tmp[iTraj]
+
+		NameTraj = "VetorCampoY" + pos_str
+		NameTrajInt = NameTraj + "_int"
+		NameTrajInt2 = NameTraj + "_int2"	
+		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
+		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	 
+
+		Wave Tmp =  $NameTrajInt
+		IntBy_X_Traj[j] = Tmp[iTraj]
+		Wave Tmp =  $NameTrajInt2
+		Int2By_X_Traj[j] = Tmp[iTraj]
+		
+		NameTraj = "VetorCampoZ" + pos_str
+		NameTrajInt = NameTraj + "_int"
+		NameTrajInt2 = NameTraj + "_int2"
+		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
+		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	 
+		
+		Wave Tmp =  $NameTrajInt
+		IntBz_X_Traj[j] = Tmp[iTraj]
+		Wave Tmp =  $NameTrajInt2
+		Int2Bz_X_Traj[j] = Tmp[iTraj]			
+		
+		if (BeamDirection == 1)	
+			Deflection_X[j] = atan(Vel_X[iTraj]/Vel_Y[iTraj]) / pi * 180
+			Deflection_Z[j] = atan(Vel_Z[iTraj]/Vel_Y[iTraj]) / pi * 180
+
+			Deflection_IntTraj_X[j] = (atan(Vel_X[iTraj]/Vel_Y[iTraj]) - atan(Vel_X[0]/Vel_Y[0])) / pi * 180
+			Deflection_IntTraj_Z[j] = (atan(Vel_Z[iTraj]/Vel_Y[iTraj]) - atan(Vel_Z[0]/Vel_Y[0]) ) / pi * 180
+		else
+			Deflection_X[j] = atan(Vel_X[iTraj]/Vel_Z[iTraj]) / pi * 180
+			Deflection_Y[j] = atan(Vel_Y[iTraj]/Vel_Z[iTraj]) / pi * 180					
+		
+			Deflection_IntTraj_X[j] = (atan(Vel_X[iTraj]/Vel_Z[iTraj]) - atan(Vel_X[0]/Vel_Z[0])) / pi * 180
+			Deflection_IntTraj_Y[j] = (atan(Vel_Y[iTraj]/Vel_Z[iTraj]) - atan(Vel_Y[0]/Vel_Z[0])) / pi * 180	
+		endif
+
+	endfor		
+
+	//CalcFieldIntegralsOverTraj()
+	//CalcDeflections()
+
+	EndYZTraj = initial_endyz
+
+End
+
+
+Static Function TrajectoriesCalculation()
+
+   	NVAR Charge     = root:varsCAMTO:Charge
+	NVAR Mass       = root:varsCAMTO:Mass
+	NVAR LightSpeed = root:varsCAMTO:LightSpeed
+	NVAR TrajShift  = root:varsCAMTO:TrajShift
+
+	variable energy = GetParticleEnergy()
+
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
+	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
+	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
+       
+	NVAR Single_Multi  = :varsFieldmap:Single_Multi       	
+	NVAR BeamDirection = :varsFieldmap:BeamDirection 
+	
+	NVAR StartXTraj    = :varsFieldmap:StartXTraj 
+	NVAR EndXTraj      = :varsFieldmap:EndXTraj 
+	NVAR StepsXTraj    = :varsFieldmap:StepsXTraj 
+	NVAR NPointsXTraj  = :varsFieldmap:NPointsXTraj
+
+	NVAR StartYZ		 = :varsFieldmap:StartYZ 
+	NVAR EndYZ		 = :varsFieldmap:EndYZ	
+	NVAR StartYZTraj = :varsFieldmap:StartYZTraj 
+	NVAR EndYZTraj   = :varsFieldmap:EndYZTraj 	
+	
+	NVAR Analitico_RungeKutta = :varsFieldmap:Analitico_RungeKutta
+	NVAR Out_of_Matrix_Error  = :varsFieldmap:Out_of_Matrix_Error
+	Out_of_Matrix_Error = 0
+	
+	NVAR iTraj      = :varsFieldmap:iTraj
+	NVAR iTrajError = :varsFieldmap:iTrajError
+
+	string NomeTraj
+	string NomeTrajPos
+	string NomeTrajInt	
+	string NomeTrajInt2	
+	variable i, j
+
+	if (StartYZTraj < StartYZ || StartYZTraj > EndYZ)
+		DoAlert 0, "Initial longitudinal position out of range."
+		return -1
+	endif
+
+	if (EndYZTraj < StartYZ || EndYZTraj > EndYZ)
+		DoAlert 0, "Final longitudinal position out of range."
+		return -1
+	endif				
+		
+	if (Single_Multi==1)
+		NPointsXTraj = 1
+	else
+		NPointsXTraj = ((EndXTraj - StartXTraj) / StepsXTraj) + 1	
+	endif       
+	
+	Make/O/D/N=(NPointsXTraj) PosXTraj
+	for (j=0;j<NPointsXTraj;j=j+1)
+		PosXTraj[j] = (StartXTraj + j*StepsXTraj)/1000 // converte para metros
+	endfor
+	
+	Make/O/D/N=(iTraj) PosYZTraj
+	if (StartYZTraj <= EndYZTraj)
+		for (i=0;i<iTraj;i=i+1)
+		   PosYZTraj[i] = (StartYZTraj/1000 + i*TrajShift)
+		endfor
+	else
+		for (i=0;i<iTraj;i=i+1)
+		   PosYZTraj[i] = (StartYZTraj/1000 - i*TrajShift)
+		endfor
+	endif
+	
+	Wave C_PosX
+	
+	variable Out_of_Matrix_Local = 0
+	
+	for (j=0; j<NPointsXTraj; j+=1)
+		print ("Calculating Trajectory X = " + num2str(PosXTraj[j]))
+		iTraj = Abs(((EndYZTraj-StartYZTraj) / (TrajShift*1000))) + 1	
+
+		Make/O/D/N=(iTraj) TrajX = 0
+		Make/O/D/N=(iTraj) TrajY = 0
+		Make/O/D/N=(iTraj) TrajZ = 0
+		Make/O/D/N=(iTraj) Vel_X = 0
+		Make/O/D/N=(iTraj) Vel_Y = 0
+		Make/O/D/N=(iTraj) Vel_Z = 0
+		Make/O/D/N=(iTraj)VetorCampoX = 0
+		Make/O/D/N=(iTraj)VetorCampoY = 0
+		Make/O/D/N=(iTraj)VetorCampoZ = 0		
+		
+		if (BeamDirection==1)
+			if (Analitico_RungeKutta == 1)
+				Analitico(PosXTraj[j],(StartYZTraj/1000),0)
+			else
+				Runge_Kutta(PosXTraj[j],(StartYZTraj/1000),0)
+			endif
+		else
+			if (Analitico_RungeKutta == 1)
+				Analitico(PosXTraj[j],0,(StartYZTraj/1000))					
+			else
+				Runge_Kutta(PosXTraj[j],0,(StartYZTraj/1000))
+			endif
+		endif
+		
+		if (Out_of_Matrix_Error !=0)
+			Out_of_Matrix_Local = 1
+		endif
+		
+		if (Out_of_Matrix_Error !=0)
+ 			DeletePoints iTrajError,(iTraj-iTrajError), TrajX
+			DeletePoints iTrajError,(iTraj-iTrajError), TrajY
+			DeletePoints iTrajError,(iTraj-iTrajError), TrajZ			
+
+ 			DeletePoints iTrajError,(iTraj-iTrajError), Vel_X
+			DeletePoints iTrajError,(iTraj-iTrajError), Vel_Y
+			DeletePoints iTrajError,(iTraj-iTrajError), Vel_Z			
+
+ 			DeletePoints iTrajError,(iTraj-iTrajError), VetorCampoX
+			DeletePoints iTrajError,(iTraj-iTrajError), VetorCampoY
+			DeletePoints iTrajError,(iTraj-iTrajError), VetorCampoZ			
+
+			iTraj = iTrajError
+
+			Out_of_Matrix_Error = 0			
+		endif
+			
+		NomeTraj = "TrajX" + num2str(PosXTraj[j])
+		Duplicate/D/O TrajX $NomeTraj
+		
+		NomeTraj = "TrajY" + num2str(PosXTraj[j])
+		Duplicate/D/O TrajY $NomeTraj	
+		
+		NomeTraj = "TrajZ" + num2str(PosXTraj[j])
+		Duplicate/D/O TrajZ $NomeTraj
+	
+		NomeTraj = "Vel_X" + num2str(PosXTraj[j])
+		Duplicate/D/O Vel_X $NomeTraj
+		
+		NomeTraj = "Vel_Y" + num2str(PosXTraj[j])
+		Duplicate/D/O Vel_Y $NomeTraj
+
+		NomeTraj = "Vel_Z" + num2str(PosXTraj[j])
+		Duplicate/D/O Vel_Z $NomeTraj
+		
+		if (BeamDirection == 1)
+   			NomeTrajPos = "TrajY" + num2str(PosXTraj[j])
+   		else
+   			NomeTrajPos = "TrajZ" + num2str(PosXTraj[j])
+		endif
+
+		NomeTraj = "VetorCampoX" + num2str(PosXTraj[j])
+		Duplicate/D/O VetorCampoX $NomeTraj		
+	
+		NomeTraj = "VetorCampoY" + num2str(PosXTraj[j])
+		Duplicate/D/O VetorCampoY $NomeTraj		
+	
+		NomeTraj = "VetorCampoZ" + num2str(PosXTraj[j])
+		Duplicate/D/O VetorCampoZ $NomeTraj		
+
+		TrajX = 0
+		TrajY = 0
+		TrajZ = 0	
+		
+		Vel_X = 0			
+		Vel_Y = 0
+		Vel_Z = 0		
+	endfor	
+	
+	if (Out_of_Matrix_Local != 0) 
+		DoAlert 0,"At least one trajectory travelled out of the field matrix "
+	endif
+	
+	Killwaves TrajX	   
+	Killwaves TrajY	   
+	Killwaves TrajZ	   
+	Killwaves Vel_X	   
+	Killwaves Vel_Y	   
+	Killwaves Vel_Z	   						
+	Killwaves VetorCampoX	   
+	Killwaves VetorCampoY	   
+	Killwaves VetorCampoZ	
+End
+
+
+
+Static Function CalcTrajectoriesToAll(ctrlName) : ButtonControl
+	String ctrlName
+	
+	DoAlert 1, "Calculate trajectories for all fieldmaps?"
+	if (V_flag != 1)
+		return -1
+	endif
+	
+	UpdateFieldmapFolders()
+		
+	Wave/T fieldmapFolders = root:wavesCAMTO:fieldmapFolders
+	NVAR fieldmapCount  = root:varsCAMTO:FIELDMAP_COUNT
+	SVAR fieldmapFolder= root:varsCAMTO:FIELDMAP_FOLDER
+		
+	DFREF df = GetDataFolderDFR()
+	string dfc = GetDataFolder(0)
+	
+	variable i
+	string tdf
+	string empty = ""
+
+	for (i=0; i < fieldmapCount; i=i+1)
+		tdf = fieldmapFolders[i]
+		fieldmapFolder = tdf
+		SetDataFolder root:$(tdf)
+		CopyTrajectoriesConfig_(dfc)
+		Print("Calculating Trajectories for " + tdf + ":")
+		TrajectoriesCalculationProc(empty)
+	endfor
+
+	fieldmapFolder = dfc
+	SetDataFolder df
+	
+End
+
+
+Static Function Runge_Kutta(px, py, pz)
+	variable px, py, pz
+
+	NVAR Charge     = root:varsCAMTO:Charge
+	NVAR Mass       = root:varsCAMTO:Mass
+	NVAR LightSpeed = root:varsCAMTO:LightSpeed
+	NVAR TrajShift  = root:varsCAMTO:TrajShift  
+	
+	variable energy = GetParticleEnergy()
+	
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
+	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
+	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
+		
+	NVAR BeamDirection = :varsFieldmap:BeamDirection
+	NVAR EntranceAngle = :varsFieldmap:EntranceAngle	
+	NVAR CheckField    = :varsFieldmap:CheckField
+	NVAR StartX        = :varsFieldmap:StartX
+	NVAR EndX          = :varsFieldmap:EndX
+	NVAR StartYZTraj = :varsFieldmap:StartYZTraj 
+	NVAR EndYZTraj   = :varsFieldmap:EndYZTraj 	
+	
+	NVAR Out_of_Matrix_Error = :varsFieldmap:Out_of_Matrix_Error
+		
+	NVAR FieldX = :varsFieldmap:FieldX
+	NVAR FieldY = :varsFieldmap:FieldY
+	NVAR FieldZ = :varsFieldmap:FieldZ
+
+	NVAR iTraj      = :varsFieldmap:iTraj
+	NVAR iTrajError = :varsFieldmap:iTrajError
+
+	variable i, j, k
+	
+	variable x_t, y_t, z_t
+	variable vx_t, vy_t, vz_t	
+
+	variable x_t_n, y_t_n, z_t_n
+	variable vx_t_n, vy_t_n, vz_t_n	
+	
+	variable Fx_t, Fy_t, Fz_t	
+	
+	variable t
+	if (StartYZTraj <= EndYZTraj)
+		t = TrajShift/ChargeVel
+	else
+		t = -TrajShift/ChargeVel
+	endif
+	
+	Wave C_PosYZ
+		
+	variable CorrVel
+	
+	Wave TrajX
+	Wave TrajY
+	Wave TrajZ		
+	Wave Vel_X
+	Wave Vel_Y
+	Wave Vel_Z		
+	
+	Wave VetorCampoX
+	Wave VetorCampoY
+	Wave VetorCampoZ
+	
+	vx_t = sin(EntranceAngle*pi/180)*ChargeVel
+	if (BeamDirection == 1)
+		vy_t = cos(EntranceAngle*pi/180)*ChargeVel
+		vz_t = 0
+	else
+		vy_t = 0
+		vz_t = cos(EntranceAngle*pi/180)*ChargeVel	
+	endif	
+	
+	//Inicia posições
+	x_t = px
+	y_t = py
+	z_t = pz
+	
+	TrajX[0] = x_t
+	TrajY[0] = y_t
+	TrajZ[0] = z_t
+
+	Vel_X[0] = vx_t
+	Vel_Y[0] = vy_t
+	Vel_Z[0] = vz_t
+	
+	Redimension/N=(2*iTraj) TrajX
+	Redimension/N=(2*iTraj) TrajY
+	Redimension/N=(2*iTraj) TrajZ
+	Redimension/N=(2*iTraj) Vel_X
+	Redimension/N=(2*iTraj) Vel_Y
+	Redimension/N=(2*iTraj) Vel_Z
+	Redimension/N=(2*iTraj) VetorCampoX
+	Redimension/N=(2*iTraj) VetorCampoY
+	Redimension/N=(2*iTraj) VetorCampoZ	
+	
+	variable yz 
+	if (BeamDirection == 1)			
+		yz = y_t
+	else
+		yz = z_t			
+	endif
+			
+	for (k=1;k<2*iTraj;k=k+1) 
+		//Procura o campo nas coordenadas X,Z desejadas.
+		
+		if (CheckField==1)
+			if (x_t < (StartX/1000))
+				if (BeamDirection == 1)			
+					Campo_espaco(StartX/1000,y_t)
+				else
+					Campo_espaco(StartX/1000,z_t)				
+				endif
+			elseif (x_t > (EndX/1000))
+				if (BeamDirection == 1)			
+					Campo_espaco(EndX/1000,y_t)	
+				else
+					Campo_espaco(EndX/1000,z_t)				
+				endif
+			else
+				if (BeamDirection == 1)		
+					Campo_espaco(x_t,y_t)
+				else
+					Campo_espaco(x_t,z_t)				
+				endif
+			endif
+		else
+			if ((x_t < (StartX/1000)) || (x_t > (EndX/1000)))
+				Out_of_Matrix_Error = 1
+				iTrajError = k-1
+			   	break
+			 else
+				if (BeamDirection == 1)		
+					Campo_espaco(x_t,y_t)
+					
+				else
+					Campo_espaco(x_t,z_t)				
+				endif
+			endif
+		endif
+		
+		VetorCampoX[k-1] = FieldX
+		VetorCampoY[k-1] = FieldY
+		VetorCampoZ[k-1] = FieldZ
+	
+		Fx_t = Charge * ( (vy_t*FieldZ) - (vz_t*FieldY) )
+		Fy_t = Charge * ( (vz_t*FieldX) - (vx_t*FieldZ) )
+		Fz_t = Charge * ( (vx_t*FieldY) - (vy_t*FieldX) )
+
+		vx_t_n = vx_t + Fx_t * t / (Mass*Gama)
+		vy_t_n = vy_t + Fy_t * t / (Mass*Gama)
+		vz_t_n = vz_t + Fz_t * t / (Mass*Gama)
+
+		x_t_n = x_t +  (t*vx_t)
+		y_t_n = y_t +  (t*vy_t)
+		z_t_n = z_t +  (t*vz_t)
+		
+		x_t = x_t_n;
+		y_t = y_t_n;
+		z_t = z_t_n;				
+
+		vx_t = vx_t_n;
+		vy_t = vy_t_n;
+		vz_t = vz_t_n;				
+		
+		TrajX[k] = x_t
+		TrajY[k] = y_t
+		TrajZ[k] = z_t
+
+		Vel_X[k] = vx_t
+		Vel_Y[k] = vy_t
+		Vel_Z[k] = vz_t
+		
+		if (BeamDirection == 1)			
+			yz = y_t
+		else
+			yz = z_t			
+		endif
+		
+		if (t >= 0 && yz >= EndYZTraj/1000)
+			break
+		elseif (t < 0 && yz <= EndYZTraj/1000)
+			break
+		endif
+	
+	endfor
+
+	iTraj = k
+	Redimension/N=(iTraj) TrajX
+	Redimension/N=(iTraj) TrajY
+	Redimension/N=(iTraj) TrajZ
+	Redimension/N=(iTraj) Vel_X
+	Redimension/N=(iTraj) Vel_Y
+	Redimension/N=(iTraj) Vel_Z
+	Redimension/N=(iTraj) VetorCampoX
+	Redimension/N=(iTraj) VetorCampoY
+	Redimension/N=(iTraj) VetorCampoZ		
+	
+End
+
+
+Static Function Analitico(px, py, pz)
+	variable px, py, pz
+
+	NVAR Charge     = root:varsCAMTO:Charge
+	NVAR Mass       = root:varsCAMTO:Mass
+	NVAR LightSpeed = root:varsCAMTO:LightSpeed
+	NVAR TrajShift  = root:varsCAMTO:TrajShift  
+	
+	variable energy = GetParticleEnergy()
+
+	variable TotalEnergy_J  = energy*1E9*abs(Charge)
+	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
+	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
+
+	NVAR BeamDirection = :varsFieldmap:BeamDirection
+	NVAR EntranceAngle = :varsFieldmap:EntranceAngle
+	NVAR CheckField    = :varsFieldmap:CheckField
+	NVAR StartX        = :varsFieldmap:StartX
+	NVAR EndX          = :varsFieldmap:EndX 
+	NVAR StartYZTraj = :varsFieldmap:StartYZTraj 
+	NVAR EndYZTraj   = :varsFieldmap:EndYZTraj 	
+	
+	NVAR Out_of_Matrix_Error = :varsFieldmap:Out_of_Matrix_Error
+	
+	NVAR FieldX = :varsFieldmap:FieldX
+	NVAR FieldY = :varsFieldmap:FieldY
+	NVAR FieldZ = :varsFieldmap:FieldZ
+
+	NVAR iTraj      = :varsFieldmap:iTraj
+	NVAR iTrajError = :varsFieldmap:iTrajError	
+
+	variable i, j, k
+		
+	variable ModField
+	variable ConstFieldCharge
+	variable x1_t, x2_t
+	variable y1_t, y2_t
+	variable z1_t, z2_t
+	
+	variable x_t, y_t, z_t
+	variable x_t_n, y_t_n, z_t_n
+		
+	variable vx_t, vy_t, vz_t
+	variable vx_t_n, vy_t_n, vz_t_n	
+	
+	variable Fx_t, Fy_t, Fz_t
+	
+	variable t
+	if (StartYZTraj <= EndYZTraj)
+		t = TrajShift/ChargeVel
+	else
+		t = -TrajShift/ChargeVel
+	endif
+	
+	Wave C_PosYZ
+		
+	variable CorrVel 
+	
+	Wave TrajX
+	Wave TrajY
+	Wave TrajZ		
+	Wave Vel_X
+	Wave Vel_Y
+	Wave Vel_Z		
+	
+	Wave VetorCampoX
+	Wave VetorCampoY
+	Wave VetorCampoZ
+	
+	vx_t = sin(EntranceAngle*pi/180) * ChargeVel
+	if (BeamDirection == 1)
+		vy_t = cos(EntranceAngle*pi/180)*ChargeVel
+		vz_t = 0
+	else
+		vy_t = 0
+		vz_t = cos(EntranceAngle*pi/180)*ChargeVel	
+	endif	
+	
+	//Inicia posições
+	x_t = px
+	y_t = py
+	z_t = pz
+	
+	TrajX[0] = x_t
+	TrajY[0] = y_t
+	TrajZ[0] = z_t
+
+	Vel_X[0] = vx_t
+	Vel_Y[0] = vy_t
+	Vel_Z[0] = vz_t
+	
+	for (k=1;k<iTraj;k=k+1) 
+		//Procura o campo nas coordenadas X,Z desejadas.
+				
+		if (CheckField==1)
+			if (x_t < (StartX/1000))
+				if (BeamDirection == 1)			
+					Campo_espaco(StartX/1000,y_t)
+				else
+					Campo_espaco(StartX/1000,z_t)				
+				endif
+			elseif (x_t > (EndX/1000))
+				if (BeamDirection == 1)			
+					Campo_espaco(EndX/1000,y_t)	
+				else
+					Campo_espaco(EndX/1000,z_t)				
+				endif
+			else
+				if (BeamDirection == 1)		
+					Campo_espaco(x_t,y_t)
+				else
+					Campo_espaco(x_t,z_t)				
+				endif
+			endif
+		else
+			if ((x_t < (StartX/1000)) || (x_t > (EndX/1000)))
+				Out_of_Matrix_Error = 1
+				iTrajError = k-1
+				break
+			else
+				if (BeamDirection == 1)		
+					Campo_espaco(x_t,y_t)
+							
+				else
+					Campo_espaco(x_t,z_t)				
+				endif
+			endif
+		endif
+		
+		VetorCampoX[k-1] = FieldX
+		VetorCampoY[k-1] = FieldY
+		VetorCampoZ[k-1] = FieldZ
+		
+		ModField = Sqrt(FieldX^2 + FieldY^2 + FieldZ^2)
+		ConstFieldCharge = (1 / ( (FieldX^2 + FieldY^2 + FieldZ^2)^(3/2) * abs(Charge))) 
+		
+		//x_t
+		x1_t = ModField *(Gama*Mass*(-FieldZ* vy_t + FieldY*vz_t) + FieldX*abs(Charge)*t*(FieldY*vy_t + FieldZ*vz_t) + (FieldY^2 + FieldZ^2)*abs(Charge)*x_t + (FieldX^2)*abs(Charge)*(t*vx_t + x_t) )
+		x2_t = Gama * ModField * Mass * (FieldZ*vy_t - FieldY*vz_t) * Cos (ModField * abs(Charge) * t / (Gama * Mass)) + Gama * Mass * (FieldY^2 * vx_t - FieldX*FieldY*vy_t + FieldZ *(FieldZ*vx_t - FieldX*vz_t)) * Sin(ModField * abs(Charge) * t / (Gama * Mass))
+		x_t_n =((x1_t + x2_t) * ConstFieldCharge)
+		
+		//y_t
+		y1_t = ModField * (Gama*Mass*(-FieldX* vz_t + FieldZ*vx_t) + FieldY*abs(Charge)*t*(FieldX*vx_t + FieldY*vy_t+FieldZ*vz_t) + (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*y_t)
+		y2_t = Gama * ModField * Mass * (FieldX*vz_t - FieldZ*vx_t) * Cos (ModField * abs(Charge) * t / (Gama * Mass)) + Gama * Mass * (-FieldX*FieldY*vx_t + FieldX^2*vy_t + FieldZ*(FieldZ*vy_t - FieldY*vz_t)) * Sin(ModField * abs(Charge) * t / (Gama * Mass))
+		y_t_n = ((y1_t + y2_t) * ConstFieldCharge)
+																														
+		//z_t
+		z1_t = ModField * (Gama*Mass*(-FieldY* vx_t + FieldX*vy_t) + FieldZ*abs(Charge)*t*(FieldX*vx_t + FieldY*vy_t +  FieldZ*vz_t) + (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*z_t)
+		z2_t = Gama * ModField * Mass * (FieldY*vx_t - FieldX*vy_t) * Cos (ModField * abs(Charge) * t / (Gama * Mass)) + Gama * Mass * (-FieldY*FieldZ*vy_t + FieldY^2*vz_t + FieldX*(FieldX*vz_t-FieldZ*vx_t)) * Sin(ModField * abs(Charge) * t / (Gama * Mass))
+		z_t_n = ((z1_t + z2_t) * ConstFieldCharge)
+		
+		//vx_t
+		vx_t_n = (( ConstFieldCharge * (ModField * (FieldX^2*abs(Charge)*vx_t + FieldX*abs(Charge)*(FieldY*vy_t + FieldZ*vz_t) )  + ModField*abs(Charge)* (FieldY^2*vx_t - FieldX*FieldY*vy_t + FieldZ*(FieldZ*vx_t - FieldX*vz_t)) *Cos (ModField * abs(Charge) * t / Gama / Mass) - (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*(FieldZ*vy_t - FieldY*vz_t)*Sin(ModField * abs(Charge) * t / Gama / Mass))))
+		
+		//vy_t
+		vy_t_n = (( ConstFieldCharge * (ModField * (FieldY^2*abs(Charge)*vy_t + FieldY*abs(Charge)*(FieldZ*vz_t + FieldX*vx_t) )  + ModField*abs(Charge)* (FieldZ^2*vy_t - FieldY*FieldZ*vz_t + FieldX*(FieldX*vy_t - FieldY*vx_t)) *Cos (ModField * abs(Charge) * t / Gama / Mass) - (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*(FieldX*vz_t - FieldZ*vx_t)*Sin(ModField * abs(Charge) * t / Gama / Mass))))
+	
+		//vz_t				
+		vz_t_n = (( ConstFieldCharge * (ModField * (FieldZ^2*abs(Charge)*vz_t + FieldZ*abs(Charge)*(FieldX*vx_t + FieldY*vy_t) )  + ModField*abs(Charge)* (FieldX^2*vz_t - FieldZ*FieldX*vx_t + FieldY*(FieldY*vz_t - FieldZ*vy_t)) *Cos (ModField * abs(Charge) * t / Gama / Mass) - (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*(FieldY*vx_t - FieldX*vy_t)*Sin(ModField * abs(Charge) * t / Gama / Mass))))
+		
+		x_t = x_t_n
+		y_t = y_t_n
+		z_t = z_t_n				
+
+		vx_t = vx_t_n
+		vy_t = vy_t_n
+		vz_t = vz_t_n				
+		
+		TrajX[k] = x_t
+		TrajY[k] = y_t
+		TrajZ[k] = z_t
+
+		Vel_X[k] = vx_t
+		Vel_Y[k] = vy_t
+		Vel_Z[k] = vz_t
+	endfor
+End
+
 
 
 Function CAMTO_Results_Panel() : Panel
@@ -5878,26 +6826,6 @@ End
 //	
 //End
 //
-//Function Particle_Energy()
-//	
-//	NVAR EnergyGeV = root:varsCAMTO:EnergyGeV
-//	NVAR fieldmapCount = root:varsCAMTO:FIELDMAP_COUNT
-//	
-//	Wave/T fieldmapFolders = root:wavesCAMTO:fieldmapFolders 
-//	Wave/Z energies = root:wavesCAMTO:energies
-//	
-//	if (WaveExists(energies) == 0)
-//		Make/O/N=(fieldmapCount) root:wavesCAMTO:energies = EnergyGeV
-//		Wave energies = root:wavesCAMTO:energies
-//	endif
-//	
-//	Edit/K=1 fieldmapFolders, energies
-//	
-//End
-//
-//
-
-//
 //Function MakeTrajNamesWave(pos_str)
 //	string pos_str
 //	
@@ -5915,814 +6843,9 @@ End
 //End
 //
 //
-//Function GetParticleEnergy()
-//	NVAR EnergyGev  = root:varsCAMTO:EnergyGev
-//	Wave/Z energies = root:wavesCAMTO:energies
-//	
-//	if (WaveExists(energies)==1)
-//		variable idx = GetFieldmapIndex()
-//		if (idx == -1)
-//			return EnergyGeV
-//		endif
-//		return energies[idx]
-//	
-//	else
-//		return EnergyGeV
-//	
-//	endif
 //
-//End
 //
-//
-//Function TrajectoriesCalculationProc(ctrlName) : ButtonControl
-//	String ctrlName
-//   
-//   	NVAR Charge     = root:varsCAMTO:Charge
-//	NVAR Mass       = root:varsCAMTO:Mass
-//	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-//	
-//	variable energy = GetParticleEnergy()
-//
-//	variable TotalEnergy_J  = energy*1E9*abs(Charge)
-//	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
-//	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
-//   
-//   NVAR CheckNegPosTraj = :varsFieldmap:CheckNegPosTraj
-//	NVAR Single_Multi  = :varsFieldmap:Single_Multi   
-//	NVAR BeamDirection = :varsFieldmap:BeamDirection    	
-//	
-//	NVAR StartXTraj    = :varsFieldmap:StartXTraj 
-//	NVAR EndXTraj      = :varsFieldmap:EndXTraj 
-//	NVAR StepsXTraj    = :varsFieldmap:StepsXTraj 
-//	NVAR NPointsXTraj  = :varsFieldmap:NPointsXTraj
-//
-//	NVAR StartYZTraj = :varsFieldmap:StartYZTraj 
-//	NVAR EndYZTraj   = :varsFieldmap:EndYZTraj
-//	NVAR iTraj       = :varsFieldmap:iTraj 	
-//
-//	variable i, j, initial_endyz
-//	string pos_str, add_str_1, add_str_2
-//	string NameTraj, NameTrajInt, NameTrajInt2, NameTrajPos, NameTrajTmp1, NameTrajTmp2
-//	
-//	initial_endyz = EndYZTraj
-//	
-//	if (CheckNegPosTraj == 1)
-//		if (StartYZTraj != 0)
-//			DoAlert 0, "The initial longitudinal position must be zero."
-//			return -1
-//		endif
-//	
-//		add_str_1 = "_Tmp1"
-//		add_str_2 = "_Tmp2"
-//					
-//		TrajectoriesCalculation()
-//		wave PosXTraj
-//
-//		for (j=0; j<NPointsXTraj; j+=1)				
-//			pos_str = num2str(PosXTraj[j])
-//			MakeTrajNamesWave(pos_str)
-//			Wave/T TrajNames
-//			
-//			for (i=0; i<numpnts(TrajNames); i+=1)
-//				NameTraj = TrajNames[i]
-//				NameTrajTmp1 = NameTraj + add_str_1		
-//				if (StartYZTraj > EndYZTraj)
-//					Duplicate/D/O/R=(1, numpnts($NameTraj)) $NameTraj $NameTrajTmp1	
-//					Reverse $NameTrajTmp1
-//				else
-//					Duplicate/D/O $NameTraj $NameTrajTmp1	
-//				endif
-//			endfor
-//			
-//		endfor
-//
-//		EndYZTraj = -EndYZTraj
-//		TrajectoriesCalculation()
-//	
-//		for (j=0; j<NPointsXTraj; j+=1)		
-//			pos_str = num2str(PosXTraj[j])
-//			MakeTrajNamesWave(pos_str)
-//			Wave/T TrajNames
-//			
-//			for (i=0; i<numpnts(TrajNames); i+=1)
-//				NameTraj = TrajNames[i]
-//				NameTrajTmp2 = NameTraj + add_str_2		
-//				if (StartYZTraj > EndYZTraj)
-//					Duplicate/D/O/R=(1, numpnts($NameTraj)) $NameTraj $NameTrajTmp2	
-//					Reverse $NameTrajTmp2
-//				else
-//					Duplicate/D/O $NameTraj $NameTrajTmp2
-//				endif
-//			endfor				
-//			
-//		endfor
-//		
-//		for (j=0; j<NPointsXTraj; j+=1)
-//			pos_str = num2str(PosXTraj[j])
-//			MakeTrajNamesWave(pos_str)
-//			Wave/T TrajNames	
-//			
-//			for (i=0; i<numpnts(TrajNames); i+=1)
-//				NameTraj = TrajNames[i]
-//				NameTrajTmp1 = NameTraj + add_str_1
-//				NameTrajTmp2 = NameTraj + add_str_2
-//				if (StartYZTraj > EndYZTraj)
-//					Concatenate/NP/KILL/O {$NameTrajTmp2, $NameTrajTmp1}, $NameTraj
-//				else
-//					Concatenate/NP/KILL/O {$NameTrajTmp1, $NameTrajTmp2}, $NameTraj
-//				endif
-//			endfor
-//		
-//		endfor
-//		
-//		iTraj = 2*iTraj - 1
-//	else
-//		TrajectoriesCalculation()
-//		wave PosXTraj	
-//	endif
-//
-//	Make/O/D/N=(NPointsXTraj)IntBx_X_Traj = 0
-//	Make/O/D/N=(NPointsXTraj)IntBy_X_Traj = 0
-//	Make/O/D/N=(NPointsXTraj)IntBz_X_Traj = 0		
-//
-//	Make/O/D/N=(NPointsXTraj)Int2Bx_X_Traj = 0
-//	Make/O/D/N=(NPointsXTraj)Int2By_X_Traj = 0
-//	Make/O/D/N=(NPointsXTraj)Int2Bz_X_Traj = 0
-//	
-//	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_X = 0
-//	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_Y = 0
-//	Make/O/D/N=(NPointsXTraj) Deflection_IntTraj_Z = 0	
-//
-//	Make/O/D/N=(NPointsXTraj) Deflection_X = 0
-//	Make/O/D/N=(NPointsXTraj) Deflection_Y = 0
-//	Make/O/D/N=(NPointsXTraj) Deflection_Z = 0	
-//
-//	for (j=0; j<NPointsXTraj; j+=1)
-//		pos_str = num2str(PosXTraj[j])
-//		
-//		Wave Vel_X = $("Vel_X" + pos_str)
-//		Wave Vel_Y = $("Vel_Y" + pos_str)
-//		Wave Vel_Z = $("Vel_Z" + pos_str)
-//
-//		if (BeamDirection == 1)
-//   			NameTrajPos = "TrajY" + pos_str
-//   		else
-//   			NameTrajPos = "TrajZ" + pos_str
-//		endif
-//		
-//		NameTraj = "VetorCampoX" + pos_str
-//		NameTrajInt = NameTraj + "_int"
-//		NameTrajInt2 = NameTraj + "_int2"	
-//		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
-//		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	  
-//
-//		Wave Tmp =  $NameTrajInt
-//		IntBx_X_Traj[j] = Tmp[iTraj]
-//		Wave Tmp =  $NameTrajInt2
-//		Int2Bx_X_Traj[j] = Tmp[iTraj]
-//
-//		NameTraj = "VetorCampoY" + pos_str
-//		NameTrajInt = NameTraj + "_int"
-//		NameTrajInt2 = NameTraj + "_int2"	
-//		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
-//		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	 
-//
-//		Wave Tmp =  $NameTrajInt
-//		IntBy_X_Traj[j] = Tmp[iTraj]
-//		Wave Tmp =  $NameTrajInt2
-//		Int2By_X_Traj[j] = Tmp[iTraj]
-//		
-//		NameTraj = "VetorCampoZ" + pos_str
-//		NameTrajInt = NameTraj + "_int"
-//		NameTrajInt2 = NameTraj + "_int2"
-//		Integrate/METH=1 $NameTraj/X=$NameTrajPos/D=$NameTrajInt
-//		Integrate/METH=1 $NameTrajInt/X=$NameTrajPos/D=$NameTrajInt2	 
-//		
-//		Wave Tmp =  $NameTrajInt
-//		IntBz_X_Traj[j] = Tmp[iTraj]
-//		Wave Tmp =  $NameTrajInt2
-//		Int2Bz_X_Traj[j] = Tmp[iTraj]			
-//		
-//		if (BeamDirection == 1)	
-//			Deflection_X[j] = atan(Vel_X[iTraj]/Vel_Y[iTraj]) / pi * 180
-//			Deflection_Z[j] = atan(Vel_Z[iTraj]/Vel_Y[iTraj]) / pi * 180
-//
-//			Deflection_IntTraj_X[j] = (atan(Vel_X[iTraj]/Vel_Y[iTraj]) - atan(Vel_X[0]/Vel_Y[0])) / pi * 180
-//			Deflection_IntTraj_Z[j] = (atan(Vel_Z[iTraj]/Vel_Y[iTraj]) - atan(Vel_Z[0]/Vel_Y[0]) ) / pi * 180
-//		else
-//			Deflection_X[j] = atan(Vel_X[iTraj]/Vel_Z[iTraj]) / pi * 180
-//			Deflection_Y[j] = atan(Vel_Y[iTraj]/Vel_Z[iTraj]) / pi * 180					
-//		
-//			Deflection_IntTraj_X[j] = (atan(Vel_X[iTraj]/Vel_Z[iTraj]) - atan(Vel_X[0]/Vel_Z[0])) / pi * 180
-//			Deflection_IntTraj_Y[j] = (atan(Vel_Y[iTraj]/Vel_Z[iTraj]) - atan(Vel_Y[0]/Vel_Z[0])) / pi * 180	
-//		endif
-//
-//	endfor		
-//
-//	EndYZTraj = initial_endyz
-//	UpdateResultsPanel()
-//
-//End
-//
-//
-//Function TrajectoriesCalculation()
-//
-//   	NVAR Charge     = root:varsCAMTO:Charge
-//	NVAR Mass       = root:varsCAMTO:Mass
-//	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-//	NVAR TrajShift  = root:varsCAMTO:TrajShift
-//
-//	variable energy = GetParticleEnergy()
-//
-//	variable TotalEnergy_J  = energy*1E9*abs(Charge)
-//	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
-//	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
-//       
-//	NVAR Single_Multi  = :varsFieldmap:Single_Multi       	
-//	NVAR BeamDirection = :varsFieldmap:BeamDirection 
-//	
-//	NVAR StartXTraj    = :varsFieldmap:StartXTraj 
-//	NVAR EndXTraj      = :varsFieldmap:EndXTraj 
-//	NVAR StepsXTraj    = :varsFieldmap:StepsXTraj 
-//	NVAR NPointsXTraj  = :varsFieldmap:NPointsXTraj
-//
-//	NVAR StartYZ		 = :varsFieldmap:StartYZ 
-//	NVAR EndYZ		 = :varsFieldmap:EndYZ	
-//	NVAR StartYZTraj = :varsFieldmap:StartYZTraj 
-//	NVAR EndYZTraj   = :varsFieldmap:EndYZTraj 	
-//	
-//	NVAR Analitico_RungeKutta = :varsFieldmap:Analitico_RungeKutta
-//	NVAR Out_of_Matrix_Error  = :varsFieldmap:Out_of_Matrix_Error
-//	Out_of_Matrix_Error = 0
-//	
-//	NVAR iTraj      = :varsFieldmap:iTraj
-//	NVAR iTrajError = :varsFieldmap:iTrajError
-//
-//	string NomeTraj
-//	string NomeTrajPos
-//	string NomeTrajInt	
-//	string NomeTrajInt2	
-//	variable i, j
-//
-//	if (StartYZTraj < StartYZ || StartYZTraj > EndYZ)
-//		DoAlert 0, "Initial longitudinal position out of range."
-//		return -1
-//	endif
-//
-//	if (EndYZTraj < StartYZ || EndYZTraj > EndYZ)
-//		DoAlert 0, "Final longitudinal position out of range."
-//		return -1
-//	endif				
-//		
-//	if (Single_Multi==1)
-//		NPointsXTraj = 1
-//	else
-//		NPointsXTraj = ((EndXTraj - StartXTraj) / StepsXTraj) + 1	
-//	endif       
-//	
-//	Make/O/D/N=(NPointsXTraj) PosXTraj
-//	for (j=0;j<NPointsXTraj;j=j+1)
-//		PosXTraj[j] = (StartXTraj + j*StepsXTraj)/1000 // converte para metros
-//	endfor
-//	
-//	Make/O/D/N=(iTraj) PosYZTraj
-//	if (StartYZTraj <= EndYZTraj)
-//		for (i=0;i<iTraj;i=i+1)
-//		   PosYZTraj[i] = (StartYZTraj/1000 + i*TrajShift)
-//		endfor
-//	else
-//		for (i=0;i<iTraj;i=i+1)
-//		   PosYZTraj[i] = (StartYZTraj/1000 - i*TrajShift)
-//		endfor
-//	endif
-//	
-//	Wave C_PosX
-//	
-//	variable Out_of_Matrix_Local = 0
-//	
-//	for (j=0; j<NPointsXTraj; j+=1)
-//		print ("Calculating Trajectory X = " + num2str(PosXTraj[j]))
-//		iTraj = Abs(((EndYZTraj-StartYZTraj) / (TrajShift*1000))) + 1	
-//
-//		Make/O/D/N=(iTraj) TrajX = 0
-//		Make/O/D/N=(iTraj) TrajY = 0
-//		Make/O/D/N=(iTraj) TrajZ = 0
-//		Make/O/D/N=(iTraj) Vel_X = 0
-//		Make/O/D/N=(iTraj) Vel_Y = 0
-//		Make/O/D/N=(iTraj) Vel_Z = 0
-//		Make/O/D/N=(iTraj)VetorCampoX = 0
-//		Make/O/D/N=(iTraj)VetorCampoY = 0
-//		Make/O/D/N=(iTraj)VetorCampoZ = 0		
-//		
-//		if (BeamDirection==1)
-//			if (Analitico_RungeKutta == 1)
-//				Analitico(PosXTraj[j],(StartYZTraj/1000),0)
-//			else
-//				Runge_Kutta(PosXTraj[j],(StartYZTraj/1000),0)
-//			endif
-//		else
-//			if (Analitico_RungeKutta == 1)
-//				Analitico(PosXTraj[j],0,(StartYZTraj/1000))					
-//			else
-//				Runge_Kutta(PosXTraj[j],0,(StartYZTraj/1000))
-//			endif
-//		endif
-//		
-//		if (Out_of_Matrix_Error !=0)
-//			Out_of_Matrix_Local = 1
-//		endif
-//		
-//		if (Out_of_Matrix_Error !=0)
-// 			DeletePoints iTrajError,(iTraj-iTrajError), TrajX
-//			DeletePoints iTrajError,(iTraj-iTrajError), TrajY
-//			DeletePoints iTrajError,(iTraj-iTrajError), TrajZ			
-//
-// 			DeletePoints iTrajError,(iTraj-iTrajError), Vel_X
-//			DeletePoints iTrajError,(iTraj-iTrajError), Vel_Y
-//			DeletePoints iTrajError,(iTraj-iTrajError), Vel_Z			
-//
-// 			DeletePoints iTrajError,(iTraj-iTrajError), VetorCampoX
-//			DeletePoints iTrajError,(iTraj-iTrajError), VetorCampoY
-//			DeletePoints iTrajError,(iTraj-iTrajError), VetorCampoZ			
-//
-//			iTraj = iTrajError
-//
-//			Out_of_Matrix_Error = 0			
-//		endif
-//			
-//		NomeTraj = "TrajX" + num2str(PosXTraj[j])
-//		Duplicate/D/O TrajX $NomeTraj
-//		
-//		NomeTraj = "TrajY" + num2str(PosXTraj[j])
-//		Duplicate/D/O TrajY $NomeTraj	
-//		
-//		NomeTraj = "TrajZ" + num2str(PosXTraj[j])
-//		Duplicate/D/O TrajZ $NomeTraj
-//	
-//		NomeTraj = "Vel_X" + num2str(PosXTraj[j])
-//		Duplicate/D/O Vel_X $NomeTraj
-//		
-//		NomeTraj = "Vel_Y" + num2str(PosXTraj[j])
-//		Duplicate/D/O Vel_Y $NomeTraj
-//
-//		NomeTraj = "Vel_Z" + num2str(PosXTraj[j])
-//		Duplicate/D/O Vel_Z $NomeTraj
-//		
-//		if (BeamDirection == 1)
-//   			NomeTrajPos = "TrajY" + num2str(PosXTraj[j])
-//   		else
-//   			NomeTrajPos = "TrajZ" + num2str(PosXTraj[j])
-//		endif
-//
-//		NomeTraj = "VetorCampoX" + num2str(PosXTraj[j])
-//		Duplicate/D/O VetorCampoX $NomeTraj		
-//	
-//		NomeTraj = "VetorCampoY" + num2str(PosXTraj[j])
-//		Duplicate/D/O VetorCampoY $NomeTraj		
-//	
-//		NomeTraj = "VetorCampoZ" + num2str(PosXTraj[j])
-//		Duplicate/D/O VetorCampoZ $NomeTraj		
-//
-//		TrajX = 0
-//		TrajY = 0
-//		TrajZ = 0	
-//		
-//		Vel_X = 0			
-//		Vel_Y = 0
-//		Vel_Z = 0		
-//	endfor	
-//	
-//	if (Out_of_Matrix_Local != 0) 
-//		DoAlert 0,"At least one trajectory travelled out of the field matrix "
-//	endif
-//	
-//	Killwaves TrajX	   
-//	Killwaves TrajY	   
-//	Killwaves TrajZ	   
-//	Killwaves Vel_X	   
-//	Killwaves Vel_Y	   
-//	Killwaves Vel_Z	   						
-//	Killwaves VetorCampoX	   
-//	Killwaves VetorCampoY	   
-//	Killwaves VetorCampoZ	
-//End
-//
-//
-//
-//Function CalcTrajectoriesToAll(ctrlName) : ButtonControl
-//	String ctrlName
-//	
-//	DoAlert 1, "Calculate trajectories for all fieldmaps?"
-//	if (V_flag != 1)
-//		return -1
-//	endif
-//	
-//	UpdateFieldmapFolders()
-//		
-//	Wave/T fieldmapFolders = root:wavesCAMTO:fieldmapFolders
-//	NVAR fieldmapCount  = root:varsCAMTO:FIELDMAP_COUNT
-//	SVAR fieldmapFolder= root:varsCAMTO:FIELDMAP_FOLDER
-//		
-//	DFREF df = GetDataFolderDFR()
-//	string dfc = GetDataFolder(0)
-//	
-//	variable i
-//	string tdf
-//	string empty = ""
-//
-//	for (i=0; i < fieldmapCount; i=i+1)
-//		tdf = fieldmapFolders[i]
-//		fieldmapFolder = tdf
-//		SetDataFolder root:$(tdf)
-//		CopyTrajectoriesConfig_(dfc)
-//		Print("Calculating Trajectories for " + tdf + ":")
-//		TrajectoriesCalculationProc(empty)
-//	endfor
-//
-//	fieldmapFolder = dfc
-//	SetDataFolder df
-//	
-//End
-//
-//
-//Function Runge_Kutta(px, py, pz)
-//	variable px, py, pz
-//
-//	NVAR Charge     = root:varsCAMTO:Charge
-//	NVAR Mass       = root:varsCAMTO:Mass
-//	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-//	NVAR TrajShift  = root:varsCAMTO:TrajShift  
-//	
-//	variable energy = GetParticleEnergy()
-//	
-//	variable TotalEnergy_J  = energy*1E9*abs(Charge)
-//	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
-//	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
-//		
-//	NVAR BeamDirection = :varsFieldmap:BeamDirection
-//	NVAR EntranceAngle = :varsFieldmap:EntranceAngle	
-//	NVAR CheckField    = :varsFieldmap:CheckField
-//	NVAR StartX        = :varsFieldmap:StartX
-//	NVAR EndX          = :varsFieldmap:EndX
-//	NVAR StartYZTraj = :varsFieldmap:StartYZTraj 
-//	NVAR EndYZTraj   = :varsFieldmap:EndYZTraj 	
-//	
-//	NVAR Out_of_Matrix_Error = :varsFieldmap:Out_of_Matrix_Error
-//		
-//	NVAR FieldX = :varsFieldmap:FieldX
-//	NVAR FieldY = :varsFieldmap:FieldY
-//	NVAR FieldZ = :varsFieldmap:FieldZ
-//
-//	NVAR iTraj      = :varsFieldmap:iTraj
-//	NVAR iTrajError = :varsFieldmap:iTrajError
-//
-//	variable i, j, k
-//	
-//	variable x_t, y_t, z_t
-//	variable vx_t, vy_t, vz_t	
-//
-//	variable x_t_n, y_t_n, z_t_n
-//	variable vx_t_n, vy_t_n, vz_t_n	
-//	
-//	variable Fx_t, Fy_t, Fz_t	
-//	
-//	variable t
-//	if (StartYZTraj <= EndYZTraj)
-//		t = TrajShift/ChargeVel
-//	else
-//		t = -TrajShift/ChargeVel
-//	endif
-//	
-//	Wave C_PosYZ
-//		
-//	variable CorrVel
-//	
-//	Wave TrajX
-//	Wave TrajY
-//	Wave TrajZ		
-//	Wave Vel_X
-//	Wave Vel_Y
-//	Wave Vel_Z		
-//	
-//	Wave VetorCampoX
-//	Wave VetorCampoY
-//	Wave VetorCampoZ
-//	
-//	vx_t = sin(EntranceAngle*pi/180)*ChargeVel
-//	if (BeamDirection == 1)
-//		vy_t = cos(EntranceAngle*pi/180)*ChargeVel
-//		vz_t = 0
-//	else
-//		vy_t = 0
-//		vz_t = cos(EntranceAngle*pi/180)*ChargeVel	
-//	endif	
-//	
-//	//Inicia posições
-//	x_t = px
-//	y_t = py
-//	z_t = pz
-//	
-//	TrajX[0] = x_t
-//	TrajY[0] = y_t
-//	TrajZ[0] = z_t
-//
-//	Vel_X[0] = vx_t
-//	Vel_Y[0] = vy_t
-//	Vel_Z[0] = vz_t
-//	
-//	Redimension/N=(2*iTraj) TrajX
-//	Redimension/N=(2*iTraj) TrajY
-//	Redimension/N=(2*iTraj) TrajZ
-//	Redimension/N=(2*iTraj) Vel_X
-//	Redimension/N=(2*iTraj) Vel_Y
-//	Redimension/N=(2*iTraj) Vel_Z
-//	Redimension/N=(2*iTraj) VetorCampoX
-//	Redimension/N=(2*iTraj) VetorCampoY
-//	Redimension/N=(2*iTraj) VetorCampoZ	
-//	
-//	variable yz 
-//	if (BeamDirection == 1)			
-//		yz = y_t
-//	else
-//		yz = z_t			
-//	endif
-//			
-//	for (k=1;k<2*iTraj;k=k+1) 
-//		//Procura o campo nas coordenadas X,Z desejadas.
-//		
-//		if (CheckField==1)
-//			if (x_t < (StartX/1000))
-//				if (BeamDirection == 1)			
-//					Campo_espaco(StartX/1000,y_t)
-//				else
-//					Campo_espaco(StartX/1000,z_t)				
-//				endif
-//			elseif (x_t > (EndX/1000))
-//				if (BeamDirection == 1)			
-//					Campo_espaco(EndX/1000,y_t)	
-//				else
-//					Campo_espaco(EndX/1000,z_t)				
-//				endif
-//			else
-//				if (BeamDirection == 1)		
-//					Campo_espaco(x_t,y_t)
-//				else
-//					Campo_espaco(x_t,z_t)				
-//				endif
-//			endif
-//		else
-//			if ((x_t < (StartX/1000)) || (x_t > (EndX/1000)))
-//				Out_of_Matrix_Error = 1
-//				iTrajError = k-1
-//			   	break
-//			 else
-//				if (BeamDirection == 1)		
-//					Campo_espaco(x_t,y_t)
-//					
-//				else
-//					Campo_espaco(x_t,z_t)				
-//				endif
-//			endif
-//		endif
-//		
-//		VetorCampoX[k-1] = FieldX
-//		VetorCampoY[k-1] = FieldY
-//		VetorCampoZ[k-1] = FieldZ
-//	
-//		Fx_t = Charge * ( (vy_t*FieldZ) - (vz_t*FieldY) )
-//		Fy_t = Charge * ( (vz_t*FieldX) - (vx_t*FieldZ) )
-//		Fz_t = Charge * ( (vx_t*FieldY) - (vy_t*FieldX) )
-//
-//		vx_t_n = vx_t + Fx_t * t / (Mass*Gama)
-//		vy_t_n = vy_t + Fy_t * t / (Mass*Gama)
-//		vz_t_n = vz_t + Fz_t * t / (Mass*Gama)
-//
-//		x_t_n = x_t +  (t*vx_t)
-//		y_t_n = y_t +  (t*vy_t)
-//		z_t_n = z_t +  (t*vz_t)
-//		
-//		x_t = x_t_n;
-//		y_t = y_t_n;
-//		z_t = z_t_n;				
-//
-//		vx_t = vx_t_n;
-//		vy_t = vy_t_n;
-//		vz_t = vz_t_n;				
-//		
-//		TrajX[k] = x_t
-//		TrajY[k] = y_t
-//		TrajZ[k] = z_t
-//
-//		Vel_X[k] = vx_t
-//		Vel_Y[k] = vy_t
-//		Vel_Z[k] = vz_t
-//		
-//		if (BeamDirection == 1)			
-//			yz = y_t
-//		else
-//			yz = z_t			
-//		endif
-//		
-//		if (t >= 0 && yz >= EndYZTraj/1000)
-//			break
-//		elseif (t < 0 && yz <= EndYZTraj/1000)
-//			break
-//		endif
-//	
-//	endfor
-//
-//	iTraj = k
-//	Redimension/N=(iTraj) TrajX
-//	Redimension/N=(iTraj) TrajY
-//	Redimension/N=(iTraj) TrajZ
-//	Redimension/N=(iTraj) Vel_X
-//	Redimension/N=(iTraj) Vel_Y
-//	Redimension/N=(iTraj) Vel_Z
-//	Redimension/N=(iTraj) VetorCampoX
-//	Redimension/N=(iTraj) VetorCampoY
-//	Redimension/N=(iTraj) VetorCampoZ		
-//	
-//End
-//
-//
-//Function Analitico(px, py, pz)
-//	variable px, py, pz
-//
-//	NVAR Charge     = root:varsCAMTO:Charge
-//	NVAR Mass       = root:varsCAMTO:Mass
-//	NVAR LightSpeed = root:varsCAMTO:LightSpeed
-//	NVAR TrajShift  = root:varsCAMTO:TrajShift  
-//	
-//	variable energy = GetParticleEnergy()
-//
-//	variable TotalEnergy_J  = energy*1E9*abs(Charge)
-//	variable Gama  = TotalEnergy_J / (Mass * LightSpeed^2)
-//	variable ChargeVel = ((1 - 1/Gama^2)*LightSpeed^2)^0.5
-//
-//	NVAR BeamDirection = :varsFieldmap:BeamDirection
-//	NVAR EntranceAngle = :varsFieldmap:EntranceAngle
-//	NVAR CheckField    = :varsFieldmap:CheckField
-//	NVAR StartX        = :varsFieldmap:StartX
-//	NVAR EndX          = :varsFieldmap:EndX 
-//	NVAR StartYZTraj = :varsFieldmap:StartYZTraj 
-//	NVAR EndYZTraj   = :varsFieldmap:EndYZTraj 	
-//	
-//	NVAR Out_of_Matrix_Error = :varsFieldmap:Out_of_Matrix_Error
-//	
-//	NVAR FieldX = :varsFieldmap:FieldX
-//	NVAR FieldY = :varsFieldmap:FieldY
-//	NVAR FieldZ = :varsFieldmap:FieldZ
-//
-//	NVAR iTraj      = :varsFieldmap:iTraj
-//	NVAR iTrajError = :varsFieldmap:iTrajError	
-//
-//	variable i, j, k
-//		
-//	variable ModField
-//	variable ConstFieldCharge
-//	variable x1_t, x2_t
-//	variable y1_t, y2_t
-//	variable z1_t, z2_t
-//	
-//	variable x_t, y_t, z_t
-//	variable x_t_n, y_t_n, z_t_n
-//		
-//	variable vx_t, vy_t, vz_t
-//	variable vx_t_n, vy_t_n, vz_t_n	
-//	
-//	variable Fx_t, Fy_t, Fz_t
-//	
-//	variable t
-//	if (StartYZTraj <= EndYZTraj)
-//		t = TrajShift/ChargeVel
-//	else
-//		t = -TrajShift/ChargeVel
-//	endif
-//	
-//	Wave C_PosYZ
-//		
-//	variable CorrVel 
-//	
-//	Wave TrajX
-//	Wave TrajY
-//	Wave TrajZ		
-//	Wave Vel_X
-//	Wave Vel_Y
-//	Wave Vel_Z		
-//	
-//	Wave VetorCampoX
-//	Wave VetorCampoY
-//	Wave VetorCampoZ
-//	
-//	vx_t = sin(EntranceAngle*pi/180) * ChargeVel
-//	if (BeamDirection == 1)
-//		vy_t = cos(EntranceAngle*pi/180)*ChargeVel
-//		vz_t = 0
-//	else
-//		vy_t = 0
-//		vz_t = cos(EntranceAngle*pi/180)*ChargeVel	
-//	endif	
-//	
-//	//Inicia posições
-//	x_t = px
-//	y_t = py
-//	z_t = pz
-//	
-//	TrajX[0] = x_t
-//	TrajY[0] = y_t
-//	TrajZ[0] = z_t
-//
-//	Vel_X[0] = vx_t
-//	Vel_Y[0] = vy_t
-//	Vel_Z[0] = vz_t
-//	
-//	for (k=1;k<iTraj;k=k+1) 
-//		//Procura o campo nas coordenadas X,Z desejadas.
-//				
-//		if (CheckField==1)
-//			if (x_t < (StartX/1000))
-//				if (BeamDirection == 1)			
-//					Campo_espaco(StartX/1000,y_t)
-//				else
-//					Campo_espaco(StartX/1000,z_t)				
-//				endif
-//			elseif (x_t > (EndX/1000))
-//				if (BeamDirection == 1)			
-//					Campo_espaco(EndX/1000,y_t)	
-//				else
-//					Campo_espaco(EndX/1000,z_t)				
-//				endif
-//			else
-//				if (BeamDirection == 1)		
-//					Campo_espaco(x_t,y_t)
-//				else
-//					Campo_espaco(x_t,z_t)				
-//				endif
-//			endif
-//		else
-//			if ((x_t < (StartX/1000)) || (x_t > (EndX/1000)))
-//				Out_of_Matrix_Error = 1
-//				iTrajError = k-1
-//				break
-//			else
-//				if (BeamDirection == 1)		
-//					Campo_espaco(x_t,y_t)
-//							
-//				else
-//					Campo_espaco(x_t,z_t)				
-//				endif
-//			endif
-//		endif
-//		
-//		VetorCampoX[k-1] = FieldX
-//		VetorCampoY[k-1] = FieldY
-//		VetorCampoZ[k-1] = FieldZ
-//		
-//		ModField = Sqrt(FieldX^2 + FieldY^2 + FieldZ^2)
-//		ConstFieldCharge = (1 / ( (FieldX^2 + FieldY^2 + FieldZ^2)^(3/2) * abs(Charge))) 
-//		
-//		//x_t
-//		x1_t = ModField *(Gama*Mass*(-FieldZ* vy_t + FieldY*vz_t) + FieldX*abs(Charge)*t*(FieldY*vy_t + FieldZ*vz_t) + (FieldY^2 + FieldZ^2)*abs(Charge)*x_t + (FieldX^2)*abs(Charge)*(t*vx_t + x_t) )
-//		x2_t = Gama * ModField * Mass * (FieldZ*vy_t - FieldY*vz_t) * Cos (ModField * abs(Charge) * t / (Gama * Mass)) + Gama * Mass * (FieldY^2 * vx_t - FieldX*FieldY*vy_t + FieldZ *(FieldZ*vx_t - FieldX*vz_t)) * Sin(ModField * abs(Charge) * t / (Gama * Mass))
-//		x_t_n =((x1_t + x2_t) * ConstFieldCharge)
-//		
-//		//y_t
-//		y1_t = ModField * (Gama*Mass*(-FieldX* vz_t + FieldZ*vx_t) + FieldY*abs(Charge)*t*(FieldX*vx_t + FieldY*vy_t+FieldZ*vz_t) + (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*y_t)
-//		y2_t = Gama * ModField * Mass * (FieldX*vz_t - FieldZ*vx_t) * Cos (ModField * abs(Charge) * t / (Gama * Mass)) + Gama * Mass * (-FieldX*FieldY*vx_t + FieldX^2*vy_t + FieldZ*(FieldZ*vy_t - FieldY*vz_t)) * Sin(ModField * abs(Charge) * t / (Gama * Mass))
-//		y_t_n = ((y1_t + y2_t) * ConstFieldCharge)
-//																														
-//		//z_t
-//		z1_t = ModField * (Gama*Mass*(-FieldY* vx_t + FieldX*vy_t) + FieldZ*abs(Charge)*t*(FieldX*vx_t + FieldY*vy_t +  FieldZ*vz_t) + (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*z_t)
-//		z2_t = Gama * ModField * Mass * (FieldY*vx_t - FieldX*vy_t) * Cos (ModField * abs(Charge) * t / (Gama * Mass)) + Gama * Mass * (-FieldY*FieldZ*vy_t + FieldY^2*vz_t + FieldX*(FieldX*vz_t-FieldZ*vx_t)) * Sin(ModField * abs(Charge) * t / (Gama * Mass))
-//		z_t_n = ((z1_t + z2_t) * ConstFieldCharge)
-//		
-//		//vx_t
-//		vx_t_n = (( ConstFieldCharge * (ModField * (FieldX^2*abs(Charge)*vx_t + FieldX*abs(Charge)*(FieldY*vy_t + FieldZ*vz_t) )  + ModField*abs(Charge)* (FieldY^2*vx_t - FieldX*FieldY*vy_t + FieldZ*(FieldZ*vx_t - FieldX*vz_t)) *Cos (ModField * abs(Charge) * t / Gama / Mass) - (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*(FieldZ*vy_t - FieldY*vz_t)*Sin(ModField * abs(Charge) * t / Gama / Mass))))
-//		
-//		//vy_t
-//		vy_t_n = (( ConstFieldCharge * (ModField * (FieldY^2*abs(Charge)*vy_t + FieldY*abs(Charge)*(FieldZ*vz_t + FieldX*vx_t) )  + ModField*abs(Charge)* (FieldZ^2*vy_t - FieldY*FieldZ*vz_t + FieldX*(FieldX*vy_t - FieldY*vx_t)) *Cos (ModField * abs(Charge) * t / Gama / Mass) - (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*(FieldX*vz_t - FieldZ*vx_t)*Sin(ModField * abs(Charge) * t / Gama / Mass))))
-//	
-//		//vz_t				
-//		vz_t_n = (( ConstFieldCharge * (ModField * (FieldZ^2*abs(Charge)*vz_t + FieldZ*abs(Charge)*(FieldX*vx_t + FieldY*vy_t) )  + ModField*abs(Charge)* (FieldX^2*vz_t - FieldZ*FieldX*vx_t + FieldY*(FieldY*vz_t - FieldZ*vy_t)) *Cos (ModField * abs(Charge) * t / Gama / Mass) - (FieldX^2 + FieldY^2 + FieldZ^2)*abs(Charge)*(FieldY*vx_t - FieldX*vy_t)*Sin(ModField * abs(Charge) * t / Gama / Mass))))
-//		
-//		x_t = x_t_n
-//		y_t = y_t_n
-//		z_t = z_t_n				
-//
-//		vx_t = vx_t_n
-//		vy_t = vy_t_n
-//		vz_t = vz_t_n				
-//		
-//		TrajX[k] = x_t
-//		TrajY[k] = y_t
-//		TrajZ[k] = z_t
-//
-//		Vel_X[k] = vx_t
-//		Vel_Y[k] = vy_t
-//		Vel_Z[k] = vz_t
-//	endfor
-//End
-//
+
 //
 //Window Dynamic_Multipoles() : Panel
 //	PauseUpdate; Silent 1		// building window...
