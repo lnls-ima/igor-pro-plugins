@@ -17,9 +17,9 @@ Menu "CAMTO 14.0.0"
 	"Trajectories", CAMTO_Traj_Panel()
 //	"Integrals and Multipoles", CAMTO_Multipoles()
 //	"Dynamic Multipoles", CAMTO_DynMultipoles()
+	"Results", CAMTO_Results_Panel()
 //	"Find Peaks and Zeros", CAMTO_Peaks()
 //	"Phase Error", CAMTO_PhaseError()
-	"Results", CAMTO_Results_Panel()
 //	"Insertion Devices Results", CAMTO_ID()
 //	"Compare Results", CAMTO_Compare()
 //	"Get Variable From Fieldmaps", CAMTO_GetVariable()
@@ -4742,8 +4742,12 @@ Static Function CalcTrajectories()
 	Make/O/D/N=(nrTraj) trajGridTotalDeflectionZ = 0	
 
 	wnList = ""
-	wnList = wnList + "trajX;trajY;trajZ;trajL;trajVx;trajVy;trajVz;trajBx;trajBy;trajBz;"
-	wnList = wnList + "trajIntBx;trajIntBy;trajIntBz;trajInt2Bx;trajInt2By;trajInt2Bz;"
+	wnList = wnList + "trajX;trajY;trajZ;trajL;"
+	wnList = wnList + "trajVx;trajVy;trajVz;"
+	wnList = wnList + "trajBx;trajBy;trajBz;"
+	wnList = wnList + "trajIntBx;trajIntBy;trajIntBz;"
+	wnList = wnList + "trajInt2Bx;trajInt2By;trajInt2Bz;"
+	
 	numWaves = ItemsInList(wnList)		
 
 	for (i=0; i<nrTraj; i++)
@@ -4763,16 +4767,27 @@ Static Function CalcTrajectories()
 		WAVE trajX, trajY, trajZ, trajL
 		WAVE trajVx, trajVy, trajVz
 		WAVE trajBx, trajBy, trajBz
-
+	
 		// Calculate field integrals over trajectory
-		Integrate/METH=1 trajBx/X=trajL/D=trajIntBx
-		Integrate/METH=1 trajIntBx/X=trajL/D=trajInt2Bx	  
+		Integrate/METH=1 trajBx/X=trajL/D=tempWave
+		Duplicate/O tempWave trajIntBx
 
-		Integrate/METH=1 trajBy/X=trajL/D=trajIntBy
-		Integrate/METH=1 trajIntBy/X=trajL/D=trajInt2By
+		Integrate/METH=1 trajIntBx/X=trajL/D=tempWave	  
+		Duplicate/O tempWave trajInt2Bx
+
+		Integrate/METH=1 trajBy/X=trajL/D=tempWave
+		Duplicate/O tempWave trajIntBy
 		
-		Integrate/METH=1 trajBz/X=trajL/D=trajIntBz
-		Integrate/METH=1 trajIntBz/X=trajL/D=trajInt2Bz
+		Integrate/METH=1 trajIntBy/X=trajL/D=tempWave
+		Duplicate/O tempWave trajInt2By
+		
+		Integrate/METH=1 trajBz/X=trajL/D=tempWave
+		Duplicate/O tempWave trajIntBz
+		
+		Integrate/METH=1 trajIntBz/X=trajL/D=tempWave
+		Duplicate/O tempWave trajInt2Bz
+
+		Killwaves/Z tempWave
 		
 		nptsTraj = numpnts(trajX)
 		
@@ -4868,7 +4883,11 @@ Static Function ShowTrajectories(graphName, relativeDisplacement)
 		
 	endfor
 	
-	ConfigureGraph(graphName, "Longitudinal Position [m]", "Trajectory [m]")
+	if (relativeDisplacement)
+		ConfigureGraph(graphName, "Longitudinal Position [m]", "Trajectory Variation [m]")
+	else
+		ConfigureGraph(graphName, "Longitudinal Position [m]", "Trajectory [m]")
+	endif
 	
 	return 0
 	
