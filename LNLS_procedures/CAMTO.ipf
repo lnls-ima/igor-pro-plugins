@@ -18,7 +18,7 @@ Menu "CAMTO 14.0.0"
 //	"Integrals and Multipoles", CAMTO_Multipoles()
 //	"Dynamic Multipoles", CAMTO_DynMultipoles()
 	"Results", CAMTO_Results_Panel()
-//	"Find Peaks and Zeros", CAMTO_Peaks()
+	"Find Peaks and Zeros", CAMTO_Peaks_Panel()
 //	"Phase Error", CAMTO_PhaseError()
 //	"Insertion Devices Results", CAMTO_ID()
 //	"Compare Results", CAMTO_Compare()
@@ -1571,7 +1571,7 @@ Static Function UpdatePanels()
 //	UpdateDynMultipolesPanel()
 //	UpdateFindPeaksPanel()
 //	UpdateCompareResultsPanel()
-//	UpdateFindPeaksPanel()
+	UpdatePanelPeaks()
 //	UpdatePhaseErrorPanel()
 
 	return 0
@@ -1706,6 +1706,24 @@ Static Function InitializeFieldmapVariables()
 	variable/G TRAJ_END_L
 	variable/G TRAJ_HORIZONTAL_ANGLE
 	variable/G TRAJ_VERTICAL_ANGLE
+	
+	string/G   PEAK_FIELD_AXIS_STR = "By"
+	variable/G PEAK_FIELD_AXIS = 2
+	variable/G PEAK_POS_NEG = 3 
+	variable/G PEAK_PEAKS_AMPL = 5
+	variable/G PEAK_ZEROS_AMPL = 5
+	variable/G PEAK_AVG_PERIOD_PEAKS = 0
+	variable/G PEAK_AVG_PERIOD_ZEROS = 0
+	variable/G PEAK_SELECTED = 0
+	
+	variable/G PEAK_START_YZ
+	variable/G PEAK_END_YZ
+	variable/G PEAK_STEP_YZ
+	variable/G PEAK_START_X
+	variable/G PEAK_END_X
+	variable/G PEAK_STEP_X
+	variable/G PEAK_NPOINTS_YZ = 1
+	variable/G PEAK_POS_X_AUX = 0
 
 //	variable/G StartYZ = 0
 //	variable/G EndYZ = 0
@@ -1914,6 +1932,7 @@ Static Function UpdatePositionVariables()
 	UpdatePositionVariablesExport()
 	UpdatePositionVariablesViewField()
 	UpdatePositionVariablesTraj()
+	UpdatePositionVariablesPeak()
 
 //	NVAR GridMin     = :varsFieldmap:GridMin
 //	NVAR GridMax 	 = :varsFieldmap:GridMax
@@ -2045,6 +2064,38 @@ Static Function UpdatePositionVariablesTraj()
 	return 0
 	
 End 
+
+Static Function UpdatePositionVariablesPeak()
+	NVAR tol = root:varsCAMTO:POSITION_TOLERANCE
+	
+	NVAR startX = :varsFieldmap:LOAD_START_X
+	NVAR endX = :varsFieldmap:LOAD_END_X
+	NVAR stepX = :varsFieldmap:LOAD_STEP_X
+	NVAR startL = :varsFieldmap:LOAD_START_L
+	NVAR endL = :varsFieldmap:LOAD_END_L
+
+	NVAR peakStartX = :varsFieldmap:PEAK_START_X
+	NVAR peakEndX = :varsFieldmap:PEAK_END_X
+	NVAR peakStepX = :varsFieldmap:PEAK_STEP_X
+	NVAR peakStartL = :varsFieldmap:PEAK_START_YZ
+	NVAR peakEndL = :varsFieldmap:PEAK_END_YZ
+
+	WAVE posX
+
+	peakStartX = startX
+	peakEndX = endX
+	peakStepX = stepX
+	peakStartL = startL
+	peakEndL = endL
+
+	FindValue/T=(tol)/V=0 posX
+	if (V_Value != -1)
+		peakStartX = 0
+	endif
+
+	return 0
+	
+End
 
 
 Static Function LoadFieldmap([filename, overwrite])
@@ -5352,6 +5403,432 @@ Static Function UpdatePanelResults()
 End
 // Ok até aqui
 
+Function CAMTO_Peaks_Panel() : Panel
+
+	string windowName = "Peaks"
+	string windowTitle = "Find Peaks"
+	
+	
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return -1
+	endif
+	
+	DoWindow/K $windowName
+	NewPanel/K=1/N=$windowName/W=(1380,60,1703,527) as windowTitle
+	SetDrawLayer UserBack
+
+	variable m, h, h1, l1, l2, l 
+	m = 10	
+	h = 10
+	h1 = 5	
+	l1 = 5
+	l2 = 320
+
+	TitleBox tbxTitle1, pos={0,h}, size={350,25}, fsize=18, frame=0, fstyle=1, anchor=MT, title="Find Peaks and Zeros"
+	h += 35
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	SetVariable svarPosXPeaks, pos={m,h}, size={170,18}, title="Position in X [mm] "
+
+	PopupMenu popupFieldAxisPeak, pos={m+200,h}, size={106,21}, title="Field Axis "
+	PopupMenu popupFieldAxisPeak, mode=1, popvalue="Bx", value=#"\"Bx;By;Bz\""
+	PopupMenu popupFieldAxisPeak, proc=CAMTO_PopupFieldAxisPeak
+	h += 25
+	
+	SetVariable svarStepsYZPeaks, pos={m,h}, size={280,18}, title="Interpolation Step [mm]"
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	CheckBox chbPeaks, pos={m,h}, size={280,20},mode=1, title=""
+	CheckBox chbPeaks, proc=CAMTO_Peaks_ChbPeaks
+	
+	PopupMenu popupPosNegPeaks, pos={m+20,h}, size={150,21}, title="Peaks "
+	PopupMenu popupPosNegPeaks, mode=1, popvalue="Both Peaks", value=#"\"Positive Peaks;Negative Peaks;Both Peaks\""
+	PopupMenu popupPosNegPeaks, proc=CAMTO_Peaks_PopupPosNegPeaks
+	h += 25
+	
+	SetVariable svarPeaksAmpl, pos={m,h}, size={305,18}, title="Peak amplitude related to the maximum [%]"
+	SetVariable svarPeaksAmpl, limits={0,100,1}
+	h += 25
+	
+	Button btnPeaks, pos={m,h}, size={150,55}, fsize=14, fstyle=1, disable=2, title="Find Peaks"
+	Button btnPeaks, proc=CAMTO_Peaks_BtnFindPeaks
+	
+	TitleBox tbxTitle2, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
+	ValDisplay vldAvgPeriodPeaks,pos={m+180,h+20},size={120,18}
+	h += 60
+	
+	Button btnPeaksGraph, pos={m,h},size={140,24}, fstyle=1, disable=2, title="Show Peaks"
+	Button btnPeaksGraph, proc=CAMTO_Peaks_BtnGraphPeaks
+	
+	Button btnPeaksTable, pos={m+170,h},size={140,24}, fstyle=1, disable=2, title="Show Table"
+	Button btnPeaksTable, proc=CAMTO_Peaks_BtnTablePeaks
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	CheckBox chbZeros, pos={m,h}, size={280,20},mode=1, title="\tZeros "
+	CheckBox chbZeros, proc=CAMTO_Peaks_ChbZeros
+	h += 25
+	
+	SetVariable svarZerosAmpl,pos={m,h},size={305,18},title="Stop the search for amplitude lower than [%]"
+	SetVariable svarZerosAmpl,limits={0,100,1}
+	h += 25
+	
+	Button btnZeros,pos={m,h},size={150,55},fsize=14,fstyle=1,disable=2,title="Find Zeros"
+	Button btnZeros,proc=CAMTO_Peaks_BtnZeros
+	
+	TitleBox tbxTitle3, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
+	ValDisplay vldAvgPeriodZeros,pos={m+180,h+20},size={120,18}
+	h += 60
+	
+	Button btnZerosGraph, pos={m,h},size={140,24}, fstyle=1, disable=2, title="Show Zeros"
+	Button btnZerosGraph, proc=CAMTO_Peaks_BtnGraphZeros
+	
+	Button btnZerosTable, pos={m+170,h},size={140,24}, fstyle=1, disable=2, title="Show Table"
+	Button btnZerosTable, proc=CAMTO_Peaks_BtnTableZeros
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	SetVariable svarCurrentFieldmap, win=$windowName, pos={m, h}, size={240,20}, noedit=1, title="Current Fieldmap "
+	SetVariable svarCurrentFieldmap, win=$windowName, value=root:varsCAMTO:FIELDMAP_FOLDER
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	UpdatePanelPeaks()
+	
+	return 0
+
+End
+
+Static Function UpdatePanelPeaks()
+
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+
+	string windowName = "Peaks"
+
+	if (WinType(windowName)==0)
+		return -1
+	endif
+	
+	UpdateFieldmapOptions(windowName)
+
+	if(strlen(df)>0)
+		NVAR startX = root:$(df):varsFieldmap:PEAK_START_X
+		NVAR endX = root:$(df):varsFieldmap:PEAK_END_X
+		NVAR stepX = root:$(df):varsFieldmap:PEAK_STEP_X
+		NVAR stepYZ = root:$(df):varsFieldmap:PEAK_STEP_YZ
+		NVAR fieldAxisPeak = root:$(df):varsFieldMap:PEAK_FIELD_AXIS
+		NVAR peaksPosNeg = root:$(df):varsFieldMap:PEAK_POS_NEG
+		NVAR peaksPeaksAmpl = root:$(df):varsFieldMap:PEAK_PEAKS_AMPL
+		NVAR peaksZerosAmpl = root:$(df):varsFieldMap:PEAK_ZEROS_AMPL
+		NVAR peaksSelected = root:$(df):varsFieldMap:PEAK_SELECTED
+
+		SetVariable svarPosXPeaks, win=$windowName, value=startX
+		SetVariable svarPosXPeaks, win=$windowName,limits={startX, endX, stepX}
+		PopupMenu popupFieldAxisPeak, win=$windowName,disable=0, mode=fieldAxisPeak
+		SetVariable svarStepsYZPeaks, win=$windowName,value=stepYZ
+		SetVariable svarStepsYZPeaks, win=$windowName,limits={0,inf,0}
+
+		PopupMenu popupPosNegPeak, win=$windowName, mode=peaksPosNeg		
+		SetVariable svarPeaksAmpl, win=$windowName,value=peaksPeaksAmpl
+		SetVariable svarZerosAmpl, win=$windowName,value=peaksZerosAmpl
+		ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS" )
+		ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS" )
+		
+		CheckBox chbPeaks, win=$windowName, disable=0, value=0
+		CheckBox chbZeros, win=$windowName, disable=0, value=0
+		
+		if (peaksSelected == 1)
+			CheckBox chbPeaks, win=$windowName, value=1		
+			PopupMenu popupPosNegPeak,win=$windowName,disable=0
+			SetVariable svarAmplPeaks,win=$windowName,disable=0
+			ValDisplay AvgPeriodPeaks,win=$windowName,disable=0
+			TitleBox tbxTitle2,win=$windowName,disable=0
+			Button btnPeaks, win=$windowName, disable=0
+			Button btnPeaksGraph,win=$windowName, disable=0
+			Button btnPeaksTable,win=$windowName, disable=0
+			ValDisplay vldAvgPeriodZeros,win=$windowName,disable=2
+			SetVariable svarAmplZeros,win=$windowName,disable=2
+			TitleBox tbxTitle3,win=$windowName,disable=2
+			Button btnZeros, win=$windowName, disable=2
+			Button btnZerosGraph,win=$windowName, disable=2
+			Button btnZerosTable,win=$windowName, disable=2
+		else
+			CheckBox chbZeros, win=$windowName, value=1
+			PopupMenu popupPosNegPeak,win=$windowName,disable=2
+			SetVariable svarAmplPeaks,win=$windowName,disable=2
+			ValDisplay AvgPeriodPeaks,win=$windowName,disable=2
+			TitleBox tbxTitle2,win=$windowName,disable=2
+			Button btnPeaks, win=$windowName, disable=2
+			Button btnPeaksGraph,win=$windowName, disable=2
+			Button btnPeaksTable,win=$windowName, disable=2
+			ValDisplay vldAvgPeriodZeros,win=$windowName,disable=0
+			SetVariable svarAmplZeros,win=$windowName,disable=0
+			TitleBox tbxTitle3,win=$windowName,disable=0
+			Button btnZeros, win=$windowName, disable=0
+			Button btnZerosGraph,win=$windowName, disable=0
+			Button btnZerosTable,win=$windowName, disable=0
+		endif
+		
+	else
+		CheckBox chbPeaks, win=$windowName, disable=2
+		CheckBox chbZeros, win=$windowName, disable=2
+		PopupMenu popupPosNegPeak,win=$windowName,disable=2
+		SetVariable svarAmplPeaks,win=$windowName,disable=2
+		ValDisplay vldAvgPeriodPeaks,win=$windowName,disable=2
+		TitleBox tbxTitle2,win=$windowName,disable=2
+		Button btnPeaks, win=$windowName, disable=2
+		Button btnPeaksGraph,win=$windowName, disable=2
+		Button btnPeaksTable,win=$windowName, disable=2
+		ValDisplay vldAvgPeriodZeros,win=$windowName,disable=2
+		SetVariable svarAmplZeros,win=$windowName,disable=2
+		TitleBox tbxTitle3,win=$windowName,disable=2
+		Button btnZeros, win=$windowName, disable=2
+		Button btnZerosGraph,win=$windowName, disable=2
+		Button btnZerosTable,win=$windowName, disable=2
+	endif
+	
+End
+
+Function CAMTO_Peaks_ChbPeaks(ca) : CheckBoxControl
+	STRUCT WMCheckboxAction& ca
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+	
+	NVAR peaksSelected = root:$(df):varsFieldMap:PEAK_SELECTED
+
+	switch(ca.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			if (ca.checked)
+				peaksSelected = 1
+				UpdatePanelPeaks()
+			endif
+			
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_Peaks_ChbZeros(ca) : CheckBoxControl
+	STRUCT WMCheckboxAction& ca
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+	
+	NVAR peaksSelected = root:$(df):varsFieldMap:PEAK_SELECTED
+
+	switch(ca.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			if (ca.checked)
+				peaksSelected = 0
+				UpdatePanelPeaks()
+			endif
+			
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_PopupFieldAxisPeak(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+
+	SVAR fieldAxisPeakStr = root:$(df):varsFieldMap:PEAK_FIELD_AXIS_STR
+	NVAR fieldAxisPeak    = root:$(df):varsFieldMap:PEAK_FIELD_AXIS 
+	
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			fieldAxisPeak = pa.popNum
+			
+			if (fieldAxisPeak == 1)
+				fieldAxisPeakStr = "Bx"
+			elseif (fieldAxisPeak == 2) 
+				fieldAxisPeakStr = "By"
+			elseif (fieldAxisPeak == 3)
+				fieldAxisPeakStr = "Bz"
+			endif
+
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_Peaks_PopupPosNegPeaks(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+
+	NVAR peaksPosNeg = root:$(df):varsFieldMap:PEAK_POS_NEG
+	peaksPosNeg = pa.popNum
+	
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			peaksPosNeg = pa.popNum
+
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_Peaks_BtnFindPeaks(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			FindPeaks()
+			UpdatePanelPeaks()
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+Function CAMTO_Peaks_BtnZeros(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			FindZeros()
+			UpdatePanelPeaks()
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+Function CAMTO_Peaks_BtnGraphPeaks(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			string graphName
+			graphName = ba.win + "Graph"
+			
+			ShowPeaks(graphName)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+Function CAMTO_Peaks_BtnGraphZeros(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			string graphName
+			graphName = ba.win + "Graph"
+			
+			ShowZeros(graphName)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+Function CAMTO_Peaks_BtnTablePeaks(ba) : ButtonControl
+	struct WMButtonAction &ba
+	
+		switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			ShowTablePeaks()
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+Function CAMTO_Peaks_BtnTableZeros(ba) : ButtonControl
+	struct WMButtonAction &ba
+	
+		switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			ShowTableZeros()
+			
+			break
+	endswitch
+	
+	return 0
+
+End
 
 //Window Results() : Panel
 //	PauseUpdate; Silent 1		// building window...
