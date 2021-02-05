@@ -5830,6 +5830,113 @@ Function CAMTO_Peaks_BtnTableZeros(ba) : ButtonControl
 
 End
 
+Static Function FindPeaks()
+
+	NVAR peaksAmpl     	= :varsFieldMap:PEAK_PEAKS_AMPL
+	NVAR peaksPosNeg    = :varsFieldMap:PEAK_POS_NEG
+	NVAR fieldAxisPeak  = :varsFieldMap:PEAK_FIELD_AXIS	
+	NVAR posX = :varsFieldmap:PEAK_START_X
+	
+	if (fieldAxisPeak == 1)
+		Wave wn = $("Bx_X"+num2str(posX/1000))
+		
+	elseif (fieldAxisPeak == 2)
+		Wave wn = $("By_X"+num2str(posX/1000))	
+
+	elseif (fieldAxisPeak == 3)	
+		Wave wn = $("Bz_X"+num2str(posX/1000))	
+
+	endif
+	
+	variable np
+	np = DimSize(wn,0)-1
+  
+	Variable peaksFoundPos=0
+	Variable peaksFoundNeg=0
+	Variable startP=0
+	Variable endP= np-1
+	
+	Killwaves/Z peakPositionsXPos, peakPositionsYPos, peakPositionsXNeg, peakPositionsYNeg
+	print(peaksPosNeg)
+	if(peaksPosNeg == 1)
+		Make/O/N=(np) peakPositionsXPos= NaN, peakPositionsYPos= NaN  
+		do
+			FindPeak/M=(peaksAmpl/100)/P/Q/R=[startP,endP] wn
+
+    		if(V_Flag != 0)
+        		break
+    		endif
+   
+    		peakPositionsXPos[peaksFoundPos]=pnt2x(wn,V_PeakLoc)
+    		peakPositionsYPos[peaksFoundPos]=V_PeakVal
+    		peaksFoundPos += 1
+   
+    		startP= V_TrailingEdgeLoc+1
+		while(peaksFoundPos < np)
+		
+	elseif(peaksPosNeg == 2)
+		Make/O/N=(np) peakPositionsXNeg= NaN, peakPositionsYNeg= NaN  
+		do
+			FindPeak/M=(peaksAmpl/100)/N/P/Q/R=[startP,endP] wn
+			
+    		if(V_Flag != 0)
+        		break
+    		endif
+   
+    		peakPositionsXNeg[peaksFoundNeg]=pnt2x(wn,V_PeakLoc)
+    		peakPositionsYNeg[peaksFoundNeg]=V_PeakVal
+    		peaksFoundNeg += 1
+   
+    		startP= V_TrailingEdgeLoc+1
+		while(peaksFoundNeg < np)
+		
+	elseif(peaksPosNeg == 3)
+		Make/O/N=(np) peakPositionsXPos= NaN, peakPositionsYPos= NaN  
+		Make/O/N=(np) peakPositionsXNeg= NaN, peakPositionsYNeg= NaN  
+		do
+			FindPeak/M=(peaksAmpl/100)/P/Q/R=[startP,endP] wn
+
+    		if(V_Flag != 0)
+        		break
+    		endif
+   
+    		peakPositionsXPos[peaksFoundPos]=pnt2x(wn,V_PeakLoc)
+    		peakPositionsYPos[peaksFoundPos]=V_PeakVal
+    		peaksFoundPos += 1
+   
+    		startP= V_TrailingEdgeLoc+1
+		while(peaksFoundPos < np)
+		
+		startP=0
+		do
+			FindPeak/M=(peaksAmpl/100)/N/P/Q/R=[startP,endP] wn
+
+    		if(V_Flag != 0)
+        		break
+    		endif
+   
+    		peakPositionsXNeg[peaksFoundNeg]=pnt2x(wn,V_PeakLoc)
+    		peakPositionsYNeg[peaksFoundNeg]=V_PeakVal
+    		peaksFoundNeg += 1
+   
+    		startP= V_TrailingEdgeLoc+1
+		while(peaksFoundNeg < np)
+	endif
+	
+	if(peaksFoundPos)
+    	Redimension/N=(peaksFoundPos) peakPositionsXPos, peakPositionsYPos
+	else
+    	KillWaves/Z peakPositionsXPos, peakPositionsYPos
+	endif
+	
+	if(peaksFoundNeg)
+    	Redimension/N=(peaksFoundNeg) peakPositionsXNeg, peakPositionsYNeg
+	else
+    	KillWaves/Z peakPositionsXNeg, peakPositionsYNeg
+	endif
+	
+End
+
 //Window Results() : Panel
 //	PauseUpdate; Silent 1		// building window...
 //
