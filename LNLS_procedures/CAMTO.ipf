@@ -5937,6 +5937,73 @@ Static Function FindPeaks()
 	
 End
 
+Static Function FindZeros()
+
+	NVAR posX				= :varsFieldmap:PEAK_START_X
+	NVAR fieldAxisPeak  = :varsFieldMap:PEAK_FIELD_AXIS	
+	NVAR zerosAmpl     	= :varsFieldMap:PEAK_ZEROS_AMPL
+	NVAR avgPeriodZeros = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS
+
+	variable i, idx0, idx1
+	variable baseline, startP, endP
+	variable pos0, pos1, field0, field1
+	
+	if (fieldAxisPeak == 1)
+		Wave wn = $("Bx_X"+num2str(posX/1000))
+		
+	elseif (fieldAxisPeak == 2)
+		Wave wn = $("By_X"+num2str(posX/1000))	
+
+	elseif (fieldAxisPeak == 3)	
+		Wave wn = $("Bz_X"+num2str(posX/1000))	
+
+	endif
+	
+	Wave posL
+	
+	variable np
+	np = DimSize(wn,0)-1
+
+	baseline = (zerosAmpl/100)*WaveMax(wn)
+	FindLevels/EDGE=0/P/Q/D=levels wn, baseline
+	if (V_LevelsFound)
+		startP = Floor(levels[0])
+		endP = Ceil(levels[numpnts(levels)-1])
+	else
+		startP = 0
+		endP = np-1
+	endif
+	Killwaves/Z levels
+
+	FindLevels/EDGE=0/P/Q/D=levels/R=(startP,endP) wn, 0
+	Make/D/O/N=(V_LevelsFound) PositionZeros	
+	Make/D/O/N=(V_LevelsFound) ValueZeros	
+	
+	for (i=0; i<V_LevelsFound; i=i+1)
+		idx0 = Floor(levels[i])
+		idx1 = Ceil(levels[i])
+		pos0 = posL[idx0]
+		pos1 = posL[idx1]
+		field0 = wn[idx0]
+		field1 = wn[idx1]
+		PositionZeros[i] = pos0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + pos1*((levels[i] - idx0)/(idx1 -idx0))
+		ValueZeros[i] = field0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + field1*((levels[i] - idx0)/(idx1 -idx0))
+	endfor
+	
+	Killwaves/Z levels
+	
+	Make/O/N=(numpnts(positionZeros) - 1) positionZerosDiff
+	for (i=0; i<numpnts(positionZerosDiff); i=i+1)
+		positionZerosDiff[i] = positionZeros[i+1] - positionZeros[i]
+	endfor
+	variable AvgPeriod = Mean(positionZerosDiff)
+
+	avgPeriodZeros = 2*AvgPeriod*1000
+
+	Killwaves/Z positionZerosDiff
+	
+End
+
 //Window Results() : Panel
 //	PauseUpdate; Silent 1		// building window...
 //
