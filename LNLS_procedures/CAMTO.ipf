@@ -4644,7 +4644,7 @@ Function CAMTO_Traj_BtnCalcTrajectories(ba) : ButtonControl
 			endif
 			
 			CalcTrajectories()
-			UpdateResultsPanel()
+			UpdatePanelResults()
 			
 			break
 	endswitch
@@ -4714,7 +4714,7 @@ Function CAMTO_Traj_BtnApplyToAll(ba) : ButtonControl
 			fieldmapFolder = dfc
 			SetDataFolder df
 			
-			UpdateResultsPanel()
+			UpdatePanelResults()
 			
 			break
 	endswitch
