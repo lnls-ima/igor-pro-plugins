@@ -114,6 +114,9 @@ Function CAMTO_Init()
 	Make/N=3 colorH = {0, 0, 65000}
 	Make/N=3 colorV = {65000, 0, 0}
 	Make/N=3 colorL = {0, 40000, 0}
+	Make/N=3 colorP = {65000, 0, 0}
+	Make/N=3 colorN = {0, 0, 65000}
+	Make/N=3 colorZ = {0, 0, 0}
 	Make/N=3 colorGrid = {35000, 35000, 35000}
 	
 	SetDataFolder root:
@@ -5407,12 +5410,18 @@ Function CAMTO_Peaks_Panel() : Panel
 
 	string windowName = "Peaks"
 	string windowTitle = "Find Peaks"
-	
+	string graphName = "Graph"
+	string annotationName = "PeakColors"
+	string annotationStr = ""
 	
 	if (DataFolderExists("root:varsCAMTO")==0)
 		DoAlert 0, "CAMTO variables not found."
 		return -1
 	endif
+	
+	WAVE colorP = root:wavesCAMTO:colorP
+	WAVE colorN = root:wavesCAMTO:colorN
+	WAVE colorZ = root:wavesCAMTO:colorZ
 	
 	DoWindow/K $windowName
 	NewPanel/K=1/N=$windowName/W=(1380,60,1703,527) as windowTitle
@@ -5509,6 +5518,12 @@ Function CAMTO_Peaks_Panel() : Panel
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
+	
+	Display/W=(340,10,1140,545)/HOST=$windowName/N=$graphName	
+	sprintf annotationStr, "%s\\K(%d,%d,%d) Positive Peaks\r", annotationStr, colorP[0], colorP[1], colorP[2]
+	sprintf annotationStr, "%s\\K(%d,%d,%d) Negative Peaks\r", annotationStr, colorN[0], colorN[1], colorN[2]
+	sprintf annotationStr, "%s\\K(%d,%d,%d) Zeros", annotationStr, colorZ[0], colorZ[1], colorZ[2]
+	TextBox/W=$windowName#$graphName/A=LT/C/N=$annotationName annotationStr
 	
 	UpdatePanelPeaks()
 	
@@ -5762,7 +5777,7 @@ Function CAMTO_Peaks_BtnGraphPeaks(ba) : ButtonControl
 			endif
 			
 			string graphName
-			graphName = ba.win + "Graph"
+			graphName = ba.win + "#Graph"
 			
 			ShowPeaks(graphName)
 			
@@ -5783,7 +5798,7 @@ Function CAMTO_Peaks_BtnGraphZeros(ba) : ButtonControl
 			endif
 			
 			string graphName
-			graphName = ba.win + "Graph"
+			graphName = ba.win + "#Graph"
 			
 			ShowZeros(graphName)
 			
@@ -5803,7 +5818,10 @@ Function CAMTO_Peaks_BtnTablePeaks(ba) : ButtonControl
 				return -1
 			endif
 			
-			ShowTablePeaks()
+			Wave peakPositionsYPos, peakPositionsXPos, peakPositionsYNeg, peakPositionsXNeg
+			
+			Edit/N=PeaksTable/K=1 peakPositionsXPos, peakPositionsYPos
+			Edit/N=PeaksTable/K=1 peakPositionsXNeg, peakPositionsYNeg
 			
 			break
 	endswitch
@@ -5821,7 +5839,9 @@ Function CAMTO_Peaks_BtnTableZeros(ba) : ButtonControl
 				return -1
 			endif
 			
-			ShowTableZeros()
+			Wave ValueZeros, PositionZeros
+			
+			Edit/N=ZerosTable/K=1 PositionZeros, ValueZeros
 			
 			break
 	endswitch
@@ -6002,6 +6022,78 @@ Static Function FindZeros()
 
 	Killwaves/Z positionZerosDiff
 	
+End
+
+Static Function ShowPeaks(graphName)
+	String graphName
+
+	NVAR posX = :varsFieldmap:PEAK_START_X
+	NVAR fieldAxisPeak = :varsFieldMap:PEAK_FIELD_AXIS
+	
+	Wave/Z peakPositionsYPos
+	Wave/Z peakPositionsXPos
+	Wave/Z peakPositionsYNeg
+	Wave/Z peakPositionsXNeg
+	
+	if (fieldAxisPeak == 1)
+		Wave wn = $("Bx_X"+num2str(posX/1000))
+			
+	elseif (fieldAxisPeak == 2)
+		Wave wn = $("By_X"+num2str(posX/1000))
+	
+	elseif (fieldAxisPeak == 3)	
+		Wave wn = $("Bz_X"+num2str(posX/1000))
+	
+	endif
+	
+	WAVE colorP = root:wavesCAMTO:colorP
+	WAVE colorN = root:wavesCAMTO:colorN
+	
+	DeleteTracesFromGraph(graphName)
+	
+	if ((WaveExists(peakPositionsYPos)) || (WaveExists(peakPositionsYNeg)))
+		AppendToGraph/W=$graphName/C=(0,0,0) wn
+		if (WaveExists(peakPositionsYPos))
+   		AppendToGraph/W=$graphName peakPositionsYPos vs peakPositionsXPos
+   		ModifyGraph/W=$graphName mode(peakPositionsYPos)=3,marker(peakPositionsYPos)=19, rgb(peakPositionsYPos)=(colorP[0], colorP[1], colorP[2])
+   	elseif (WaveExists(peakPositionsYNeg))
+   		AppendToGraph/W=$graphName peakPositionsYNeg vs peakPositionsXNeg
+   		ModifyGraph/W=$graphName mode(peakPositionsYNeg)=3,marker(peakPositionsYNeg)=19, rgb(peakPositionsYNeg)=(colorN[0], colorN[1], colorN[2])
+   	endif
+   endif
+End
+
+Static Function ShowZeros(graphName)
+	String graphName
+		
+	NVAR posX       = :varsFieldmap:PEAK_START_X
+	NVAR fieldAxisPeak = :varsFieldMap:PEAK_FIELD_AXIS
+
+	Wave posL
+	Wave/Z ValueZeros
+	Wave/Z PositionZeros
+	
+	if (fieldAxisPeak == 1)
+		Wave wn = $("Bx_X"+num2str(posX/1000))
+			
+	elseif (fieldAxisPeak == 2)
+		Wave wn = $("By_X"+num2str(posX/1000))
+	
+	elseif (fieldAxisPeak == 3)	
+		Wave wn = $("Bz_X"+num2str(posX/1000))
+	
+	endif
+	
+	WAVE colorZ = root:wavesCAMTO:colorZ
+	
+	DeleteTracesFromGraph(graphName)
+	
+	if ((WaveExists(ValueZeros)) || (WaveExists(PositionZeros)))	
+		AppendToGraph/W=$graphName ValueZeros vs PositionZeros
+		ModifyGraph/W=$graphName mode(ValueZeros)=3,marker(ValueZeros)=19, rgb(ValueZeros)=(colorZ[0], colorZ[1], colorZ[2])		
+		AppendToGraph/W=$graphName/C=(0,0,0) wn vs posL
+		
+	endif
 End
 
 //Window Results() : Panel
