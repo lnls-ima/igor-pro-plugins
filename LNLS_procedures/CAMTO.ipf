@@ -1572,7 +1572,6 @@ Static Function UpdatePanels()
 //	UpdateHallProbePanel()
 //	UpdateIntegralsMultipolesPanel()
 //	UpdateDynMultipolesPanel()
-//	UpdateFindPeaksPanel()
 //	UpdateCompareResultsPanel()
 	UpdatePanelPeaks()
 //	UpdatePhaseErrorPanel()
@@ -1715,18 +1714,22 @@ Static Function InitializeFieldmapVariables()
 	variable/G PEAK_POS_NEG = 3 
 	variable/G PEAK_PEAKS_AMPL = 5
 	variable/G PEAK_ZEROS_AMPL = 5
-	variable/G PEAK_AVG_PERIOD_PEAKS = 0
-	variable/G PEAK_AVG_PERIOD_ZEROS = 0
+	variable/G PEAK_AVG_PERIOD_PEAKS_POS_X = 0
+	variable/G PEAK_AVG_PERIOD_PEAKS_POS_Y = 0
+	variable/G PEAK_AVG_PERIOD_PEAKS_POS_Z = 0
+	variable/G PEAK_AVG_PERIOD_PEAKS_NEG_X = 0
+	variable/G PEAK_AVG_PERIOD_PEAKS_NEG_Y = 0
+	variable/G PEAK_AVG_PERIOD_PEAKS_NEG_Z = 0
+	variable/G PEAK_AVG_PERIOD_ZEROS_X = 0
+	variable/G PEAK_AVG_PERIOD_ZEROS_Y = 0
+	variable/G PEAK_AVG_PERIOD_ZEROS_Z = 0
 	variable/G PEAK_SELECTED = 0
 	
-	variable/G PEAK_START_YZ
-	variable/G PEAK_END_YZ
-	variable/G PEAK_STEP_YZ
+	variable/G PEAK_START_L
+	variable/G PEAK_END_L
 	variable/G PEAK_START_X
 	variable/G PEAK_END_X
 	variable/G PEAK_STEP_X
-	variable/G PEAK_NPOINTS_YZ = 1
-	variable/G PEAK_POS_X_AUX = 0
 
 //	variable/G StartYZ = 0
 //	variable/G EndYZ = 0
@@ -2080,8 +2083,8 @@ Static Function UpdatePositionVariablesPeak()
 	NVAR peakStartX = :varsFieldmap:PEAK_START_X
 	NVAR peakEndX = :varsFieldmap:PEAK_END_X
 	NVAR peakStepX = :varsFieldmap:PEAK_STEP_X
-	NVAR peakStartL = :varsFieldmap:PEAK_START_YZ
-	NVAR peakEndL = :varsFieldmap:PEAK_END_YZ
+	NVAR peakStartL = :varsFieldmap:PEAK_START_L
+	NVAR peakEndL = :varsFieldmap:PEAK_END_L
 
 	WAVE posX
 
@@ -5414,6 +5417,7 @@ Function CAMTO_Peaks_Panel() : Panel
 	string annotationName = "PeakColors"
 	string annotationStr = ""
 	
+	
 	if (DataFolderExists("root:varsCAMTO")==0)
 		DoAlert 0, "CAMTO variables not found."
 		return -1
@@ -5424,7 +5428,7 @@ Function CAMTO_Peaks_Panel() : Panel
 	WAVE colorZ = root:wavesCAMTO:colorZ
 	
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(1380,60,1703,527) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(440,60,1703,527) as windowTitle
 	SetDrawLayer UserBack
 
 	variable m, h, h1, l1, l2, l 
@@ -5446,11 +5450,19 @@ Function CAMTO_Peaks_Panel() : Panel
 	PopupMenu popupFieldAxisPeak, pos={m+200,h}, size={106,21}, title="Field Axis "
 	PopupMenu popupFieldAxisPeak, mode=1, popvalue="Bx", value=#"\"Bx;By;Bz\""
 	PopupMenu popupFieldAxisPeak, proc=CAMTO_PopupFieldAxisPeak
-	h += 25
-	
-	SetVariable svarStepsYZPeaks, pos={m,h}, size={280,18}, title="Interpolation Step [mm]"
 	h += 30
 	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	TitleBox tbxTitle2, pos={0,h}, size={320,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Longitudinal Position"
+	h += 25
+	
+	SetVariable svarStartLPeaks, pos={m,h}, size={130,20}, title="Start L [mm]"
+	SetVariable svarEndLPeaks, pos={m+160,h}, size={130,20}, title="End L [mm]"
+	h += 30
+		
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
@@ -5470,7 +5482,7 @@ Function CAMTO_Peaks_Panel() : Panel
 	Button btnPeaks, pos={m,h}, size={150,55}, fsize=14, fstyle=1, disable=2, title="Find Peaks"
 	Button btnPeaks, proc=CAMTO_Peaks_BtnFindPeaks
 	
-	TitleBox tbxTitle2, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
+	TitleBox tbxTitle3, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
 	ValDisplay vldAvgPeriodPeaks,pos={m+180,h+20},size={120,18}
 	h += 60
 	
@@ -5496,7 +5508,7 @@ Function CAMTO_Peaks_Panel() : Panel
 	Button btnZeros,pos={m,h},size={150,55},fsize=14,fstyle=1,disable=2,title="Find Zeros"
 	Button btnZeros,proc=CAMTO_Peaks_BtnZeros
 	
-	TitleBox tbxTitle3, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
+	TitleBox tbxTitle4, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
 	ValDisplay vldAvgPeriodZeros,pos={m+180,h+20},size={120,18}
 	h += 60
 	
@@ -5547,7 +5559,8 @@ Static Function UpdatePanelPeaks()
 		NVAR startX = root:$(df):varsFieldmap:PEAK_START_X
 		NVAR endX = root:$(df):varsFieldmap:PEAK_END_X
 		NVAR stepX = root:$(df):varsFieldmap:PEAK_STEP_X
-		NVAR stepYZ = root:$(df):varsFieldmap:PEAK_STEP_YZ
+		NVAR startL = root:$(df):varsFieldmap:PEAK_START_L
+		NVAR endL = root:$(df):varsFieldmap:PEAK_END_L
 		NVAR fieldAxisPeak = root:$(df):varsFieldMap:PEAK_FIELD_AXIS
 		NVAR peaksPosNeg = root:$(df):varsFieldMap:PEAK_POS_NEG
 		NVAR peaksPeaksAmpl = root:$(df):varsFieldMap:PEAK_PEAKS_AMPL
@@ -5557,14 +5570,34 @@ Static Function UpdatePanelPeaks()
 		SetVariable svarPosXPeaks, win=$windowName, value=startX
 		SetVariable svarPosXPeaks, win=$windowName,limits={startX, endX, stepX}
 		PopupMenu popupFieldAxisPeak, win=$windowName,disable=0, mode=fieldAxisPeak
-		SetVariable svarStepsYZPeaks, win=$windowName,value=stepYZ
-		SetVariable svarStepsYZPeaks, win=$windowName,limits={0,inf,0}
+		SetVariable svarStartLPeaks, win=$windowName,value=startL
+		SetVariable svarEndLPeaks, win=$windowName,value=endL
 
 		PopupMenu popupPosNegPeak, win=$windowName, mode=peaksPosNeg		
 		SetVariable svarPeaksAmpl, win=$windowName,value=peaksPeaksAmpl
 		SetVariable svarZerosAmpl, win=$windowName,value=peaksZerosAmpl
-		ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS" )
-		ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS" )
+		if (fieldAxisPeak == 1)
+			ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS_X" )
+			if (peaksPosNeg == 1 || peaksPosNeg == 3)
+				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_X" )
+			elseif (peaksPosNeg == 2)
+				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_X" )
+			endif
+		elseif (fieldAxisPeak == 2)
+			ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Y" )
+			if (peaksPosNeg == 1 || peaksPosNeg == 3)
+				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Y" )
+			elseif (peaksPosNeg == 2)
+				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Y" )
+			endif
+		elseif (fieldAxisPeak == 3)
+			ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Z" )
+			if (peaksPosNeg == 1 || peaksPosNeg == 3)
+				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z" )
+			elseif (peaksPosNeg == 2)
+				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Z" )
+			endif
+		endif
 		
 		CheckBox chbPeaks, win=$windowName, disable=0, value=0
 		CheckBox chbZeros, win=$windowName, disable=0, value=0
@@ -5573,14 +5606,14 @@ Static Function UpdatePanelPeaks()
 			CheckBox chbPeaks, win=$windowName, value=1		
 			PopupMenu popupPosNegPeak,win=$windowName,disable=0
 			SetVariable svarAmplPeaks,win=$windowName,disable=0
-			ValDisplay AvgPeriodPeaks,win=$windowName,disable=0
-			TitleBox tbxTitle2,win=$windowName,disable=0
+			ValDisplay vldAvgPeriodPeaks,win=$windowName,disable=0
+			TitleBox tbxTitle3,win=$windowName,disable=0
 			Button btnPeaks, win=$windowName, disable=0
 			Button btnPeaksGraph,win=$windowName, disable=0
 			Button btnPeaksTable,win=$windowName, disable=0
 			ValDisplay vldAvgPeriodZeros,win=$windowName,disable=2
 			SetVariable svarAmplZeros,win=$windowName,disable=2
-			TitleBox tbxTitle3,win=$windowName,disable=2
+			TitleBox tbxTitle4,win=$windowName,disable=2
 			Button btnZeros, win=$windowName, disable=2
 			Button btnZerosGraph,win=$windowName, disable=2
 			Button btnZerosTable,win=$windowName, disable=2
@@ -5588,14 +5621,14 @@ Static Function UpdatePanelPeaks()
 			CheckBox chbZeros, win=$windowName, value=1
 			PopupMenu popupPosNegPeak,win=$windowName,disable=2
 			SetVariable svarAmplPeaks,win=$windowName,disable=2
-			ValDisplay AvgPeriodPeaks,win=$windowName,disable=2
-			TitleBox tbxTitle2,win=$windowName,disable=2
+			ValDisplay vldAvgPeriodPeaks,win=$windowName,disable=2
+			TitleBox tbxTitle3,win=$windowName,disable=2
 			Button btnPeaks, win=$windowName, disable=2
 			Button btnPeaksGraph,win=$windowName, disable=2
 			Button btnPeaksTable,win=$windowName, disable=2
 			ValDisplay vldAvgPeriodZeros,win=$windowName,disable=0
 			SetVariable svarAmplZeros,win=$windowName,disable=0
-			TitleBox tbxTitle3,win=$windowName,disable=0
+			TitleBox tbxTitle4,win=$windowName,disable=0
 			Button btnZeros, win=$windowName, disable=0
 			Button btnZerosGraph,win=$windowName, disable=0
 			Button btnZerosTable,win=$windowName, disable=0
@@ -5607,13 +5640,13 @@ Static Function UpdatePanelPeaks()
 		PopupMenu popupPosNegPeak,win=$windowName,disable=2
 		SetVariable svarAmplPeaks,win=$windowName,disable=2
 		ValDisplay vldAvgPeriodPeaks,win=$windowName,disable=2
-		TitleBox tbxTitle2,win=$windowName,disable=2
+		TitleBox tbxTitle3,win=$windowName,disable=2
 		Button btnPeaks, win=$windowName, disable=2
 		Button btnPeaksGraph,win=$windowName, disable=2
 		Button btnPeaksTable,win=$windowName, disable=2
 		ValDisplay vldAvgPeriodZeros,win=$windowName,disable=2
 		SetVariable svarAmplZeros,win=$windowName,disable=2
-		TitleBox tbxTitle3,win=$windowName,disable=2
+		TitleBox tbxTitle4,win=$windowName,disable=2
 		Button btnZeros, win=$windowName, disable=2
 		Button btnZerosGraph,win=$windowName, disable=2
 		Button btnZerosTable,win=$windowName, disable=2
@@ -5854,173 +5887,380 @@ Static Function FindPeaks()
 
 	NVAR peaksAmpl     	= :varsFieldMap:PEAK_PEAKS_AMPL
 	NVAR peaksPosNeg    = :varsFieldMap:PEAK_POS_NEG
-	NVAR fieldAxisPeak  = :varsFieldMap:PEAK_FIELD_AXIS	
+	NVAR avgPeriodPeaksPosX = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_x
+	NVAR avgPeriodPeaksPosY = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Y
+	NVAR avgPeriodPeaksPosZ = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z
+	NVAR avgPeriodPeaksNegX = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_x
+	NVAR avgPeriodPeaksNegY = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Y
+	NVAR avgPeriodPeaksNegZ = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Z
 	NVAR posX = :varsFieldmap:PEAK_START_X
+	NVAR startL = :varsFieldmap:PEAK_START_L
+	NVAR endL = :varsFieldmap:PEAK_END_L
 	
-	if (fieldAxisPeak == 1)
-		Wave wn = $("Bx_X"+num2str(posX/1000))
-		
-	elseif (fieldAxisPeak == 2)
-		Wave wn = $("By_X"+num2str(posX/1000))	
-
-	elseif (fieldAxisPeak == 3)	
-		Wave wn = $("Bz_X"+num2str(posX/1000))	
-
-	endif
-	
-	variable np
-	np = DimSize(wn,0)-1
+	Wave wnX = $("Bx_X"+num2str(posX/1000))
+	Wave wnY = $("By_X"+num2str(posX/1000))	
+	Wave wnZ = $("Bz_X"+num2str(posX/1000))	
   
-	Variable peaksFoundPos=0
-	Variable peaksFoundNeg=0
-	Variable startP=0
-	Variable endP= np-1
+	Variable peaksFoundPosX=0
+	Variable peaksFoundNegX=0
 	
-	Killwaves/Z peakPositionsXPos, peakPositionsYPos, peakPositionsXNeg, peakPositionsYNeg
-	print(peaksPosNeg)
-	if(peaksPosNeg == 1)
-		Make/O/N=(np) peakPositionsXPos= NaN, peakPositionsYPos= NaN  
-		do
-			FindPeak/M=(peaksAmpl/100)/P/Q/R=[startP,endP] wn
-
-    		if(V_Flag != 0)
-        		break
-    		endif
-   
-    		peakPositionsXPos[peaksFoundPos]=pnt2x(wn,V_PeakLoc)
-    		peakPositionsYPos[peaksFoundPos]=V_PeakVal
-    		peaksFoundPos += 1
-   
-    		startP= V_TrailingEdgeLoc+1
-		while(peaksFoundPos < np)
-		
-	elseif(peaksPosNeg == 2)
-		Make/O/N=(np) peakPositionsXNeg= NaN, peakPositionsYNeg= NaN  
-		do
-			FindPeak/M=(peaksAmpl/100)/N/P/Q/R=[startP,endP] wn
-			
-    		if(V_Flag != 0)
-        		break
-    		endif
-   
-    		peakPositionsXNeg[peaksFoundNeg]=pnt2x(wn,V_PeakLoc)
-    		peakPositionsYNeg[peaksFoundNeg]=V_PeakVal
-    		peaksFoundNeg += 1
-   
-    		startP= V_TrailingEdgeLoc+1
-		while(peaksFoundNeg < np)
-		
-	elseif(peaksPosNeg == 3)
-		Make/O/N=(np) peakPositionsXPos= NaN, peakPositionsYPos= NaN  
-		Make/O/N=(np) peakPositionsXNeg= NaN, peakPositionsYNeg= NaN  
-		do
-			FindPeak/M=(peaksAmpl/100)/P/Q/R=[startP,endP] wn
-
-    		if(V_Flag != 0)
-        		break
-    		endif
-   
-    		peakPositionsXPos[peaksFoundPos]=pnt2x(wn,V_PeakLoc)
-    		peakPositionsYPos[peaksFoundPos]=V_PeakVal
-    		peaksFoundPos += 1
-   
-    		startP= V_TrailingEdgeLoc+1
-		while(peaksFoundPos < np)
-		
-		startP=0
-		do
-			FindPeak/M=(peaksAmpl/100)/N/P/Q/R=[startP,endP] wn
-
-    		if(V_Flag != 0)
-        		break
-    		endif
-   
-    		peakPositionsXNeg[peaksFoundNeg]=pnt2x(wn,V_PeakLoc)
-    		peakPositionsYNeg[peaksFoundNeg]=V_PeakVal
-    		peaksFoundNeg += 1
-   
-    		startP= V_TrailingEdgeLoc+1
-		while(peaksFoundNeg < np)
-	endif
+	Variable peaksFoundPosY=0
+	Variable peaksFoundNegY=0
 	
-	if(peaksFoundPos)
-    	Redimension/N=(peaksFoundPos) peakPositionsXPos, peakPositionsYPos
+	Variable peaksFoundPosZ=0
+	Variable peaksFoundNegZ=0
+	
+	Variable npX = DimSize(wnX,0)-1
+	Variable npY = DimSize(wnY,0)-1
+	Variable npZ = DimSize(wnZ,0)-1
+	
+	Killwaves/Z peakPositionsXPosX, peakPositionsYPosX, peakPositionsXNegX, peakPositionsYNegX
+	Killwaves/Z peakPositionsXPosY, peakPositionsYPosY, peakPositionsXNegY, peakPositionsYNegY
+	Killwaves/Z peakPositionsXPosZ, peakPositionsYPosZ, peakPositionsXNegZ, peakPositionsYNegZ
+		
+	Make/O/N=(npX) peakPositionsXPosX= NaN, peakPositionsYPosX= NaN  
+	Make/O/N=(npX) peakPositionsXNegX= NaN, peakPositionsYNegX= NaN
+	
+	Make/O/N=(npY) peakPositionsXPosY= NaN, peakPositionsYPosY= NaN  
+	Make/O/N=(npY) peakPositionsXNegY= NaN, peakPositionsYNegY= NaN 
+	
+	Make/O/N=(npZ) peakPositionsXPosZ= NaN, peakPositionsYPosZ= NaN  
+	Make/O/N=(npZ) peakPositionsXNegZ= NaN, peakPositionsYNegZ= NaN
+	
+	variable baselinePosX = (WaveMax(wnX) - WaveMax(wnX) * (peaksAmpl/100))
+	variable baselinePosY = (WaveMax(wnY) - WaveMax(wnY) * (peaksAmpl/100))
+	variable baselinePosZ = (WaveMax(wnZ) - WaveMax(wnZ) * (peaksAmpl/100))
+	
+	variable baselineNegX = (WaveMin(wnX) - WaveMin(wnX) * (peaksAmpl/100))
+	variable baselineNegY = (WaveMin(wnY) - WaveMin(wnY) * (peaksAmpl/100))
+	variable baselineNegZ = (WaveMin(wnZ) - WaveMin(wnZ) * (peaksAmpl/100))
+	
+	variable startPX = x2pnt(wnX, startL)
+	variable endPX = x2pnt(wnX, endL)
+	
+	variable startPY = x2pnt(wnY, startL)
+	variable endPY = x2pnt(wnY, endL)
+	
+	variable startPZ = x2pnt(wnZ, startL)
+	variable endPZ = x2pnt(wnZ, endL)
+	
+	variable i
+	
+	do
+		FindPeak/M=(baselinePosX)/P/Q/R=[startPX,endPX] wnX
+
+    	if(V_Flag != 0)
+       	break
+    	endif
+   
+    	peakPositionsXPosX[peaksFoundPosX]=pnt2x(wnX,V_PeakLoc)
+    	peakPositionsYPosX[peaksFoundPosX]=V_PeakVal
+    	peaksFoundPosX += 1
+   
+    	startPX= V_TrailingEdgeLoc+1
+	while(peaksFoundPosX < npX)
+		
+	startPX=0
+	do
+		FindPeak/M=(baselineNegX)/N/P/Q/R=[startPX,endPX] wnX
+
+    	if(V_Flag != 0)
+        	break
+    	endif
+   
+    	peakPositionsXNegX[peaksFoundNegX]=pnt2x(wnX,V_PeakLoc)
+    	peakPositionsYNegX[peaksFoundNegX]=V_PeakVal
+    	peaksFoundNegX += 1
+   
+    	startPX= V_TrailingEdgeLoc+1
+	while(peaksFoundNegX < npX)
+	
+	
+	do
+		FindPeak/M=(baselinePosY)/P/Q/R=[startPY,endPY] wnY
+
+    	if(V_Flag != 0)
+       	break
+    	endif
+   
+    	peakPositionsXPosY[peaksFoundPosY]=pnt2x(wnY,V_PeakLoc)
+    	peakPositionsYPosY[peaksFoundPosY]=V_PeakVal
+    	peaksFoundPosY += 1
+   
+    	startPY= V_TrailingEdgeLoc+1
+	while(peaksFoundPosY < npY)
+		
+	startPY=0
+	do
+		FindPeak/M=(baselineNegY)/N/P/Q/R=[startPY,endPY] wnY
+
+    	if(V_Flag != 0)
+        	break
+    	endif
+   
+    	peakPositionsXNegY[peaksFoundNegY]=pnt2x(wnY,V_PeakLoc)
+    	peakPositionsYNegY[peaksFoundNegY]=V_PeakVal
+    	peaksFoundNegY += 1
+   
+    	startPY= V_TrailingEdgeLoc+1
+	while(peaksFoundNegY < npY)
+	
+	
+	do
+		FindPeak/M=(baselinePosZ)/P/Q/R=[startPZ,endPZ] wnZ
+
+    	if(V_Flag != 0)
+       	break
+    	endif
+   
+    	peakPositionsXPosZ[peaksFoundPosZ]=pnt2x(wnZ,V_PeakLoc)
+    	peakPositionsYPosZ[peaksFoundPosZ]=V_PeakVal
+    	peaksFoundPosZ += 1
+   
+    	startPZ= V_TrailingEdgeLoc+1
+	while(peaksFoundPosZ < npZ)
+		
+	startPZ=0
+	do
+		FindPeak/M=(baselineNegZ)/N/P/Q/R=[startPZ,endPZ] wnZ
+
+    	if(V_Flag != 0)
+        	break
+    	endif
+   
+    	peakPositionsXNegZ[peaksFoundNegZ]=pnt2x(wnZ,V_PeakLoc)
+    	peakPositionsYNegZ[peaksFoundNegZ]=V_PeakVal
+    	peaksFoundNegZ += 1
+   
+    	startPZ= V_TrailingEdgeLoc+1
+	while(peaksFoundNegZ < npZ)
+	
+	
+	
+	if(peaksFoundPosX)
+    	Redimension/N=(peaksFoundPosX) peakPositionsXPosX, peakPositionsYPosX
 	else
-    	KillWaves/Z peakPositionsXPos, peakPositionsYPos
+    	KillWaves/Z peakPositionsXPosX, peakPositionsYPosX
 	endif
 	
-	if(peaksFoundNeg)
-    	Redimension/N=(peaksFoundNeg) peakPositionsXNeg, peakPositionsYNeg
+	if(peaksFoundNegX)
+    	Redimension/N=(peaksFoundNegX) peakPositionsXNegX, peakPositionsYNegX
 	else
-    	KillWaves/Z peakPositionsXNeg, peakPositionsYNeg
+    	KillWaves/Z peakPositionsXNegX, peakPositionsYNegX
 	endif
+	
+	
+	if(peaksFoundPosY)
+    	Redimension/N=(peaksFoundPosY) peakPositionsXPosY, peakPositionsYPosY
+	else
+    	KillWaves/Z peakPositionsXPosY, peakPositionsYPosY
+	endif
+	
+	if(peaksFoundNegY)
+    	Redimension/N=(peaksFoundNegY) peakPositionsXNegY, peakPositionsYNegY
+	else
+    	KillWaves/Z peakPositionsXNegY, peakPositionsYNegY
+	endif
+	
+	
+	if(peaksFoundPosZ)
+    	Redimension/N=(peaksFoundPosZ) peakPositionsXPosZ, peakPositionsYPosZ
+	else
+    	KillWaves/Z peakPositionsXPosZ, peakPositionsYPosZ
+	endif
+	
+	if(peaksFoundNegX)
+    	Redimension/N=(peaksFoundNegZ) peakPositionsXNegZ, peakPositionsYNegZ
+	else
+    	KillWaves/Z peakPositionsXNegZ, peakPositionsYNegZ
+	endif
+	
+	
+	Make/O/N=(numpnts(peakPositionsXPosX) - 1) peaksDiffPosX
+	Make/O/N=(numpnts(peakPositionsXPosY) - 1) peaksDiffPosY
+	Make/O/N=(numpnts(peakPositionsXPosZ) - 1) peaksDiffPosZ
+	Make/O/N=(numpnts(peakPositionsXNegX) - 1) peaksDiffNegX
+	Make/O/N=(numpnts(peakPositionsXNegY) - 1) peaksDiffNegY
+	Make/O/N=(numpnts(peakPositionsXNegZ) - 1) peaksDiffNegZ
+		
+	for (i=0; i<numpnts(peaksDiffPosX); i=i+1)
+		peaksDiffPosX[i] = peakPositionsXPosX[i+1] - peakPositionsXPosX[i]
+	endfor
+	
+	for (i=0; i<numpnts(peaksDiffPosY); i=i+1)
+		peaksDiffPosY[i] = peakPositionsXPosY[i+1] - peakPositionsXPosY[i]
+	endfor
+	
+	for (i=0; i<numpnts(peaksDiffPosZ); i=i+1)
+		peaksDiffPosZ[i] = peakPositionsXPosZ[i+1] - peakPositionsXPosZ[i]
+	endfor
+	
+	for (i=0; i<numpnts(peaksDiffNegX); i=i+1)
+		peaksDiffNegX[i] = peakPositionsXNegX[i+1] - peakPositionsXNegX[i]
+	endfor
+	
+	for (i=0; i<numpnts(peaksDiffNegY); i=i+1)
+		peaksDiffNegY[i] = peakPositionsXNegY[i+1] - peakPositionsXNegY[i]
+	endfor
+	
+	for (i=0; i<numpnts(peaksDiffNegZ); i=i+1)
+		peaksDiffNegZ[i] = peakPositionsXNegZ[i+1] - peakPositionsXNegZ[i]
+	endfor
+		
+	avgPeriodPeaksPosX = Mean(peaksDiffPosX)
+	avgPeriodPeaksPosY = Mean(peaksDiffPosY)
+	avgPeriodPeaksPosZ = Mean(peaksDiffPosZ)
+	
+	avgPeriodPeaksNegX = Mean(peaksDiffNegX)
+	avgPeriodPeaksNegY = Mean(peaksDiffNegY)
+	avgPeriodPeaksNegZ = Mean(peaksDiffNegZ)
 	
 End
 
 Static Function FindZeros()
 
 	NVAR posX				= :varsFieldmap:PEAK_START_X
-	NVAR fieldAxisPeak  = :varsFieldMap:PEAK_FIELD_AXIS	
 	NVAR zerosAmpl     	= :varsFieldMap:PEAK_ZEROS_AMPL
-	NVAR avgPeriodZeros = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS
+	NVAR avgPeriodZerosX = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS_X
+	NVAR avgPeriodZerosY = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Y
+	NVAR avgPeriodZerosZ = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Z
+	NVAR startL = :varsFieldmap:PEAK_START_L
+	NVAR endL = :varsFieldmap:PEAK_END_L
 
 	variable i, idx0, idx1
-	variable baseline, startP, endP
+	variable baselineX, baselineY, baselineZ
+	variable startP, endP
 	variable pos0, pos1, field0, field1
+
 	
-	if (fieldAxisPeak == 1)
-		Wave wn = $("Bx_X"+num2str(posX/1000))
-		
-	elseif (fieldAxisPeak == 2)
-		Wave wn = $("By_X"+num2str(posX/1000))	
-
-	elseif (fieldAxisPeak == 3)	
-		Wave wn = $("Bz_X"+num2str(posX/1000))	
-
-	endif
+	Wave wnX = $("Bx_X"+num2str(posX/1000))
+	Wave wnY = $("By_X"+num2str(posX/1000))
+	Wave wnZ = $("Bz_X"+num2str(posX/1000))
 	
 	Wave posL
 	
-	variable np
-	np = DimSize(wn,0)-1
-
-	baseline = (zerosAmpl/100)*WaveMax(wn)
-	FindLevels/EDGE=0/P/Q/D=levels wn, baseline
+	variable npX, npY, npZ
+	npX = DimSize(wnX,0)-1
+	npY = DimSize(wnY,0)-1
+	npZ = DimSize(wnZ,0)-1
+	
+	baselineX = (zerosAmpl/100)*WaveMax(wnX)
+	baselineY = (zerosAmpl/100)*WaveMax(wnY)
+	baselineZ = (zerosAmpl/100)*WaveMax(wnZ)
+	
+	FindLevels/EDGE=0/P/Q/D=levels wnX, baselineX
+	
 	if (V_LevelsFound)
 		startP = Floor(levels[0])
 		endP = Ceil(levels[numpnts(levels)-1])
 	else
 		startP = 0
-		endP = np-1
+		endP = npX-1
 	endif
 	Killwaves/Z levels
 
-	FindLevels/EDGE=0/P/Q/D=levels/R=(startP,endP) wn, 0
-	Make/D/O/N=(V_LevelsFound) PositionZeros	
-	Make/D/O/N=(V_LevelsFound) ValueZeros	
+	FindLevels/EDGE=0/P/Q/D=levels/R=[startP, endP] wnX, 0
+	Make/D/O/N=(V_LevelsFound) PositionZerosX
+	Make/D/O/N=(V_LevelsFound) ValueZerosX
 	
 	for (i=0; i<V_LevelsFound; i=i+1)
 		idx0 = Floor(levels[i])
 		idx1 = Ceil(levels[i])
 		pos0 = posL[idx0]
 		pos1 = posL[idx1]
-		field0 = wn[idx0]
-		field1 = wn[idx1]
-		PositionZeros[i] = pos0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + pos1*((levels[i] - idx0)/(idx1 -idx0))
-		ValueZeros[i] = field0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + field1*((levels[i] - idx0)/(idx1 -idx0))
+		field0 = wnX[idx0]
+		field1 = wnX[idx1]
+		PositionZerosX[i] = pos0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + pos1*((levels[i] - idx0)/(idx1 -idx0))
+		ValueZerosX[i] = field0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + field1*((levels[i] - idx0)/(idx1 -idx0))
 	endfor
 	
 	Killwaves/Z levels
 	
-	Make/O/N=(numpnts(positionZeros) - 1) positionZerosDiff
-	for (i=0; i<numpnts(positionZerosDiff); i=i+1)
-		positionZerosDiff[i] = positionZeros[i+1] - positionZeros[i]
+	FindLevels/EDGE=0/P/Q/D=levels wnY, baselineY
+	
+	if (V_LevelsFound)
+		startP = Floor(levels[0])
+		endP = Ceil(levels[numpnts(levels)-1])
+	else
+		startP = 0
+		endP = npY-1
+	endif
+	Killwaves/Z levels
+
+	FindLevels/EDGE=0/P/Q/D=levels wnY, 0
+	Make/D/O/N=(V_LevelsFound) PositionZerosY
+	Make/D/O/N=(V_LevelsFound) ValueZerosY
+	
+	for (i=0; i<V_LevelsFound; i=i+1)
+		idx0 = Floor(levels[i])
+		idx1 = Ceil(levels[i])
+		pos0 = posL[idx0]
+		pos1 = posL[idx1]
+		field0 = wnY[idx0]
+		field1 = wnY[idx1]
+		PositionZerosY[i] = pos0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + pos1*((levels[i] - idx0)/(idx1 -idx0))
+		ValueZerosY[i] = field0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + field1*((levels[i] - idx0)/(idx1 -idx0))
 	endfor
-	variable AvgPeriod = Mean(positionZerosDiff)
+	
+	Killwaves/Z levels
+	
+	FindLevels/EDGE=0/P/Q/D=levels wnZ, baselineZ
+	
+	if (V_LevelsFound)
+		startP = Floor(levels[0])
+		endP = Ceil(levels[numpnts(levels)-1])
+	else
+		startP = 0
+		endP = npZ-1
+	endif
+	Killwaves/Z levels
 
-	avgPeriodZeros = 2*AvgPeriod*1000
+	FindLevels/EDGE=0/P/Q/D=levels wnZ, 0
+	Make/D/O/N=(V_LevelsFound) PositionZerosZ
+	Make/D/O/N=(V_LevelsFound) ValueZerosZ
+	
+	for (i=0; i<V_LevelsFound; i=i+1)
+		idx0 = Floor(levels[i])
+		idx1 = Ceil(levels[i])
+		pos0 = posL[idx0]
+		pos1 = posL[idx1]
+		field0 = wnZ[idx0]
+		field1 = wnZ[idx1]
+		PositionZerosZ[i] = pos0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + pos1*((levels[i] - idx0)/(idx1 -idx0))
+		ValueZerosZ[i] = field0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + field1*((levels[i] - idx0)/(idx1 -idx0))
+	endfor
+	
+	Killwaves/Z levels
+	
+	Make/O/N=(numpnts(PositionZerosX) - 1) tempDiff
+	for (i=0; i<numpnts(tempDiff); i=i+1)
+		tempDiff[i] = PositionZerosX[i+1] - PositionZerosX[i]
+	endfor
+	variable AvgPeriodX = Mean(tempDiff)
 
-	Killwaves/Z positionZerosDiff
+	avgPeriodZerosX = 2*AvgPeriodX*1000
+
+	Killwaves/Z tempDiff
+	
+	Make/O/N=(numpnts(PositionZerosY) - 1) tempDiff
+	for (i=0; i<numpnts(tempDiff); i=i+1)
+		tempDiff[i] = PositionZerosY[i+1] - PositionZerosY[i]
+	endfor
+	variable AvgPeriodY = Mean(tempDiff)
+
+	avgPeriodZerosY = 2*AvgPeriodY*1000
+
+	Killwaves/Z tempDiff
+	
+	Make/O/N=(numpnts(PositionZerosZ) - 1) tempDiff
+	for (i=0; i<numpnts(tempDiff); i=i+1)
+		tempDiff[i] = PositionZerosZ[i+1] - PositionZerosZ[i]
+	endfor
+	variable AvgPeriodZ = Mean(tempDiff)
+
+	avgPeriodZerosZ = 2*AvgPeriodZ*1000
+
+	Killwaves/Z tempDiff
 	
 End
 
@@ -6030,35 +6270,65 @@ Static Function ShowPeaks(graphName)
 	NVAR posX = :varsFieldmap:PEAK_START_X
 	NVAR fieldAxisPeak = :varsFieldMap:PEAK_FIELD_AXIS
 	
-	Wave/Z peakPositionsYPos
-	Wave/Z peakPositionsXPos
-	Wave/Z peakPositionsYNeg
-	Wave/Z peakPositionsXNeg
+	Wave/Z peakPositionsYPosX
+	Wave/Z peakPositionsXPosX
+	Wave/Z peakPositionsYNegX
+	Wave/Z peakPositionsXNegX
 	
-	if (fieldAxisPeak == 1)
-		Wave wn = $("Bx_X"+num2str(posX/1000))
-			
-	elseif (fieldAxisPeak == 2)
-		Wave wn = $("By_X"+num2str(posX/1000))
+	Wave/Z peakPositionsYPosY
+	Wave/Z peakPositionsXPosY
+	Wave/Z peakPositionsYNegY
+	Wave/Z peakPositionsXNegY
 	
-	elseif (fieldAxisPeak == 3)	
-		Wave wn = $("Bz_X"+num2str(posX/1000))
+	Wave/Z peakPositionsYPosZ
+	Wave/Z peakPositionsXPosZ
+	Wave/Z peakPositionsYNegZ
+	Wave/Z peakPositionsXNegZ
 	
-	endif
+	Wave wnX = $("Bx_X"+num2str(posX/1000))
+	Wave wnY = $("By_X"+num2str(posX/1000))
+	Wave wnZ = $("Bz_X"+num2str(posX/1000))	
 	
 	WAVE colorP = root:wavesCAMTO:colorP
 	WAVE colorN = root:wavesCAMTO:colorN
 	
 	DeleteTracesFromGraph(graphName)
 	
-	if ((WaveExists(peakPositionsYPos)) || (WaveExists(peakPositionsYNeg)))
-		AppendToGraph/W=$graphName/C=(0,0,0) wn
-		if (WaveExists(peakPositionsYPos))
-   		AppendToGraph/W=$graphName peakPositionsYPos vs peakPositionsXPos
-   		ModifyGraph/W=$graphName mode(peakPositionsYPos)=3,marker(peakPositionsYPos)=19, rgb(peakPositionsYPos)=(colorP[0], colorP[1], colorP[2])
-   	elseif (WaveExists(peakPositionsYNeg))
-   		AppendToGraph/W=$graphName peakPositionsYNeg vs peakPositionsXNeg
-   		ModifyGraph/W=$graphName mode(peakPositionsYNeg)=3,marker(peakPositionsYNeg)=19, rgb(peakPositionsYNeg)=(colorN[0], colorN[1], colorN[2])
+	if (fieldAxisPeak == 1)
+		if ((WaveExists(peakPositionsYPosX)) || (WaveExists(peakPositionsYNegX)))
+			AppendToGraph/W=$graphName/C=(0,0,0) wnX
+			if (WaveExists(peakPositionsYPosX))
+   			AppendToGraph/W=$graphName peakPositionsYPosX vs peakPositionsXPosX
+   			ModifyGraph/W=$graphName mode(peakPositionsYPosX)=3,marker(peakPositionsYPosX)=19, rgb(peakPositionsYPosX)=(colorP[0], colorP[1], colorP[2])
+   		endif
+   		if (WaveExists(peakPositionsYNegX))
+   			AppendToGraph/W=$graphName peakPositionsYNegX vs peakPositionsXNegX
+   			ModifyGraph/W=$graphName mode(peakPositionsYNegX)=3,marker(peakPositionsYNegX)=19, rgb(peakPositionsYNegX)=(colorN[0], colorN[1], colorN[2])
+   		endif
+   	endif
+   elseif (fieldAxisPeak == 2)
+		if ((WaveExists(peakPositionsYPosY)) || (WaveExists(peakPositionsYNegY)))
+			AppendToGraph/W=$graphName/C=(0,0,0) wnY
+			if (WaveExists(peakPositionsYPosY))
+   			AppendToGraph/W=$graphName peakPositionsYPosY vs peakPositionsXPosY
+   			ModifyGraph/W=$graphName mode(peakPositionsYPosY)=3,marker(peakPositionsYPosY)=19, rgb(peakPositionsYPosY)=(colorP[0], colorP[1], colorP[2])
+   		endif
+   		if (WaveExists(peakPositionsYNegY))
+   			AppendToGraph/W=$graphName peakPositionsYNegY vs peakPositionsXNegY
+   			ModifyGraph/W=$graphName mode(peakPositionsYNegY)=3,marker(peakPositionsYNegY)=19, rgb(peakPositionsYNegY)=(colorN[0], colorN[1], colorN[2])
+   		endif
+   	endif
+   elseif (fieldAxisPeak == 3)
+		if ((WaveExists(peakPositionsYPosZ)) || (WaveExists(peakPositionsYNegZ)))
+			AppendToGraph/W=$graphName/C=(0,0,0) wnZ
+			if (WaveExists(peakPositionsYPosZ))
+   			AppendToGraph/W=$graphName peakPositionsYPosZ vs peakPositionsXPosZ
+   			ModifyGraph/W=$graphName mode(peakPositionsYPosZ)=3,marker(peakPositionsYPosZ)=19, rgb(peakPositionsYPosZ)=(colorP[0], colorP[1], colorP[2])
+   		endif
+   		if (WaveExists(peakPositionsYNegZ))
+   			AppendToGraph/W=$graphName peakPositionsYNegZ vs peakPositionsXNegZ
+   			ModifyGraph/W=$graphName mode(peakPositionsYNegZ)=3,marker(peakPositionsYNegZ)=19, rgb(peakPositionsYNegZ)=(colorN[0], colorN[1], colorN[2])
+   		endif
    	endif
    endif
 End
@@ -6070,8 +6340,12 @@ Static Function ShowZeros(graphName)
 	NVAR fieldAxisPeak = :varsFieldMap:PEAK_FIELD_AXIS
 
 	Wave posL
-	Wave/Z ValueZeros
-	Wave/Z PositionZeros
+	Wave/Z ValueZerosX
+	Wave/Z ValueZerosY
+	Wave/Z ValueZerosZ
+	Wave/Z PositionZerosX
+	Wave/Z PositionZerosY
+	Wave/Z PositionZerosZ
 	
 	if (fieldAxisPeak == 1)
 		Wave wn = $("Bx_X"+num2str(posX/1000))
@@ -6087,12 +6361,24 @@ Static Function ShowZeros(graphName)
 	WAVE colorZ = root:wavesCAMTO:colorZ
 	
 	DeleteTracesFromGraph(graphName)
-	
-	if ((WaveExists(ValueZeros)) || (WaveExists(PositionZeros)))	
-		AppendToGraph/W=$graphName ValueZeros vs PositionZeros
-		ModifyGraph/W=$graphName mode(ValueZeros)=3,marker(ValueZeros)=19, rgb(ValueZeros)=(colorZ[0], colorZ[1], colorZ[2])		
-		AppendToGraph/W=$graphName/C=(0,0,0) wn vs posL
-		
+	if (fieldAxisPeak == 1)
+		if ((WaveExists(ValueZerosX)) || (WaveExists(PositionZerosX)))	
+			AppendToGraph/W=$graphName ValueZerosX vs PositionZerosX
+			ModifyGraph/W=$graphName mode(ValueZerosX)=3,marker(ValueZerosX)=19, rgb(ValueZerosX)=(colorZ[0], colorZ[1], colorZ[2])		
+			AppendToGraph/W=$graphName/C=(0,0,0) wn vs posL
+		endif
+	elseif (fieldAxisPeak == 2)
+		if ((WaveExists(ValueZerosY)) || (WaveExists(PositionZerosY)))	
+			AppendToGraph/W=$graphName ValueZerosY vs PositionZerosY
+			ModifyGraph/W=$graphName mode(ValueZerosY)=3,marker(ValueZerosY)=19, rgb(ValueZerosY)=(colorZ[0], colorZ[1], colorZ[2])		
+			AppendToGraph/W=$graphName/C=(0,0,0) wn vs posL
+		endif
+	elseif (fieldAxisPeak == 3)
+		if ((WaveExists(ValueZerosZ)) || (WaveExists(PositionZerosZ)))	
+			AppendToGraph/W=$graphName ValueZerosZ vs PositionZerosZ
+			ModifyGraph/W=$graphName mode(ValueZerosZ)=3,marker(ValueZerosZ)=19, rgb(ValueZerosZ)=(colorZ[0], colorZ[1], colorZ[2])		
+			AppendToGraph/W=$graphName/C=(0,0,0) wn vs posL
+		endif
 	endif
 End
 
