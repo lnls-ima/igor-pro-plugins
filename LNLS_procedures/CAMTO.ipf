@@ -5906,7 +5906,8 @@ Static Function FindPeaks()
 	
 	Wave wnX = $("Bx_X"+num2str(posX/1000))
 	Wave wnY = $("By_X"+num2str(posX/1000))	
-	Wave wnZ = $("Bz_X"+num2str(posX/1000))	
+	Wave wnZ = $("Bz_X"+num2str(posX/1000))
+	Wave posL
   
 	Variable peaksFoundPosX=0
 	Variable peaksFoundNegX=0
@@ -5921,6 +5922,8 @@ Static Function FindPeaks()
 	Variable npY = DimSize(wnY,0)-1
 	Variable npZ = DimSize(wnZ,0)-1
 	
+	Variable startP, endP, i, j
+	
 	Killwaves/Z peakPositionsXPosX, peakPositionsYPosX, peakPositionsXNegX, peakPositionsYNegX
 	Killwaves/Z peakPositionsXPosY, peakPositionsYPosY, peakPositionsXNegY, peakPositionsYNegY
 	Killwaves/Z peakPositionsXPosZ, peakPositionsYPosZ, peakPositionsXNegZ, peakPositionsYNegZ
@@ -5933,115 +5936,152 @@ Static Function FindPeaks()
 	
 	Make/O/N=(npZ) peakPositionsXPosZ= NaN, peakPositionsYPosZ= NaN  
 	Make/O/N=(npZ) peakPositionsXNegZ= NaN, peakPositionsYNegZ= NaN
-	
-	variable baselinePosX = (WaveMax(wnX) - WaveMax(wnX) * (peaksAmpl/100))
-	variable baselinePosY = (WaveMax(wnY) - WaveMax(wnY) * (peaksAmpl/100))
-	variable baselinePosZ = (WaveMax(wnZ) - WaveMax(wnZ) * (peaksAmpl/100))
-	
-	variable baselineNegX = (WaveMin(wnX) - WaveMin(wnX) * (peaksAmpl/100))
-	variable baselineNegY = (WaveMin(wnY) - WaveMin(wnY) * (peaksAmpl/100))
-	variable baselineNegZ = (WaveMin(wnZ) - WaveMin(wnZ) * (peaksAmpl/100))
-	
-	variable startPX = x2pnt(wnX, startL)
-	variable endPX = x2pnt(wnX, endL)
-	
-	variable startPY = x2pnt(wnY, startL)
-	variable endPY = x2pnt(wnY, endL)
-	
-	variable startPZ = x2pnt(wnZ, startL)
-	variable endPZ = x2pnt(wnZ, endL)
-	
-	variable i
-	
-	do
-		FindPeak/M=(baselinePosX)/P/Q/R=[startPX,endPX] wnX
-
-    	if(V_Flag != 0)
-       	break
-    	endif
-   
-    	peakPositionsXPosX[peaksFoundPosX]=pnt2x(wnX,V_PeakLoc)
-    	peakPositionsYPosX[peaksFoundPosX]=V_PeakVal
-    	peaksFoundPosX += 1
-   
-    	startPX= V_TrailingEdgeLoc+1
-	while(peaksFoundPosX < npX)
 		
-	startPX=0
-	do
-		FindPeak/M=(baselineNegX)/N/P/Q/R=[startPX,endPX] wnX
+	FindValue/V=(startL/1000) posL
+	startP = V_Value
+	FindValue/V=(endL/1000) posL
+	endP = V_Value
 
-    	if(V_Flag != 0)
-        	break
-    	endif
-   
-    	peakPositionsXNegX[peaksFoundNegX]=pnt2x(wnX,V_PeakLoc)
-    	peakPositionsYNegX[peaksFoundNegX]=V_PeakVal
-    	peaksFoundNegX += 1
-   
-    	startPX= V_TrailingEdgeLoc+1
-	while(peaksFoundNegX < npX)
+	variable baselinePosX = (WaveMax(wnX,startP,endP) - WaveMax(wnX,startP,endP) * (peaksAmpl/100))
+	variable baselinePosY = (WaveMax(wnY,startP,endP) - WaveMax(wnY,startP,endP) * (peaksAmpl/100))
+	variable baselinePosZ = (WaveMax(wnZ,startP,endP) - WaveMax(wnZ,startP,endP) * (peaksAmpl/100))
 	
+	variable baselineNegX = (WaveMin(wnX,startP,endP) - WaveMin(wnX,startP,endP) * (peaksAmpl/100))
+	variable baselineNegY = (WaveMin(wnY,startP,endP) - WaveMin(wnY,startP,endP) * (peaksAmpl/100))
+	variable baselineNegZ = (WaveMin(wnZ,startP,endP) - WaveMin(wnZ,startP,endP) * (peaksAmpl/100))
 	
-	do
-		FindPeak/M=(baselinePosY)/P/Q/R=[startPY,endPY] wnY
+	variable valorpeakPosX = baselinePosX
+	variable valorpeakPosY = baselinePosY
+	variable valorpeakPosZ = baselinePosZ	
+	variable valorpeakNegX = baselineNegX
+	variable valorpeakNegY = baselineNegY
+	variable valorpeakNegZ = baselineNegZ	
 
-    	if(V_Flag != 0)
-       	break
-    	endif
-   
-    	peakPositionsXPosY[peaksFoundPosY]=pnt2x(wnY,V_PeakLoc)
-    	peakPositionsYPosY[peaksFoundPosY]=V_PeakVal
-    	peaksFoundPosY += 1
-   
-    	startPY= V_TrailingEdgeLoc+1
-	while(peaksFoundPosY < npY)
-		
-	startPY=0
-	do
-		FindPeak/M=(baselineNegY)/N/P/Q/R=[startPY,endPY] wnY
-
-    	if(V_Flag != 0)
-        	break
-    	endif
-   
-    	peakPositionsXNegY[peaksFoundNegY]=pnt2x(wnY,V_PeakLoc)
-    	peakPositionsYNegY[peaksFoundNegY]=V_PeakVal
-    	peaksFoundNegY += 1
-   
-    	startPY= V_TrailingEdgeLoc+1
-	while(peaksFoundNegY < npY)
+	j = 0
+	for (i=startP; i<endP; i=i+1)
+		if (wnX[i] > baselinePosX)
+			if (valorpeakPosX < wnX[i])
+				valorpeakPosX = wnX[i]
+				peakPositionsXPosX[j] = posL[i]
+				peakPositionsYPosX[j] = wnX[i]
+			endif				
+		else
+			if (wnX[i-1] > baselinePosX)
+				valorpeakPosX = baselinePosX
+				j = j + 1
+				InsertPoints j, 1, peakPositionsXPosX
+				InsertPoints j, 1, peakPositionsYPosX
+				peaksFoundPosX+=1
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, peakPositionsXPosX
+	DeletePoints j, 1, peakPositionsYPosX
 	
+	j = 0
+	for (i=startP; i<endP; i=i+1)
+		if (wnY[i] > baselinePosY)
+			if (valorpeakPosY < wnY[i])
+				valorpeakPosY = wnY[i]
+				peakPositionsXPosY[j] = posL[i]
+				peakPositionsYPosY[j] = wnY[i]
+			endif				
+		else
+			if (wnY[i-1] > baselinePosY)
+				valorpeakPosY = baselinePosY
+				j = j + 1
+				InsertPoints j, 1, peakPositionsXPosY
+				InsertPoints j, 1, peakPositionsYPosY
+				peaksFoundPosY+=1
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, peakPositionsXPosY
+	DeletePoints j, 1, peakPositionsYPosY
 	
-	do
-		FindPeak/M=(baselinePosZ)/P/Q/R=[startPZ,endPZ] wnZ
-
-    	if(V_Flag != 0)
-       	break
-    	endif
-   
-    	peakPositionsXPosZ[peaksFoundPosZ]=pnt2x(wnZ,V_PeakLoc)
-    	peakPositionsYPosZ[peaksFoundPosZ]=V_PeakVal
-    	peaksFoundPosZ += 1
-   
-    	startPZ= V_TrailingEdgeLoc+1
-	while(peaksFoundPosZ < npZ)
-		
-	startPZ=0
-	do
-		FindPeak/M=(baselineNegZ)/N/P/Q/R=[startPZ,endPZ] wnZ
-
-    	if(V_Flag != 0)
-        	break
-    	endif
-   
-    	peakPositionsXNegZ[peaksFoundNegZ]=pnt2x(wnZ,V_PeakLoc)
-    	peakPositionsYNegZ[peaksFoundNegZ]=V_PeakVal
-    	peaksFoundNegZ += 1
-   
-    	startPZ= V_TrailingEdgeLoc+1
-	while(peaksFoundNegZ < npZ)
+	j = 0
+	for (i=startP; i<endP; i=i+1)
+		if (wnZ[i] > baselinePosZ)
+			if (valorpeakPosZ < wnZ[i])
+				valorpeakPosZ = wnZ[i]
+				peakPositionsXPosZ[j] = posL[i]
+				peakPositionsYPosZ[j] = wnZ[i]
+			endif				
+		else
+			if (wnZ[i-1] > baselinePosZ)
+				valorpeakPosZ = baselinePosZ
+				j = j + 1
+				InsertPoints j, 1, peakPositionsXPosZ
+				InsertPoints j, 1, peakPositionsYPosZ
+				peaksFoundPosZ+=1
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, peakPositionsXPosZ
+	DeletePoints j, 1, peakPositionsYPosZ
 	
+	j = 0
+	for (i=startP; i<endP; i=i+1)
+		if (wnX[i] < baselineNegX)
+			if (valorpeakNegX > wnX[i])
+				valorpeakNegX = wnX[i]
+				peakPositionsXNegX[j] = posL[i]
+				peakPositionsYNegX[j] = wnX[i]
+			endif				
+		else
+			if (wnX[i-1] < baselineNegX)
+				valorpeakNegX = baselineNegX
+				j = j + 1
+				InsertPoints j, 1, peakPositionsXNegX
+				InsertPoints j, 1, peakPositionsYNegX
+				peaksFoundNegX+=1
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, peakPositionsXNegX
+	DeletePoints j, 1, peakPositionsYNegX
+	
+	j = 0
+	for (i=startP; i<endP; i=i+1)
+		if (wnY[i] < baselineNegY)
+			if (valorpeakNegY > wnY[i])
+				valorpeakNegY = wnY[i]
+				peakPositionsXNegY[j] = posL[i]
+				peakPositionsYNegY[j] = wnY[i]
+			endif				
+		else
+			if (wnY[i-1] < baselineNegY)
+				valorpeakNegY = baselineNegY
+				j = j + 1
+				InsertPoints j, 1, peakPositionsXNegY
+				InsertPoints j, 1, peakPositionsYNegY
+				peaksFoundNegY+=1
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, peakPositionsXNegY
+	DeletePoints j, 1, peakPositionsYNegY
+	
+	j = 0
+	for (i=startP; i<endP; i=i+1)
+		if (wnZ[i] < baselineNegZ)
+			if (valorpeakNegZ > wnZ[i])
+				valorpeakNegZ = wnZ[i]
+				peakPositionsXNegZ[j] = posL[i]
+				peakPositionsYNegZ[j] = wnZ[i]
+			endif				
+		else
+			if (wnZ[i-1] < baselineNegZ)
+				valorpeakNegZ = baselineNegZ
+				j = j + 1
+				InsertPoints j, 1, peakPositionsXNegZ
+				InsertPoints j, 1, peakPositionsYNegZ
+				peaksFoundNegZ+=1
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, peakPositionsXNegZ
+	DeletePoints j, 1, peakPositionsYNegZ
 	
 	
 	if(peaksFoundPosX)
@@ -6082,6 +6122,9 @@ Static Function FindPeaks()
     	KillWaves/Z peakPositionsXNegZ, peakPositionsYNegZ
 	endif
 	
+	KillWaves/Z peaksDiffPosX, peaksDiffNegX
+	KillWaves/Z peaksDiffPosY, peaksDiffNegY
+	KillWaves/Z peaksDiffPosZ, peaksDiffNegZ
 	
 	Make/O/N=(numpnts(peakPositionsXPosX) - 1) peaksDiffPosX
 	Make/O/N=(numpnts(peakPositionsXPosY) - 1) peaksDiffPosY
