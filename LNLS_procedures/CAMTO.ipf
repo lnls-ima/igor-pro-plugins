@@ -19,7 +19,7 @@ Menu "CAMTO 14.0.0"
 //	"Dynamic Multipoles", CAMTO_DynMultipoles()
 	"Results", CAMTO_Results_Panel()
 	"Find Peaks and Zeros", CAMTO_Peaks_Panel()
-//	"Phase Error", CAMTO_PhaseError()
+	"Phase Error", CAMTO_PhaseError()
 //	"Insertion Devices Results", CAMTO_ID()
 //	"Compare Results", CAMTO_Compare()
 //	"Get Variable From Fieldmaps", CAMTO_GetVariable()
@@ -1708,7 +1708,7 @@ Static Function InitializeFieldmapVariables()
 	variable/G TRAJ_END_L
 	variable/G TRAJ_HORIZONTAL_ANGLE
 	variable/G TRAJ_VERTICAL_ANGLE
-	
+
 	string/G   PEAK_FIELD_AXIS_STR = "By"
 	variable/G PEAK_FIELD_AXIS = 2
 	variable/G PEAK_POS_NEG = 3 
@@ -1724,12 +1724,19 @@ Static Function InitializeFieldmapVariables()
 	variable/G PEAK_AVG_PERIOD_ZEROS_Y = 0
 	variable/G PEAK_AVG_PERIOD_ZEROS_Z = 0
 	variable/G PEAK_SELECTED = 0
-	
+
 	variable/G PEAK_START_L
 	variable/G PEAK_END_L
 	variable/G PEAK_START_X
 	variable/G PEAK_END_X
 	variable/G PEAK_STEP_X
+
+	variable/G PHASE_SEMI_PERIODS_PEAKS_ZEROS = 2	
+	variable/G PHASE_PERIOD_PEAKS_ZEROS = 1
+	variable/G PHASE_ID_PERIOD_NOMINAL = 0
+	variable/G PHASE_ID_PERIOD = 0
+	variable/G PHASE_ID_CUT_PERIODS = 0
+	variable/G PHASE_ID_PHASE_ERROR = inf
 
 //	variable/G StartYZ = 0
 //	variable/G EndYZ = 0
@@ -6380,6 +6387,342 @@ Static Function ShowZeros(graphName)
 			AppendToGraph/W=$graphName/C=(0,0,0) wn vs posL
 		endif
 	endif
+End
+
+Function CAMTO_PhaseError_Panel() : Panel
+	
+	string windowName = "PhaseError"
+	string windowTitle = "Phase Error"
+	
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return -1
+	endif
+
+	DoWindow/K $windowName
+	NewPanel/K=1/N=$windowName/W=(80,260,404,648) as windowTitle
+	SetDrawLayer UserBack
+	
+	variable m, h, h1, l1, l2, l 
+	m = 10	
+	h = 10
+	h1 = 5	
+	l1 = 5
+	l2 = 320
+
+	TitleBox tbxTitle1, pos={0,h}, size={350,25}, fsize=18, frame=0, fstyle=1, anchor=MT, title="Phase Error"
+	h += 35
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	TitleBox tbxTitle2, pos={m,h}, size={90,16}, fSize=14, fStyle=1, frame=0, title="Trajectory"
+	ValDisplay vldTrajX, pos={m+100,h}, size={200,18}, title="Start X [mm]"
+	h += 20
+	ValDisplay vldTrajAngle, pos={m+100,h}, size={200,18}, title="Angle XY(Z) [°]"
+	h += 20
+	ValDisplay vldTrajL, pos={m+100,h}, size={200,18}, title="Start L [mm]"
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	TitleBox tbxTitle3, pos={m,h}, size={90,16}, fSize=14, fStyle=1, frame=0, title="ID Period"
+	CheckBox chbPeriodPeaks, pos={m+80,h}, mode=1, title=""
+	CheckBox chbPeriodPeaks, proc=CAMTO_Phase_ChbPeriodPeaks
+	ValDisplay vldPeriodPeaks, pos={m+100,h}, size={200,18}, title="Avg. from peaks [mm]"
+	h += 25
+	
+	CheckBox chbPeriodZeros, pos={m+80,h}, mode=1, title=""
+	CheckBox chbPeriodZeros, proc=CAMTO_Phase_ChbPeriodZeros
+	ValDisplay vldPeriodZeros, pos={m+100,h}, size={200,18}, title="Avg. from  zeros [mm]"
+	h += 25
+	
+	CheckBox chbPeriodNominal, pos={m+80,h}, mode=1, title=""
+	CheckBox chbPeriodNominal, proc=CAMTO_Phase_ChbPeriodNominal
+	SetVariable svarPeriodNominal, pos={m+100,h}, size={200,18}, title="Nominal value [mm]"
+	SetVariable svarPeriodNominal, limits={0,inf,1}
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	TitleBox tbxTitle4, pos={m+50,h}, size={200,24}, fSize=16, fStyle=1, frame=0, title="Insertion Device Phase Error"
+	h += 25
+	
+	SetVariable svarCutPeriods, pos={m,h}, size={280,16}, title="Number of periods to skip at the endings", limits={0,1000,1}
+	h += 25
+	
+	PopupMenu popupSemiPeriodPos, pos={m,h},size={100,20}, title="Get semi-period positions from"
+	Popupmenu popupSemiPeriodPos, mode=1, popvalue="Peaks", value=#"\"Peaks;Zeros\""
+	PopupMenu popupSemiPeriodPos, proc=CAMTO_Phase_PopupSemiPeriodPos
+	h += 25
+	
+	Button btnCalcPhaseError, pos={m,h}, size={140,50}, fSize=14, fStyle=1, disable=2, title="Calculate \nPhase Error"
+	Button btnCalcPhaseError, proc=CAMTO_Phase_BtnCalcPhaseError
+	TitleBox tbxTitle5, pos={m+150,h}, size={120,18}, frame=0, title="RMS Phase Error [°]"
+	h += 25
+	
+	ValDisplay vldPhaseError, pos={m+150,h}, size={120,18}
+	h += 30
+	
+	Button btnPhaseErrorGraph, pos={m,h}, size={140,24}, fStyle=1, disable=2
+	Button btnPhaseErrorGraph, proc=CAMTO_Phase_BtnPhaseErrorGraph, title="Show Phase Error"
+	Button btnPhaseErrorTable, pos={m+150,h}, size={140,24}, fStyle=1,disable=2
+	Button btnPhaseErrorTable, proc=CAMTO_Phase_BtnPhaseErrorTable,title="Show Table"
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	SetVariable svarCurrentFieldmap, win=$windowName, pos={m, h}, size={240,20}, noedit=1, title="Current Fieldmap "
+	SetVariable svarCurrentFieldmap, win=$windowName, value=root:varsCAMTO:FIELDMAP_FOLDER
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	UpdatePanelPhaseError()
+	
+	return 0
+
+End
+
+Static Function UpdatePanelPhaseError()
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+
+	string windowName = "PhaseError"
+
+	if (WinType(windowName)==0)
+		return -1
+	endif
+	
+	UpdateFieldmapOptions(windowName)
+
+	if(strlen(df)>0)
+		NVAR periodPeaksZeros = root:$(df):varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
+		NVAR semiPeriodsPeaksZeros = root:$(df):varsFieldMap:PHASE_SEMI_PERIODS_PEAKS_ZEROS
+
+		ValDisplay vldTrajX, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_X" )
+		ValDisplay vldTrajAngle,win=$windowName,value=#("root:"+ df + ":varsFieldMap:TRAJ_HORIZONTAL_ANGLE" )
+		ValDisplay vldTrajL, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_L" )
+
+		ValDisplay  vldPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_Y" )
+		ValDisplay  vldPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Y" )
+		SetVariable svarPeriodNominal, win=$windowName, value=root:$(df):varsFieldMap:PHASE_ID_PERIOD_NOMINAL
+		
+		CheckBox chbPeriodPeaks,win=$windowName,disable=0
+		CheckBox chbPeriodZeros,win=$windowName,disable=0
+		CheckBox chbPeriodNominal,win=$windowName,disable=0
+		
+		SetVariable svarCutPeriods, win=$windowName, value=root:$(df):varsFieldMap:PHASE_ID_CUT_PERIODS
+		PopupMenu popupSemiPeriodPos,win=$windowName,disable=0, mode=semiPeriodsPeaksZeros
+		
+		Button btnCalcPhaseError,win=$windowName,disable=0
+		ValDisplay vldPhaseError, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PHASE_ID_PHASE_ERROR" )
+		Button btnPhaseErrorGraph,win=$windowName,disable=0
+		Button btnPhaseErrorTable,win=$windowName,disable=0
+		
+		if (periodPeaksZeros == 0)
+			CheckBox chbPeriodPeaks,win=$windowName,value=1
+			CheckBox chbPeriodZeros,win=$windowName,value=0
+			CheckBox chbPeriodNominal,win=$windowName,value=0
+			ValDisplay  vldPeriodPeaks, win=$windowName, disable=0
+			ValDisplay  vldPeriodZeros, win=$windowName, disable=2
+			SetVariable svarPeriodNominal, win=$windowName, disable=2
+		elseif (periodPeaksZeros == 1)
+			CheckBox chbPeriodPeaks,win=$windowName,value=0
+			CheckBox chbPeriodZeros,win=$windowName,value=1
+			CheckBox chbPeriodNominal,win=$windowName,value=0
+			ValDisplay  vldPeriodPeaks, win=$windowName, disable=2
+			ValDisplay  vldPeriodZeros, win=$windowName, disable=0
+			SetVariable svarPeriodNominal, win=$windowName, disable=2
+		else
+			CheckBox chbPeriodPeaks,win=$windowName,value=0
+			CheckBox chbPeriodZeros,win=$windowName,value=0
+			CheckBox chbPeriodNominal,win=$windowName,value=1
+			ValDisplay  vldPeriodPeaks, win=$windowName, disable=2
+			ValDisplay  vldPeriodZeros, win=$windowName, disable=2
+			SetVariable svarPeriodNominal, win=$windowName, disable=0		
+		endif
+
+	else
+		PopupMenu popupSemiPeriodPos,win=$windowName,disable=2
+		Button btnCalcPhaseError,win=$windowName,disable=2
+		Button btnPhaseErrorGraph,win=$windowName,disable=2
+		Button tbnPhaseErrorTable,win=$windowName,disable=2
+		CheckBox chbPeriodPeaks,win=$windowName,disable=2
+		CheckBox chbPeriodZeros,win=$windowName,disable=2
+		CheckBox chbPeriodNominal,win=$windowName,disable=2
+		ValDisplay  vldPeriodPeaks, win=$windowName, disable=2
+		ValDisplay  vldPeriodZeros, win=$windowName, disable=2
+		SetVariable svarPeriodNominal, win=$windowName, disable=2		
+	endif
+	
+End
+	
+Function CAMTO_Phase_ChbPeriodPeaks(ca) : CheckBoxControl
+	STRUCT WMCheckboxAction& ca
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+	
+	NVAR periodPeaksZeros = root:$(df):varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
+
+	switch(ca.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			if (ca.checked)
+				periodPeaksZeros = 0
+				UpdatePanelPhaseError()
+			endif
+			
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_Phase_ChbPeriodZeros(ca) : CheckBoxControl
+	STRUCT WMCheckboxAction& ca
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+	
+	NVAR periodPeaksZeros = root:$(df):varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
+
+	switch(ca.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			if (ca.checked)
+				periodPeaksZeros = 1
+				UpdatePanelPhaseError()
+			endif
+			
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_Phase_ChbPeriodNominal(ca) : CheckBoxControl
+	STRUCT WMCheckboxAction& ca
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+	
+	NVAR periodPeaksZeros = root:$(df):varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
+
+	switch(ca.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			if (ca.checked)
+				periodPeaksZeros = 2
+				UpdatePanelPhaseError()
+			endif
+			
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_Phase_PopupSemiPeriodPos(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+	
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+
+	NVAR semiPeriodsPeaksZeros = root:$(df):varsFieldMap:PHASE_SEMI_PERIODS_PEAKS_ZEROS
+	
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			semiPeriodsPeaksZeros = pa.popNum
+
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_Phase_BtnCalcPhaseError(ba) : ButtonControl
+	struct WMButtonAction &ba
+	
+		switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			//CalcPhaseError()
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+Function CAMTO_Phase_BtnPhaseErrorGraph(ba) : ButtonControl
+	struct WMButtonAction &ba
+	
+		switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			string graphName
+			graphName = ba.win + "#Graph"
+			
+			//ShowPhaseErrorGraph(graphname)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+Function CAMTO_Phase_BtnPhaseErrorTable(ba) : ButtonControl
+	struct WMButtonAction &ba
+	
+		switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			//ShowPhaseErrorTable()
+			
+			break
+	endswitch
+	
+	return 0
+
 End
 
 //Window Results() : Panel
