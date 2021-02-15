@@ -6157,13 +6157,13 @@ Static Function FindPeaks()
 		peaksDiffNegZ[i] = peakPositionsXNegZ[i+1] - peakPositionsXNegZ[i]
 	endfor
 		
-	avgPeriodPeaksPosX = Mean(peaksDiffPosX)
-	avgPeriodPeaksPosY = Mean(peaksDiffPosY)
-	avgPeriodPeaksPosZ = Mean(peaksDiffPosZ)
+	avgPeriodPeaksPosX = Mean(peaksDiffPosX)*1000
+	avgPeriodPeaksPosY = Mean(peaksDiffPosY)*1000
+	avgPeriodPeaksPosZ = Mean(peaksDiffPosZ)*1000
 	
-	avgPeriodPeaksNegX = Mean(peaksDiffNegX)
-	avgPeriodPeaksNegY = Mean(peaksDiffNegY)
-	avgPeriodPeaksNegZ = Mean(peaksDiffNegZ)
+	avgPeriodPeaksNegX = Mean(peaksDiffNegX)*1000
+	avgPeriodPeaksNegY = Mean(peaksDiffNegY)*1000
+	avgPeriodPeaksNegZ = Mean(peaksDiffNegZ)*1000
 	
 End
 
@@ -6181,7 +6181,6 @@ Static Function FindZeros()
 	variable baselineX, baselineY, baselineZ
 	variable startP, endP
 	variable pos0, pos1, field0, field1
-
 	
 	Wave wnX = $("Bx_X"+num2str(posX/1000))
 	Wave wnY = $("By_X"+num2str(posX/1000))
@@ -6189,27 +6188,17 @@ Static Function FindZeros()
 	
 	Wave posL
 	
-	variable npX, npY, npZ
-	npX = DimSize(wnX,0)-1
-	npY = DimSize(wnY,0)-1
-	npZ = DimSize(wnZ,0)-1
+	FindValue/V=(startL/1000) posL
+	startP = V_Value
+	FindValue/V=(endL/1000) posL
+	endP = V_Value
 	
 	baselineX = (zerosAmpl/100)*WaveMax(wnX)
 	baselineY = (zerosAmpl/100)*WaveMax(wnY)
 	baselineZ = (zerosAmpl/100)*WaveMax(wnZ)
 	
-	FindLevels/EDGE=0/P/Q/D=levels wnX, baselineX
-	
-	if (V_LevelsFound)
-		startP = Floor(levels[0])
-		endP = Ceil(levels[numpnts(levels)-1])
-	else
-		startP = 0
-		endP = npX-1
-	endif
-	Killwaves/Z levels
 
-	FindLevels/EDGE=0/P/Q/D=levels/R=[startP, endP] wnX, 0
+	FindLevels/EDGE=0/M=(baselineX)/P/Q/D=levels/R=[startP, endP] wnX, 0
 	Make/D/O/N=(V_LevelsFound) PositionZerosX
 	Make/D/O/N=(V_LevelsFound) ValueZerosX
 	
@@ -6226,18 +6215,8 @@ Static Function FindZeros()
 	
 	Killwaves/Z levels
 	
-	FindLevels/EDGE=0/P/Q/D=levels wnY, baselineY
-	
-	if (V_LevelsFound)
-		startP = Floor(levels[0])
-		endP = Ceil(levels[numpnts(levels)-1])
-	else
-		startP = 0
-		endP = npY-1
-	endif
-	Killwaves/Z levels
 
-	FindLevels/EDGE=0/P/Q/D=levels wnY, 0
+	FindLevels/EDGE=0/M=(baselineY)/P/Q/D=levels/R=[startP, endP] wnY, 0
 	Make/D/O/N=(V_LevelsFound) PositionZerosY
 	Make/D/O/N=(V_LevelsFound) ValueZerosY
 	
@@ -6254,18 +6233,8 @@ Static Function FindZeros()
 	
 	Killwaves/Z levels
 	
-	FindLevels/EDGE=0/P/Q/D=levels wnZ, baselineZ
-	
-	if (V_LevelsFound)
-		startP = Floor(levels[0])
-		endP = Ceil(levels[numpnts(levels)-1])
-	else
-		startP = 0
-		endP = npZ-1
-	endif
-	Killwaves/Z levels
 
-	FindLevels/EDGE=0/P/Q/D=levels wnZ, 0
+	FindLevels/EDGE=0/M=(baselineZ)/P/Q/D=levels/R=[startP, endP] wnZ, 0
 	Make/D/O/N=(V_LevelsFound) PositionZerosZ
 	Make/D/O/N=(V_LevelsFound) ValueZerosZ
 	
