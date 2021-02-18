@@ -6306,7 +6306,8 @@ Static Function ShowPeaks(graphName)
 	
 	Wave wnX = $("Bx_X"+num2str(posX/1000))
 	Wave wnY = $("By_X"+num2str(posX/1000))
-	Wave wnZ = $("Bz_X"+num2str(posX/1000))	
+	Wave wnZ = $("Bz_X"+num2str(posX/1000))
+	Wave posL
 	
 	WAVE colorP = root:wavesCAMTO:colorP
 	WAVE colorN = root:wavesCAMTO:colorN
@@ -6315,7 +6316,7 @@ Static Function ShowPeaks(graphName)
 	
 	if (fieldAxisPeak == 1)
 		if ((WaveExists(peakPositionsYPosX)) || (WaveExists(peakPositionsYNegX)))
-			AppendToGraph/W=$graphName/C=(0,0,0) wnX
+			AppendToGraph/W=$graphName/C=(0,0,0) wnX vs posL
 			if (WaveExists(peakPositionsYPosX))
    			AppendToGraph/W=$graphName peakPositionsYPosX vs peakPositionsXPosX
    			ModifyGraph/W=$graphName mode(peakPositionsYPosX)=3,marker(peakPositionsYPosX)=19, rgb(peakPositionsYPosX)=(colorP[0], colorP[1], colorP[2])
@@ -6327,7 +6328,7 @@ Static Function ShowPeaks(graphName)
    	endif
    elseif (fieldAxisPeak == 2)
 		if ((WaveExists(peakPositionsYPosY)) || (WaveExists(peakPositionsYNegY)))
-			AppendToGraph/W=$graphName/C=(0,0,0) wnY
+			AppendToGraph/W=$graphName/C=(0,0,0) wnY vs posL
 			if (WaveExists(peakPositionsYPosY))
    			AppendToGraph/W=$graphName peakPositionsYPosY vs peakPositionsXPosY
    			ModifyGraph/W=$graphName mode(peakPositionsYPosY)=3,marker(peakPositionsYPosY)=19, rgb(peakPositionsYPosY)=(colorP[0], colorP[1], colorP[2])
@@ -6339,7 +6340,7 @@ Static Function ShowPeaks(graphName)
    	endif
    elseif (fieldAxisPeak == 3)
 		if ((WaveExists(peakPositionsYPosZ)) || (WaveExists(peakPositionsYNegZ)))
-			AppendToGraph/W=$graphName/C=(0,0,0) wnZ
+			AppendToGraph/W=$graphName/C=(0,0,0) wnZ vs posL
 			if (WaveExists(peakPositionsYPosZ))
    			AppendToGraph/W=$graphName peakPositionsYPosZ vs peakPositionsXPosZ
    			ModifyGraph/W=$graphName mode(peakPositionsYPosZ)=3,marker(peakPositionsYPosZ)=19, rgb(peakPositionsYPosZ)=(colorP[0], colorP[1], colorP[2])
