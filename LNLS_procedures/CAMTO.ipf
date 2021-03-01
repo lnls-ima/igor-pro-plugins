@@ -19,7 +19,7 @@ Menu "CAMTO 14.0.0"
 //	"Dynamic Multipoles", CAMTO_DynMultipoles()
 	"Results", CAMTO_Results_Panel()
 	"Find Peaks and Zeros", CAMTO_Peaks_Panel()
-	"Phase Error", CAMTO_PhaseError()
+	"Phase Error", CAMTO_PhaseError_Panel()
 //	"Insertion Devices Results", CAMTO_ID()
 //	"Compare Results", CAMTO_Compare()
 //	"Get Variable From Fieldmaps", CAMTO_GetVariable()
@@ -1574,7 +1574,7 @@ Static Function UpdatePanels()
 //	UpdateDynMultipolesPanel()
 //	UpdateCompareResultsPanel()
 	UpdatePanelPeaks()
-//	UpdatePhaseErrorPanel()
+	UpdatePanelPhaseError()
 
 	return 0
 End
@@ -5897,46 +5897,62 @@ Static Function FindPeaks()
 	NVAR avgPeriodPeaksPosX = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_x
 	NVAR avgPeriodPeaksPosY = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Y
 	NVAR avgPeriodPeaksPosZ = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z
+	NVAR avgPeriodPeaksPosT = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_T
 	NVAR avgPeriodPeaksNegX = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_x
 	NVAR avgPeriodPeaksNegY = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Y
 	NVAR avgPeriodPeaksNegZ = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Z
+	NVAR avgPeriodPeaksNegT = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_T
 	NVAR posX = :varsFieldmap:PEAK_START_X
 	NVAR startL = :varsFieldmap:PEAK_START_L
 	NVAR endL = :varsFieldmap:PEAK_END_L
-	
+
 	Wave wnX = $("Bx_X"+num2str(posX/1000))
 	Wave wnY = $("By_X"+num2str(posX/1000))	
 	Wave wnZ = $("Bz_X"+num2str(posX/1000))
 	Wave posL
-  
+
 	Variable peaksFoundPosX=0
 	Variable peaksFoundNegX=0
-	
+
 	Variable peaksFoundPosY=0
 	Variable peaksFoundNegY=0
-	
+
 	Variable peaksFoundPosZ=0
 	Variable peaksFoundNegZ=0
-	
+
+	Variable peaksFoundPosT=0
+	Variable peaksFoundNegT=0
+	Variable idx
+
 	Variable npX = DimSize(wnX,0)-1
 	Variable npY = DimSize(wnY,0)-1
 	Variable npZ = DimSize(wnZ,0)-1
+
+	Make/O/N=(npX+1) wnT= NaN
+	for (idx=0; idx < npX+1; idx=idx+1)
+		wnT[idx] = sqrt(wnX[idx]^2+wnY[idx]^2+wnZ[idx]^2)
+	endfor
+	Variable npT = DimSize(wnT,0)-1
 	
 	Variable startP, endP, i, j
-	
+
 	Killwaves/Z peakPositionsXPosX, peakPositionsYPosX, peakPositionsXNegX, peakPositionsYNegX
 	Killwaves/Z peakPositionsXPosY, peakPositionsYPosY, peakPositionsXNegY, peakPositionsYNegY
 	Killwaves/Z peakPositionsXPosZ, peakPositionsYPosZ, peakPositionsXNegZ, peakPositionsYNegZ
-		
+	Killwaves/Z peakPositionsXPosT, peakPositionsYPosT, peakPositionsXNegT, peakPositionsYNegT
+
 	Make/O/N=(npX) peakPositionsXPosX= NaN, peakPositionsYPosX= NaN  
 	Make/O/N=(npX) peakPositionsXNegX= NaN, peakPositionsYNegX= NaN
-	
+
 	Make/O/N=(npY) peakPositionsXPosY= NaN, peakPositionsYPosY= NaN  
 	Make/O/N=(npY) peakPositionsXNegY= NaN, peakPositionsYNegY= NaN 
-	
+
 	Make/O/N=(npZ) peakPositionsXPosZ= NaN, peakPositionsYPosZ= NaN  
 	Make/O/N=(npZ) peakPositionsXNegZ= NaN, peakPositionsYNegZ= NaN
-		
+
+	Make/O/N=(npT) peakPositionsXPosT= NaN, peakPositionsYPosT= NaN  
+	Make/O/N=(npT) peakPositionsXNegT= NaN, peakPositionsYNegT= NaN
+
 	FindValue/V=(startL/1000) posL
 	startP = V_Value
 	FindValue/V=(endL/1000) posL
@@ -5945,20 +5961,24 @@ Static Function FindPeaks()
 	variable baselinePosX = (WaveMax(wnX,startP,endP) - WaveMax(wnX,startP,endP) * (peaksAmpl/100))
 	variable baselinePosY = (WaveMax(wnY,startP,endP) - WaveMax(wnY,startP,endP) * (peaksAmpl/100))
 	variable baselinePosZ = (WaveMax(wnZ,startP,endP) - WaveMax(wnZ,startP,endP) * (peaksAmpl/100))
-	
+	variable baselinePosT = (WaveMax(wnT,startP,endP) - WaveMax(wnT,startP,endP) * (peaksAmpl/100))
+
 	variable baselineNegX = (WaveMin(wnX,startP,endP) - WaveMin(wnX,startP,endP) * (peaksAmpl/100))
 	variable baselineNegY = (WaveMin(wnY,startP,endP) - WaveMin(wnY,startP,endP) * (peaksAmpl/100))
 	variable baselineNegZ = (WaveMin(wnZ,startP,endP) - WaveMin(wnZ,startP,endP) * (peaksAmpl/100))
-	
+	variable baselineNegT = (WaveMin(wnT,startP,endP) - WaveMin(wnT,startP,endP) * (peaksAmpl/100))
+
 	variable valorpeakPosX = baselinePosX
 	variable valorpeakPosY = baselinePosY
-	variable valorpeakPosZ = baselinePosZ	
+	variable valorpeakPosZ = baselinePosZ
+	variable valorpeakPosT = baselinePosT	
 	variable valorpeakNegX = baselineNegX
 	variable valorpeakNegY = baselineNegY
-	variable valorpeakNegZ = baselineNegZ	
+	variable valorpeakNegZ = baselineNegZ
+	variable valorpeakNegT = baselineNegT		
 
 	j = 0
-	for (i=startP; i<endP; i=i+1)
+	for (i=startP+1; i<endP; i=i+1)
 		if (wnX[i] > baselinePosX)
 			if (valorpeakPosX < wnX[i])
 				valorpeakPosX = wnX[i]
@@ -5977,9 +5997,9 @@ Static Function FindPeaks()
 	endfor			
 	DeletePoints j, 1, peakPositionsXPosX
 	DeletePoints j, 1, peakPositionsYPosX
-	
+
 	j = 0
-	for (i=startP; i<endP; i=i+1)
+	for (i=startP+1; i<endP; i=i+1)
 		if (wnY[i] > baselinePosY)
 			if (valorpeakPosY < wnY[i])
 				valorpeakPosY = wnY[i]
@@ -5998,9 +6018,9 @@ Static Function FindPeaks()
 	endfor			
 	DeletePoints j, 1, peakPositionsXPosY
 	DeletePoints j, 1, peakPositionsYPosY
-	
+
 	j = 0
-	for (i=startP; i<endP; i=i+1)
+	for (i=startP+1; i<endP; i=i+1)
 		if (wnZ[i] > baselinePosZ)
 			if (valorpeakPosZ < wnZ[i])
 				valorpeakPosZ = wnZ[i]
@@ -6019,9 +6039,30 @@ Static Function FindPeaks()
 	endfor			
 	DeletePoints j, 1, peakPositionsXPosZ
 	DeletePoints j, 1, peakPositionsYPosZ
-	
+
 	j = 0
-	for (i=startP; i<endP; i=i+1)
+	for (i=startP+1; i<endP; i=i+1)
+		if (wnT[i] > baselinePosT)
+			if (valorpeakPosT < wnT[i])
+				valorpeakPosT = wnT[i]
+				peakPositionsXPosT[j] = posL[i]
+				peakPositionsYPosT[j] = wnT[i]
+			endif				
+		else
+			if (wnT[i-1] > baselinePosT)
+				valorpeakPosT = baselinePosT
+				j = j + 1
+				InsertPoints j, 1, peakPositionsXPosT
+				InsertPoints j, 1, peakPositionsYPosT
+				peaksFoundPosT+=1
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, peakPositionsXPosT
+	DeletePoints j, 1, peakPositionsYPosT
+
+	j = 0
+	for (i=startP+1; i<endP; i=i+1)
 		if (wnX[i] < baselineNegX)
 			if (valorpeakNegX > wnX[i])
 				valorpeakNegX = wnX[i]
@@ -6040,9 +6081,9 @@ Static Function FindPeaks()
 	endfor			
 	DeletePoints j, 1, peakPositionsXNegX
 	DeletePoints j, 1, peakPositionsYNegX
-	
+
 	j = 0
-	for (i=startP; i<endP; i=i+1)
+	for (i=startP+1; i<endP; i=i+1)
 		if (wnY[i] < baselineNegY)
 			if (valorpeakNegY > wnY[i])
 				valorpeakNegY = wnY[i]
@@ -6061,9 +6102,9 @@ Static Function FindPeaks()
 	endfor			
 	DeletePoints j, 1, peakPositionsXNegY
 	DeletePoints j, 1, peakPositionsYNegY
-	
+
 	j = 0
-	for (i=startP; i<endP; i=i+1)
+	for (i=startP+1; i<endP; i=i+1)
 		if (wnZ[i] < baselineNegZ)
 			if (valorpeakNegZ > wnZ[i])
 				valorpeakNegZ = wnZ[i]
@@ -6082,89 +6123,133 @@ Static Function FindPeaks()
 	endfor			
 	DeletePoints j, 1, peakPositionsXNegZ
 	DeletePoints j, 1, peakPositionsYNegZ
-	
-	
+
+	j = 0
+	for (i=startP+1; i<endP; i=i+1)
+		if (wnT[i] < baselineNegT)
+			if (valorpeakNegT > wnT[i])
+				valorpeakNegT = wnT[i]
+				peakPositionsXNegT[j] = posL[i]
+				peakPositionsYNegT[j] = wnT[i]
+			endif				
+		else
+			if (wnT[i-1] < baselineNegT)
+				valorpeakNegT = baselineNegT
+				j = j + 1
+				InsertPoints j, 1, peakPositionsXNegT
+				InsertPoints j, 1, peakPositionsYNegT
+				peaksFoundNegT+=1
+			endif
+		endif
+	endfor			
+	DeletePoints j, 1, peakPositionsXNegT
+	DeletePoints j, 1, peakPositionsYNegT
+
 	if(peaksFoundPosX)
     	Redimension/N=(peaksFoundPosX) peakPositionsXPosX, peakPositionsYPosX
+    	KillWaves/Z peaksDiffPosX
+    	Make/O/N=(peaksFoundPosX - 1) peaksDiffPosX
+    	for (i=0; i<peaksFoundPosX-1; i=i+1)
+			peaksDiffPosX[i] = peakPositionsXPosX[i+1] - peakPositionsXPosX[i]
+		endfor
+		avgPeriodPeaksPosX = Mean(peaksDiffPosX)*1000
+		KillWaves/Z peaksDiffPosX
 	else
     	KillWaves/Z peakPositionsXPosX, peakPositionsYPosX
 	endif
-	
+
 	if(peaksFoundNegX)
     	Redimension/N=(peaksFoundNegX) peakPositionsXNegX, peakPositionsYNegX
+    	KillWaves/Z peaksDiffNegX
+    	Make/O/N=(peaksFoundNegX - 1) peaksDiffNegX
+    	for (i=0; i<peaksFoundNegX-1; i=i+1)
+			peaksDiffNegX[i] = peakPositionsXNegX[i+1] - peakPositionsXNegX[i]
+		endfor
+		avgPeriodPeaksNegX = Mean(peaksDiffNegX)*1000
+    	KillWaves/Z peaksDiffNegX
 	else
     	KillWaves/Z peakPositionsXNegX, peakPositionsYNegX
 	endif
-	
-	
+
 	if(peaksFoundPosY)
     	Redimension/N=(peaksFoundPosY) peakPositionsXPosY, peakPositionsYPosY
+    	KillWaves/Z peaksDiffPosY
+    	Make/O/N=(peaksFoundPosY - 1) peaksDiffPosY
+    	for (i=0; i<peaksFoundPosY-1; i=i+1)
+			peaksDiffPosY[i] = peakPositionsXPosY[i+1] - peakPositionsXPosY[i]
+		endfor
+		avgPeriodPeaksPosY = Mean(peaksDiffPosY)*1000
+    	KillWaves/Z peaksDiffPosY
 	else
     	KillWaves/Z peakPositionsXPosY, peakPositionsYPosY
 	endif
-	
+
 	if(peaksFoundNegY)
     	Redimension/N=(peaksFoundNegY) peakPositionsXNegY, peakPositionsYNegY
+    	KillWaves/Z peaksDiffNegY
+    	Make/O/N=(peaksFoundNegY - 1) peaksDiffNegY
+    	for (i=0; i<peaksFoundNegY-1; i=i+1)
+			peaksDiffNegY[i] = peakPositionsXNegY[i+1] - peakPositionsXNegY[i]
+		endfor
+		avgPeriodPeaksNegY = Mean(peaksDiffNegY)*1000
+		KillWaves/Z peaksDiffNegY
 	else
     	KillWaves/Z peakPositionsXNegY, peakPositionsYNegY
 	endif
-	
-	
+
 	if(peaksFoundPosZ)
     	Redimension/N=(peaksFoundPosZ) peakPositionsXPosZ, peakPositionsYPosZ
+    	KillWaves/Z peaksDiffPosZ
+    	Make/O/N=(peaksFoundPosZ - 1) peaksDiffPosZ
+    	for (i=0; i<peaksFoundPosZ-1; i=i+1)
+			peaksDiffPosZ[i] = peakPositionsXPosZ[i+1] - peakPositionsXPosZ[i]
+		endfor
+		avgPeriodPeaksPosZ = Mean(peaksDiffPosZ)*1000
+		KillWaves/Z peaksDiffPosZ
 	else
     	KillWaves/Z peakPositionsXPosZ, peakPositionsYPosZ
 	endif
-	
-	if(peaksFoundNegX)
+
+	if(peaksFoundNegZ)
     	Redimension/N=(peaksFoundNegZ) peakPositionsXNegZ, peakPositionsYNegZ
+    	KillWaves/Z peaksDiffNegZ
+    	Make/O/N=(peaksFoundNegZ - 1) peaksDiffNegZ
+    	for (i=0; i<peaksFoundNegZ-1; i=i+1)
+			peaksDiffNegZ[i] = peakPositionsXNegZ[i+1] - peakPositionsXNegZ[i]
+		endfor
+		avgPeriodPeaksNegZ = Mean(peaksDiffNegZ)*1000
+		KillWaves/Z peaksDiffNegZ
 	else
     	KillWaves/Z peakPositionsXNegZ, peakPositionsYNegZ
 	endif
-	
-	KillWaves/Z peaksDiffPosX, peaksDiffNegX
-	KillWaves/Z peaksDiffPosY, peaksDiffNegY
-	KillWaves/Z peaksDiffPosZ, peaksDiffNegZ
-	
-	Make/O/N=(numpnts(peakPositionsXPosX) - 1) peaksDiffPosX
-	Make/O/N=(numpnts(peakPositionsXPosY) - 1) peaksDiffPosY
-	Make/O/N=(numpnts(peakPositionsXPosZ) - 1) peaksDiffPosZ
-	Make/O/N=(numpnts(peakPositionsXNegX) - 1) peaksDiffNegX
-	Make/O/N=(numpnts(peakPositionsXNegY) - 1) peaksDiffNegY
-	Make/O/N=(numpnts(peakPositionsXNegZ) - 1) peaksDiffNegZ
-		
-	for (i=0; i<numpnts(peaksDiffPosX); i=i+1)
-		peaksDiffPosX[i] = peakPositionsXPosX[i+1] - peakPositionsXPosX[i]
-	endfor
-	
-	for (i=0; i<numpnts(peaksDiffPosY); i=i+1)
-		peaksDiffPosY[i] = peakPositionsXPosY[i+1] - peakPositionsXPosY[i]
-	endfor
-	
-	for (i=0; i<numpnts(peaksDiffPosZ); i=i+1)
-		peaksDiffPosZ[i] = peakPositionsXPosZ[i+1] - peakPositionsXPosZ[i]
-	endfor
-	
-	for (i=0; i<numpnts(peaksDiffNegX); i=i+1)
-		peaksDiffNegX[i] = peakPositionsXNegX[i+1] - peakPositionsXNegX[i]
-	endfor
-	
-	for (i=0; i<numpnts(peaksDiffNegY); i=i+1)
-		peaksDiffNegY[i] = peakPositionsXNegY[i+1] - peakPositionsXNegY[i]
-	endfor
-	
-	for (i=0; i<numpnts(peaksDiffNegZ); i=i+1)
-		peaksDiffNegZ[i] = peakPositionsXNegZ[i+1] - peakPositionsXNegZ[i]
-	endfor
-		
-	avgPeriodPeaksPosX = Mean(peaksDiffPosX)*1000
-	avgPeriodPeaksPosY = Mean(peaksDiffPosY)*1000
-	avgPeriodPeaksPosZ = Mean(peaksDiffPosZ)*1000
-	
-	avgPeriodPeaksNegX = Mean(peaksDiffNegX)*1000
-	avgPeriodPeaksNegY = Mean(peaksDiffNegY)*1000
-	avgPeriodPeaksNegZ = Mean(peaksDiffNegZ)*1000
-	
+
+	if(peaksFoundPosT)
+    	Redimension/N=(peaksFoundPosT) peakPositionsXPosT, peakPositionsYPosT
+    	KillWaves/Z peaksDiffPosT
+    	Make/O/N=(peaksFoundPosT - 1) peaksDiffPosT
+    	for (i=0; i<peaksFoundPosT-1; i=i+1)
+			peaksDiffPosT[i] = peakPositionsXPosT[i+1] - peakPositionsXPosT[i]
+		endfor
+		avgPeriodPeaksPosT = Mean(peaksDiffPosT)*1000
+		KillWaves/Z peaksDiffPosT
+	else
+    	KillWaves/Z peakPositionsXPosT, peakPositionsYPosT
+	endif
+
+	if(peaksFoundNegT)
+    	Redimension/N=(peaksFoundNegT) peakPositionsXNegT, peakPositionsYNegT
+    	KillWaves/Z peaksDiffNegT
+    	Make/O/N=(peaksFoundNegT - 1) peaksDiffNegT
+    	for (i=0; i<peaksFoundNegT-1; i=i+1)
+			peaksDiffNegT[i] = peakPositionsXNegT[i+1] - peakPositionsXNegT[i]
+		endfor
+		avgPeriodPeaksNegT = Mean(peaksDiffNegT)*1000
+		KillWaves/Z peaksDiffNegT
+	else
+    	KillWaves/Z peakPositionsXNegT, peakPositionsYNegT
+	endif
+	KillWaves/Z wnT
+
 End
 
 Static Function FindZeros()
@@ -6406,6 +6491,9 @@ Function CAMTO_PhaseError_Panel() : Panel
 	
 	string windowName = "PhaseError"
 	string windowTitle = "Phase Error"
+	string graphName = "Graph"
+	string annotationName = "PhaseErrorColors"
+	string annotationStr = ""
 	
 	if (DataFolderExists("root:varsCAMTO")==0)
 		DoAlert 0, "CAMTO variables not found."
@@ -6413,7 +6501,7 @@ Function CAMTO_PhaseError_Panel() : Panel
 	endif
 
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(80,260,404,648) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(440,60,1703,527) as windowTitle
 	SetDrawLayer UserBack
 	
 	variable m, h, h1, l1, l2, l 
@@ -6447,12 +6535,7 @@ Function CAMTO_PhaseError_Panel() : Panel
 	CheckBox chbPeriodPeaks, proc=CAMTO_Phase_ChbPeriodPeaks
 	ValDisplay vldPeriodPeaks, pos={m+100,h}, size={200,18}, title="Avg. from peaks [mm]"
 	h += 25
-	
-	CheckBox chbPeriodZeros, pos={m+80,h}, mode=1, title=""
-	CheckBox chbPeriodZeros, proc=CAMTO_Phase_ChbPeriodZeros
-	ValDisplay vldPeriodZeros, pos={m+100,h}, size={200,18}, title="Avg. from  zeros [mm]"
-	h += 25
-	
+
 	CheckBox chbPeriodNominal, pos={m+80,h}, mode=1, title=""
 	CheckBox chbPeriodNominal, proc=CAMTO_Phase_ChbPeriodNominal
 	SetVariable svarPeriodNominal, pos={m+100,h}, size={200,18}, title="Nominal value [mm]"
@@ -6467,11 +6550,6 @@ Function CAMTO_PhaseError_Panel() : Panel
 	h += 25
 	
 	SetVariable svarCutPeriods, pos={m,h}, size={280,16}, title="Number of periods to skip at the endings", limits={0,1000,1}
-	h += 25
-	
-	PopupMenu popupSemiPeriodPos, pos={m,h},size={100,20}, title="Get semi-period positions from"
-	Popupmenu popupSemiPeriodPos, mode=1, popvalue="Peaks", value=#"\"Peaks;Zeros\""
-	PopupMenu popupSemiPeriodPos, proc=CAMTO_Phase_PopupSemiPeriodPos
 	h += 25
 	
 	Button btnCalcPhaseError, pos={m,h}, size={140,50}, fSize=14, fStyle=1, disable=2, title="Calculate \nPhase Error"
@@ -6500,6 +6578,8 @@ Function CAMTO_PhaseError_Panel() : Panel
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 	
+	Display/W=(340,10,1140,545)/HOST=$windowName/N=$graphName	
+	
 	UpdatePanelPhaseError()
 	
 	return 0
@@ -6520,22 +6600,18 @@ Static Function UpdatePanelPhaseError()
 
 	if(strlen(df)>0)
 		NVAR periodPeaksZeros = root:$(df):varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
-		NVAR semiPeriodsPeaksZeros = root:$(df):varsFieldMap:PHASE_SEMI_PERIODS_PEAKS_ZEROS
 
 		ValDisplay vldTrajX, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_X" )
 		ValDisplay vldTrajAngle,win=$windowName,value=#("root:"+ df + ":varsFieldMap:TRAJ_HORIZONTAL_ANGLE" )
 		ValDisplay vldTrajL, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_L" )
 
-		ValDisplay  vldPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_Y" )
-		ValDisplay  vldPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Y" )
+		ValDisplay  vldPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z" )
 		SetVariable svarPeriodNominal, win=$windowName, value=root:$(df):varsFieldMap:PHASE_ID_PERIOD_NOMINAL
 		
 		CheckBox chbPeriodPeaks,win=$windowName,disable=0
-		CheckBox chbPeriodZeros,win=$windowName,disable=0
 		CheckBox chbPeriodNominal,win=$windowName,disable=0
 		
 		SetVariable svarCutPeriods, win=$windowName, value=root:$(df):varsFieldMap:PHASE_ID_CUT_PERIODS
-		PopupMenu popupSemiPeriodPos,win=$windowName,disable=0, mode=semiPeriodsPeaksZeros
 		
 		Button btnCalcPhaseError,win=$windowName,disable=0
 		ValDisplay vldPhaseError, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PHASE_ID_PHASE_ERROR" )
@@ -6544,24 +6620,13 @@ Static Function UpdatePanelPhaseError()
 		
 		if (periodPeaksZeros == 0)
 			CheckBox chbPeriodPeaks,win=$windowName,value=1
-			CheckBox chbPeriodZeros,win=$windowName,value=0
 			CheckBox chbPeriodNominal,win=$windowName,value=0
 			ValDisplay  vldPeriodPeaks, win=$windowName, disable=0
-			ValDisplay  vldPeriodZeros, win=$windowName, disable=2
-			SetVariable svarPeriodNominal, win=$windowName, disable=2
-		elseif (periodPeaksZeros == 1)
-			CheckBox chbPeriodPeaks,win=$windowName,value=0
-			CheckBox chbPeriodZeros,win=$windowName,value=1
-			CheckBox chbPeriodNominal,win=$windowName,value=0
-			ValDisplay  vldPeriodPeaks, win=$windowName, disable=2
-			ValDisplay  vldPeriodZeros, win=$windowName, disable=0
 			SetVariable svarPeriodNominal, win=$windowName, disable=2
 		else
 			CheckBox chbPeriodPeaks,win=$windowName,value=0
-			CheckBox chbPeriodZeros,win=$windowName,value=0
 			CheckBox chbPeriodNominal,win=$windowName,value=1
 			ValDisplay  vldPeriodPeaks, win=$windowName, disable=2
-			ValDisplay  vldPeriodZeros, win=$windowName, disable=2
 			SetVariable svarPeriodNominal, win=$windowName, disable=0		
 		endif
 
@@ -6571,10 +6636,8 @@ Static Function UpdatePanelPhaseError()
 		Button btnPhaseErrorGraph,win=$windowName,disable=2
 		Button tbnPhaseErrorTable,win=$windowName,disable=2
 		CheckBox chbPeriodPeaks,win=$windowName,disable=2
-		CheckBox chbPeriodZeros,win=$windowName,disable=2
 		CheckBox chbPeriodNominal,win=$windowName,disable=2
 		ValDisplay  vldPeriodPeaks, win=$windowName, disable=2
-		ValDisplay  vldPeriodZeros, win=$windowName, disable=2
 		SetVariable svarPeriodNominal, win=$windowName, disable=2		
 	endif
 	
@@ -6658,29 +6721,6 @@ Function CAMTO_Phase_ChbPeriodNominal(ca) : CheckBoxControl
 
 End
 
-Function CAMTO_Phase_PopupSemiPeriodPos(pa) : PopupMenuControl
-	struct WMPopupAction &pa
-	
-	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
-
-	NVAR semiPeriodsPeaksZeros = root:$(df):varsFieldMap:PHASE_SEMI_PERIODS_PEAKS_ZEROS
-	
-	switch(pa.eventCode)
-		case 2:
-			if (IsCorrectFolder() == -1)
-				return -1
-			endif
-			
-			semiPeriodsPeaksZeros = pa.popNum
-
-			break
-	
-	endswitch
-
-	return 0
-
-End
-
 Function CAMTO_Phase_BtnCalcPhaseError(ba) : ButtonControl
 	struct WMButtonAction &ba
 	
@@ -6690,7 +6730,7 @@ Function CAMTO_Phase_BtnCalcPhaseError(ba) : ButtonControl
 				return -1
 			endif
 			
-			//CalcPhaseError()
+			CalcPhaseError()
 			
 			break
 	endswitch
@@ -6711,7 +6751,7 @@ Function CAMTO_Phase_BtnPhaseErrorGraph(ba) : ButtonControl
 			string graphName
 			graphName = ba.win + "#Graph"
 			
-			//ShowPhaseErrorGraph(graphname)
+			ShowPhaseErrorGraph(graphname)
 			
 			break
 	endswitch
@@ -6729,7 +6769,9 @@ Function CAMTO_Phase_BtnPhaseErrorTable(ba) : ButtonControl
 				return -1
 			endif
 			
-			//ShowPhaseErrorTable()
+			Wave phase_error
+			Wave posL_calc
+			Edit/N=PhaseErrorTable/K=1 posL_calc, phase_error
 			
 			break
 	endswitch
@@ -6737,6 +6779,209 @@ Function CAMTO_Phase_BtnPhaseErrorTable(ba) : ButtonControl
 	return 0
 
 End
+
+Static Function CalcPhaseError()
+
+	NVAR particleCharge = root:varsCAMTO:PARTICLE_CHARGE
+	NVAR particleMass = root:varsCAMTO:PARTICLE_MASS
+	NVAR lightSpeed = root:varsCAMTO:LIGHT_SPEED
+
+	NVAR startXTraj = :varsFieldmap:TRAJ_START_X
+	NVAR particleEnergy = :varsFieldmap:TRAJ_PARTICLE_ENERGY
+	NVAR periodPeaksZeros = :varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
+	NVAR avgPeriodPeaksPosX = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_X
+	NVAR avgPeriodPeaksPosY = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Y
+	NVAR avgPeriodPeaksPosZ = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z
+	NVAR avgPeriodPeaksPosT = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_T
+	NVAR IDPeriodNominal = :varsFieldMap:PHASE_ID_PERIOD_NOMINAL
+	NVAR IDPeriod = :varsFieldMap:PHASE_ID_PERIOD
+	NVAR IDCutPeriods = :varsFieldMap:PHASE_ID_CUT_PERIODS
+	NVAR IDPhaseError = :varsFieldMap:PHASE_ID_PHASE_ERROR
+
+	Wave/Z peakPositionsYPosX
+	Wave/Z peakPositionsYPosY
+	Wave/Z peakPositionsYPosZ
+	Wave/Z peakPositionsYPosT
+	Wave/Z peakPositionsXPosX
+	Wave/Z peakPositionsXPosY
+	Wave/Z peakPositionsXPosZ
+	Wave/Z peakPositionsXPosT
+
+	variable gama = GetLorentzFactor(particleEnergy)
+	variable auxp1, auxp2
+	variable idx, nsp, np
+	variable K, lambda
+	variable startP, endP
+	variable periodPeaks
+
+	Wave posL
+	Wave posL_calc
+	Wave ang_sum_int
+
+
+	Duplicate/O	peakPositionsXPosT, peakPositionsCut
+	Duplicate/O	peakPositionsYPosT, peakValuesCut
+
+	DeletePoints 0, IDCutPeriods, peakPositionsCut
+	DeletePoints 0, IDCutPeriods, peakValuesCut
+	DeletePoints numpnts(peakPositionsCut)-IDCutPeriods, IDCutPeriods, peakPositionsCut
+	DeletePoints numpnts(peakValuesCut)-IDCutPeriods, IDCutPeriods, peakValuesCut			
+
+	Duplicate/O peakPositionsCut, longPeakT
+	Duplicate/O peakValuesCut, peakT
+	Killwaves/Z peakPositionsCut, peakValuesCut
+
+
+	if(numpnts(peakPositionsXPosX) > 2*IDCutPeriods)
+		Duplicate/O	peakPositionsXPosX, peakPositionsCut
+		Duplicate/O	peakPositionsYPosX, peakValuesCut
+
+		DeletePoints 0, IDCutPeriods, peakPositionsCut
+		DeletePoints 0, IDCutPeriods, peakValuesCut
+		DeletePoints numpnts(peakPositionsCut)-IDCutPeriods, IDCutPeriods, peakPositionsCut
+		DeletePoints numpnts(peakValuesCut)-IDCutPeriods, IDCutPeriods, peakValuesCut	
+
+		Duplicate/O peakPositionsCut, longPeakX
+		Duplicate/O peakValuesCut, peakX	
+		Killwaves/Z peakPositionsCut, peakValuesCut
+	else
+		Wave longPeakX = peakPositionsXPosX
+		Wave peakX = peakPositionsYPosX
+	endif
+
+	if(numpnts(peakPositionsXPosY) > 2*IDCutPeriods)
+		Duplicate/O	peakPositionsXPosY, peakPositionsCut
+		Duplicate/O	peakPositionsYPosY, peakValuesCut
+	
+		DeletePoints 0, IDCutPeriods, peakPositionsCut
+		DeletePoints 0, IDCutPeriods, peakValuesCut
+		DeletePoints numpnts(peakPositionsCut)-IDCutPeriods, IDCutPeriods, peakPositionsCut
+		DeletePoints numpnts(peakValuesCut)-IDCutPeriods, IDCutPeriods, peakValuesCut	
+		
+		Duplicate/O peakPositionsCut, longPeakY
+		Duplicate/O peakValuesCut, peakY
+		Killwaves/Z peakPositionsCut, peakValuesCut
+	else
+		Wave longPeakY = peakPositionsXPosY
+		Wave peakY = peakPositionsYPosY
+	endif
+
+	if(numpnts(peakPositionsXPosZ) > 2*IDCutPeriods)
+		Duplicate/O	peakPositionsXPosZ, peakPositionsCut
+		Duplicate/O	peakPositionsYPosZ, peakValuesCut
+
+		DeletePoints 0, IDCutPeriods, peakPositionsCut
+		DeletePoints 0, IDCutPeriods, peakValuesCut
+		DeletePoints numpnts(peakPositionsCut)-IDCutPeriods, IDCutPeriods, peakPositionsCut
+		DeletePoints numpnts(peakValuesCut)-IDCutPeriods, IDCutPeriods, peakValuesCut	
+
+		Duplicate/O peakPositionsCut, longPeakZ
+		Duplicate/O peakValuesCut, peakZ
+		Killwaves/Z peakPositionsCut, peakValuesCut
+	else
+		Wave longPeakZ = peakPositionsXPosZ
+		Wave peakZ = peakPositionsYPosZ
+	endif
+
+	if (Mean(peakX) > Mean(peakY))
+  		if (Mean(peakX) > Mean(peakZ))
+  			Wave longPeak = longPeakX
+  			periodPeaks = avgPeriodPeaksPosX
+  		else
+  			Wave longPeak = longPeakZ
+  			periodPeaks = avgPeriodPeaksPosZ
+  		endif
+  	else
+  		if (Mean(peakY) > Mean(peakZ))
+  			Wave longPeak = longPeakY
+  			periodPeaks = avgPeriodPeaksPosY
+  		else
+  			Wave longPeak = longPeakZ
+  			periodPeaks = avgPeriodPeaksPosZ
+		endif
+	endif
+
+	Killwaves/Z peakX, peakY, peakZ
+	Killwaves/Z longPeakX, longPeakY, longPeakZ
+
+	if (periodPeaksZeros == 0)
+		IDPeriod = periodPeaks
+	else
+		IDPeriod = IDPeriodNominal
+	endif
+
+	if (IDPeriod == 0)
+		DoAlert 0,"ID Period must be a non-zero positive value."
+		return -1	
+	endif
+
+	Wave IntBx = $("Int_Bx_X" + num2str(startXTraj/1000))
+	Wave IntBy = $("Int_By_X" + num2str(startXTraj/1000))
+	Wave IntBz = $("Int_Bz_X" + num2str(startXTraj/1000))
+
+	K = 0.0934*Mean(peakT)*IDPeriod
+	lambda = ((IDPeriod/1000)/(2*(gama^2)))*(1 + (K^2)/2)
+
+	np = numpnts(longPeakT)
+	FindValue/V=(longPeakT[0]) posL
+	startP = V_Value
+	FindValue/V=(longPeakT[np-1]) posL
+	endP = V_Value
+
+	Duplicate/O/R=(startP,endP) IntBx, IntBx_calc
+	Duplicate/O/R=(startP,endP) IntBy, IntBy_calc
+	Duplicate/O/R=(startP,endP) IntBz, IntBz_calc
+	Duplicate/O/R=(startP,endP) posL, posL_calc
+
+	nsp = numpnts(posL_calc)
+	Make/O/D/N=(nsp) ang_sum = NaN
+	ang_sum = ((IntBx_calc+IntBy_calc+IntBz_calc)*(particleCharge/(gama*particleMass*lightSpeed)))^2
+	KillWaves/Z IntBx_calc, IntBy_calc, IntBz_calc
+
+	Integrate/METH=1 ang_sum/X=posL_calc/D=ang_sum_int
+
+	Make/O/D/N=(nsp) phase = NaN
+	phase[0,nsp-1] = (Pi/lambda)*((p/(gama^2))+ang_sum_int)
+	KillWaves/Z ang_sum, ang_sum_int
+
+	Make/O/D/N=(nsp) phase_fit = NaN
+	Make/O/D/N=(nsp) phase_error = NaN
+	CurveFit/Q line phase/D=phase_fit
+	phase_error = phase-phase_fit
+
+	Make/O/D/N=(np-1) errorp = NaN
+	Make/O/D/N=(np-1) errorp_sqrt = NaN
+	for (idx=0; idx < np-1; idx=idx+1)
+		FindValue/V=(longPeakT[idx]) posL
+		auxp1 = V_Value
+		FindValue/V=(longPeakT[idx+1]) posL
+		auxp2 = V_Value
+		errorp[idx] = Mean(phase_error, auxp1-startP+1, auxp2-startP-1)*180/Pi
+	endfor
+
+	errorp_sqrt = errorp*errorp
+	IDPhaseError = Sqrt(Sum(errorp_sqrt)/numpnts(errorp_sqrt))
+
+	KillWaves/Z phase, phase_fit
+	KillWaves/Z errorp, errorp_sqrt
+End
+
+Static Function ShowPhaseErrorGraph(graphname)
+	string graphname
+	
+	DeleteTracesFromGraph(graphName)
+		
+	Wave phase_error
+	Wave posL_calc
+	
+	phase_error *= 180/Pi
+	
+	AppendToGraph/W=$graphName/C=(65000,0,0) phase_error vs posL_calc
+	Label/W=$graphName bottom "\\Z12Longitudinal Position [m]"
+	Label/W=$graphName left "\\Z12Local Phase Error [°]"	
+
+End
+
 
 //Window Results() : Panel
 //	PauseUpdate; Silent 1		// building window...
