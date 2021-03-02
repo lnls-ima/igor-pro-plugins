@@ -1711,19 +1711,9 @@ Static Function InitializeFieldmapVariables()
 
 	string/G   PEAK_FIELD_AXIS_STR = "By"
 	variable/G PEAK_FIELD_AXIS = 2
-	variable/G PEAK_POS_NEG = 3 
 	variable/G PEAK_PEAKS_AMPL = 5
-	variable/G PEAK_ZEROS_AMPL = 5
-	variable/G PEAK_AVG_PERIOD_PEAKS_POS_X = 0
-	variable/G PEAK_AVG_PERIOD_PEAKS_POS_Y = 0
-	variable/G PEAK_AVG_PERIOD_PEAKS_POS_Z = 0
-	variable/G PEAK_AVG_PERIOD_PEAKS_NEG_X = 0
-	variable/G PEAK_AVG_PERIOD_PEAKS_NEG_Y = 0
-	variable/G PEAK_AVG_PERIOD_PEAKS_NEG_Z = 0
-	variable/G PEAK_AVG_PERIOD_ZEROS_X = 0
-	variable/G PEAK_AVG_PERIOD_ZEROS_Y = 0
-	variable/G PEAK_AVG_PERIOD_ZEROS_Z = 0
-	variable/G PEAK_SELECTED = 0
+	variable/G PEAK_AVG_PERIOD_PEAKS = 0
+	variable/G PEAK_AVG_PERIOD_ZEROS = 0
 
 	variable/G PEAK_START_L
 	variable/G PEAK_END_L
@@ -1731,11 +1721,9 @@ Static Function InitializeFieldmapVariables()
 	variable/G PEAK_END_X
 	variable/G PEAK_STEP_X
 
-	variable/G PHASE_SEMI_PERIODS_PEAKS_ZEROS = 2	
 	variable/G PHASE_PERIOD_PEAKS_ZEROS = 1
 	variable/G PHASE_ID_PERIOD_NOMINAL = 0
 	variable/G PHASE_ID_PERIOD = 0
-	variable/G PHASE_ID_CUT_PERIODS = 0
 	variable/G PHASE_ID_PHASE_ERROR = inf
 
 //	variable/G StartYZ = 0
@@ -5423,17 +5411,17 @@ Function CAMTO_Peaks_Panel() : Panel
 	string graphName = "Graph"
 	string annotationName = "PeakColors"
 	string annotationStr = ""
-	
-	
+
+
 	if (DataFolderExists("root:varsCAMTO")==0)
 		DoAlert 0, "CAMTO variables not found."
 		return -1
 	endif
-	
+
 	WAVE colorP = root:wavesCAMTO:colorP
 	WAVE colorN = root:wavesCAMTO:colorN
 	WAVE colorZ = root:wavesCAMTO:colorZ
-	
+
 	DoWindow/K $windowName
 	NewPanel/K=1/N=$windowName/W=(440,60,1703,527) as windowTitle
 	SetDrawLayer UserBack
@@ -5447,105 +5435,88 @@ Function CAMTO_Peaks_Panel() : Panel
 
 	TitleBox tbxTitle1, pos={0,h}, size={350,25}, fsize=18, frame=0, fstyle=1, anchor=MT, title="Find Peaks and Zeros"
 	h += 35
-	
-	SetDrawEnv fillpat=0
-	DrawRect l1,h1,l2,h-5
-	h1 = h-5
-	
-	SetVariable svarPosXPeaks, pos={m,h}, size={170,18}, title="Position in X [mm] "
 
-	PopupMenu popupFieldAxisPeak, pos={m+200,h}, size={106,21}, title="Field Axis "
-	PopupMenu popupFieldAxisPeak, mode=1, popvalue="Bx", value=#"\"Bx;By;Bz\""
-	PopupMenu popupFieldAxisPeak, proc=CAMTO_PopupFieldAxisPeak
-	h += 30
-	
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
-	
+
+	SetVariable svarPosXPeaks, pos={m+60,h}, size={170,18}, title="Position in X [mm] "
+	h += 30
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
 	TitleBox tbxTitle2, pos={0,h}, size={320,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Longitudinal Position"
 	h += 25
-	
+
 	SetVariable svarStartLPeaks, pos={m,h}, size={130,20}, title="Start L [mm]"
 	SetVariable svarEndLPeaks, pos={m+160,h}, size={130,20}, title="End L [mm]"
 	h += 30
-		
+
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
-	
-	CheckBox chbPeaks, pos={m,h}, size={280,20},mode=1, title=""
-	CheckBox chbPeaks, proc=CAMTO_Peaks_ChbPeaks
-	
-	PopupMenu popupPosNegPeaks, pos={m+20,h}, size={150,21}, title="Peaks "
-	PopupMenu popupPosNegPeaks, mode=1, popvalue="Both Peaks", value=#"\"Positive Peaks;Negative Peaks;Both Peaks\""
-	PopupMenu popupPosNegPeaks, proc=CAMTO_Peaks_PopupPosNegPeaks
-	h += 25
-	
+
 	SetVariable svarPeaksAmpl, pos={m,h}, size={305,18}, title="Peak amplitude related to the maximum [%]"
 	SetVariable svarPeaksAmpl, limits={0,100,1}
 	h += 25
-	
-	Button btnPeaks, pos={m,h}, size={150,55}, fsize=14, fstyle=1, disable=2, title="Find Peaks"
+
+	Button btnPeaks,pos={m,h}, size={285,30}, fsize=14, fstyle=1, disable=2, title="Find Peaks and Zeros"
 	Button btnPeaks, proc=CAMTO_Peaks_BtnFindPeaks
-	
-	TitleBox tbxTitle3, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
-	ValDisplay vldAvgPeriodPeaks,pos={m+180,h+20},size={120,18}
+	h += 40
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	PopupMenu popupFieldAxisPeak, pos={m+120,h}, size={106,21}, fsize=14, fstyle=1, bodyWidth=80, title="Field Axis "
+	PopupMenu popupFieldAxisPeak, mode=1, popvalue="Bx", value=#"\"Bx;By;Bz\""
+	PopupMenu popupFieldAxisPeak, proc=CAMTO_PopupFieldAxisPeak
+	h += 25
+
+	TitleBox tbxTitle3, pos={0,h}, size={120,18}, fsize=14, frame=0, anchor=MC, title="Peaks"
+	TitleBox tbxTitle4, pos={70,h}, size={320,20}, fsize=14, frame=0, anchor=MC, title="Zeros"
+	h += 25
+
+	TitleBox tbxTitle5, pos={m,h},size={120,18},frame=0,title="Average Period [mm] "
+	ValDisplay vldAvgPeriodPeaks,pos={m,h+20},size={120,18}
+	TitleBox tbxTitle6, pos={m+170,h},size={120,18},frame=0,title="Average Period [mm] "
+	ValDisplay vldAvgPeriodZeros,pos={m+170,h+20},size={120,18}
 	h += 60
-	
-	Button btnPeaksGraph, pos={m,h},size={140,24}, fstyle=1, disable=2, title="Show Peaks"
+
+	Button btnPeaksGraph, pos={m,h}, size={120,24}, fstyle=1, disable=2, title="Show Peaks"
 	Button btnPeaksGraph, proc=CAMTO_Peaks_BtnGraphPeaks
-	
-	Button btnPeaksTable, pos={m+170,h},size={140,24}, fstyle=1, disable=2, title="Show Table"
-	Button btnPeaksTable, proc=CAMTO_Peaks_BtnTablePeaks
-	h += 30
-	
-	SetDrawEnv fillpat=0
-	DrawRect l1,h1,l2,h-5
-	h1 = h-5
-	
-	CheckBox chbZeros, pos={m,h}, size={280,20},mode=1, title="\tZeros "
-	CheckBox chbZeros, proc=CAMTO_Peaks_ChbZeros
-	h += 25
-	
-	SetVariable svarZerosAmpl,pos={m,h},size={305,18},title="Stop the search for amplitude lower than [%]"
-	SetVariable svarZerosAmpl,limits={0,100,1}
-	h += 25
-	
-	Button btnZeros,pos={m,h},size={150,55},fsize=14,fstyle=1,disable=2,title="Find Zeros"
-	Button btnZeros,proc=CAMTO_Peaks_BtnZeros
-	
-	TitleBox tbxTitle4, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
-	ValDisplay vldAvgPeriodZeros,pos={m+180,h+20},size={120,18}
-	h += 60
-	
-	Button btnZerosGraph, pos={m,h},size={140,24}, fstyle=1, disable=2, title="Show Zeros"
+	Button btnZerosGraph, pos={m+170,h}, size={120,24}, fstyle=1, disable=2, title="Show Zeros"
 	Button btnZerosGraph, proc=CAMTO_Peaks_BtnGraphZeros
-	
-	Button btnZerosTable, pos={m+170,h},size={140,24}, fstyle=1, disable=2, title="Show Table"
-	Button btnZerosTable, proc=CAMTO_Peaks_BtnTableZeros
 	h += 30
-	
+
+	Button btnPeaksTable, pos={m,h},size={120,24}, fstyle=1, disable=2, title="Show Table"
+	Button btnPeaksTable, proc=CAMTO_Peaks_BtnTablePeaks
+	Button btnZerosTable, pos={m+170,h},size={120,24}, fstyle=1, disable=2, title="Show Table"
+	Button btnZerosTable, proc=CAMTO_Peaks_BtnTableZeros
+	h += 40
+
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
-	
+
 	SetVariable svarCurrentFieldmap, win=$windowName, pos={m, h}, size={240,20}, noedit=1, title="Current Fieldmap "
 	SetVariable svarCurrentFieldmap, win=$windowName, value=root:varsCAMTO:FIELDMAP_FOLDER
 	h += 30
-	
+
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
-	
+
 	Display/W=(340,10,1140,545)/HOST=$windowName/N=$graphName	
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Positive Peaks\r", annotationStr, colorP[0], colorP[1], colorP[2]
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Negative Peaks\r", annotationStr, colorN[0], colorN[1], colorN[2]
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Zeros", annotationStr, colorZ[0], colorZ[1], colorZ[2]
 	TextBox/W=$windowName#$graphName/A=LT/C/N=$annotationName annotationStr
-	
+
 	UpdatePanelPeaks()
-	
+
 	return 0
 
 End
@@ -5569,148 +5540,40 @@ Static Function UpdatePanelPeaks()
 		NVAR startL = root:$(df):varsFieldmap:PEAK_START_L
 		NVAR endL = root:$(df):varsFieldmap:PEAK_END_L
 		NVAR fieldAxisPeak = root:$(df):varsFieldMap:PEAK_FIELD_AXIS
-		NVAR peaksPosNeg = root:$(df):varsFieldMap:PEAK_POS_NEG
 		NVAR peaksPeaksAmpl = root:$(df):varsFieldMap:PEAK_PEAKS_AMPL
-		NVAR peaksZerosAmpl = root:$(df):varsFieldMap:PEAK_ZEROS_AMPL
-		NVAR peaksSelected = root:$(df):varsFieldMap:PEAK_SELECTED
 
-		SetVariable svarPosXPeaks, win=$windowName, value=startX
-		SetVariable svarPosXPeaks, win=$windowName,limits={startX, endX, stepX}
+		SetVariable svarPosXPeaks, win=$windowName, value=startX, limits={startX, endX, stepX}
 		PopupMenu popupFieldAxisPeak, win=$windowName,disable=0, mode=fieldAxisPeak
 		SetVariable svarStartLPeaks, win=$windowName,value=startL
 		SetVariable svarEndLPeaks, win=$windowName,value=endL
 
-		PopupMenu popupPosNegPeak, win=$windowName, mode=peaksPosNeg		
 		SetVariable svarPeaksAmpl, win=$windowName,value=peaksPeaksAmpl
-		SetVariable svarZerosAmpl, win=$windowName,value=peaksZerosAmpl
-		if (fieldAxisPeak == 1)
-			ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS_X" )
-			if (peaksPosNeg == 1 || peaksPosNeg == 3)
-				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_X" )
-			elseif (peaksPosNeg == 2)
-				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_X" )
-			endif
-		elseif (fieldAxisPeak == 2)
-			ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Y" )
-			if (peaksPosNeg == 1 || peaksPosNeg == 3)
-				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Y" )
-			elseif (peaksPosNeg == 2)
-				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Y" )
-			endif
-		elseif (fieldAxisPeak == 3)
-			ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Z" )
-			if (peaksPosNeg == 1 || peaksPosNeg == 3)
-				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z" )
-			elseif (peaksPosNeg == 2)
-				ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Z" )
-			endif
-		endif
-		
-		CheckBox chbPeaks, win=$windowName, disable=0, value=0
-		CheckBox chbZeros, win=$windowName, disable=0, value=0
-		
-		if (peaksSelected == 1)
-			CheckBox chbPeaks, win=$windowName, value=1		
-			PopupMenu popupPosNegPeak,win=$windowName,disable=0
-			SetVariable svarAmplPeaks,win=$windowName,disable=0
-			ValDisplay vldAvgPeriodPeaks,win=$windowName,disable=0
-			TitleBox tbxTitle3,win=$windowName,disable=0
-			Button btnPeaks, win=$windowName, disable=0
-			Button btnPeaksGraph,win=$windowName, disable=0
-			Button btnPeaksTable,win=$windowName, disable=0
-			ValDisplay vldAvgPeriodZeros,win=$windowName,disable=2
-			SetVariable svarAmplZeros,win=$windowName,disable=2
-			TitleBox tbxTitle4,win=$windowName,disable=2
-			Button btnZeros, win=$windowName, disable=2
-			Button btnZerosGraph,win=$windowName, disable=2
-			Button btnZerosTable,win=$windowName, disable=2
-		else
-			CheckBox chbZeros, win=$windowName, value=1
-			PopupMenu popupPosNegPeak,win=$windowName,disable=2
-			SetVariable svarAmplPeaks,win=$windowName,disable=2
-			ValDisplay vldAvgPeriodPeaks,win=$windowName,disable=2
-			TitleBox tbxTitle3,win=$windowName,disable=2
-			Button btnPeaks, win=$windowName, disable=2
-			Button btnPeaksGraph,win=$windowName, disable=2
-			Button btnPeaksTable,win=$windowName, disable=2
-			ValDisplay vldAvgPeriodZeros,win=$windowName,disable=0
-			SetVariable svarAmplZeros,win=$windowName,disable=0
-			TitleBox tbxTitle4,win=$windowName,disable=0
-			Button btnZeros, win=$windowName, disable=0
-			Button btnZerosGraph,win=$windowName, disable=0
-			Button btnZerosTable,win=$windowName, disable=0
-		endif
-		
+		ValDisplay  vldAvgPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS" )
+		ValDisplay  vldAvgPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS" )
+
+		SetVariable svarPeaksAmpl,win=$windowName,disable=0
+		ValDisplay vldAvgPeriodPeaks,win=$windowName,disable=0
+		TitleBox tbxTitle5,win=$windowName,disable=0
+		Button btnPeaks, win=$windowName, disable=0
+		Button btnPeaksGraph,win=$windowName, disable=0
+		Button btnPeaksTable,win=$windowName, disable=0
+		ValDisplay vldAvgPeriodZeros,win=$windowName,disable=0
+		TitleBox tbxTitle6,win=$windowName,disable=0
+		Button btnZerosGraph,win=$windowName, disable=0
+		Button btnZerosTable,win=$windowName, disable=0
 	else
-		CheckBox chbPeaks, win=$windowName, disable=2
-		CheckBox chbZeros, win=$windowName, disable=2
-		PopupMenu popupPosNegPeak,win=$windowName,disable=2
-		SetVariable svarAmplPeaks,win=$windowName,disable=2
+		SetVariable svarPeaksAmpl,win=$windowName,disable=2
 		ValDisplay vldAvgPeriodPeaks,win=$windowName,disable=2
-		TitleBox tbxTitle3,win=$windowName,disable=2
+		TitleBox tbxTitle5,win=$windowName,disable=2
 		Button btnPeaks, win=$windowName, disable=2
 		Button btnPeaksGraph,win=$windowName, disable=2
 		Button btnPeaksTable,win=$windowName, disable=2
 		ValDisplay vldAvgPeriodZeros,win=$windowName,disable=2
-		SetVariable svarAmplZeros,win=$windowName,disable=2
-		TitleBox tbxTitle4,win=$windowName,disable=2
-		Button btnZeros, win=$windowName, disable=2
+		TitleBox tbxTitle6,win=$windowName,disable=2
 		Button btnZerosGraph,win=$windowName, disable=2
 		Button btnZerosTable,win=$windowName, disable=2
 	endif
 	
-End
-
-Function CAMTO_Peaks_ChbPeaks(ca) : CheckBoxControl
-	STRUCT WMCheckboxAction& ca
-	
-	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
-	
-	NVAR peaksSelected = root:$(df):varsFieldMap:PEAK_SELECTED
-
-	switch(ca.eventCode)
-		case 2:
-			if (IsCorrectFolder() == -1)
-				return -1
-			endif
-
-			if (ca.checked)
-				peaksSelected = 1
-				UpdatePanelPeaks()
-			endif
-			
-			break
-	
-	endswitch
-
-	return 0
-
-End
-
-Function CAMTO_Peaks_ChbZeros(ca) : CheckBoxControl
-	STRUCT WMCheckboxAction& ca
-	
-	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
-	
-	NVAR peaksSelected = root:$(df):varsFieldMap:PEAK_SELECTED
-
-	switch(ca.eventCode)
-		case 2:
-			if (IsCorrectFolder() == -1)
-				return -1
-			endif
-
-			if (ca.checked)
-				peaksSelected = 0
-				UpdatePanelPeaks()
-			endif
-			
-			break
-	
-	endswitch
-
-	return 0
-
 End
 
 Function CAMTO_PopupFieldAxisPeak(pa) : PopupMenuControl
@@ -5745,29 +5608,6 @@ Function CAMTO_PopupFieldAxisPeak(pa) : PopupMenuControl
 
 End
 
-Function CAMTO_Peaks_PopupPosNegPeaks(pa) : PopupMenuControl
-	struct WMPopupAction &pa
-	
-	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
-
-	NVAR peaksPosNeg = root:$(df):varsFieldMap:PEAK_POS_NEG
-	peaksPosNeg = pa.popNum
-	
-	switch(pa.eventCode)
-		case 2:
-			if (IsCorrectFolder() == -1)
-				return -1
-			endif
-			
-			peaksPosNeg = pa.popNum
-
-			break
-	
-	endswitch
-
-	return 0
-
-End
 
 Function CAMTO_Peaks_BtnFindPeaks(ba) : ButtonControl
 	struct WMButtonAction &ba
@@ -5779,25 +5619,6 @@ Function CAMTO_Peaks_BtnFindPeaks(ba) : ButtonControl
 			endif
 			
 			FindPeaks()
-			UpdatePanelPeaks()
-			
-			break
-	endswitch
-	
-	return 0
-
-End
-
-Function CAMTO_Peaks_BtnZeros(ba) : ButtonControl
-	struct WMButtonAction &ba
-
-	switch(ba.eventCode)
-		case 2:		
-			if (IsCorrectFolder() == -1)
-				return -1
-			endif
-			
-			FindZeros()
 			UpdatePanelPeaks()
 			
 			break
@@ -5858,10 +5679,17 @@ Function CAMTO_Peaks_BtnTablePeaks(ba) : ButtonControl
 				return -1
 			endif
 			
-			Wave peakPositionsYPos, peakPositionsXPos, peakPositionsYNeg, peakPositionsXNeg
+			Wave/Z peakPositionsXPosX, peakPositionsYPosX, peakPositionsXNegX, peakPositionsYNegX
+			Wave/Z peakPositionsXPosY, peakPositionsYPosY, peakPositionsXNegY, peakPositionsYNegY
+			Wave/Z peakPositionsXPosZ, peakPositionsYPosZ, peakPositionsXNegZ, peakPositionsYNegZ
 			
-			Edit/N=PeaksTable/K=1 peakPositionsXPos, peakPositionsYPos
-			Edit/N=PeaksTable/K=1 peakPositionsXNeg, peakPositionsYNeg
+			Edit/N=PeaksTable/K=1 peakPositionsXPosX, peakPositionsYPosX
+			Edit/N=PeaksTable/K=1 peakPositionsXPosY, peakPositionsYPosY
+			Edit/N=PeaksTable/K=1 peakPositionsXPosZ, peakPositionsYPosZ
+			
+			Edit/N=PeaksTable/K=1 peakPositionsXNegX, peakPositionsYNegX
+			Edit/N=PeaksTable/K=1 peakPositionsXNegY, peakPositionsYNegY
+			Edit/N=PeaksTable/K=1 peakPositionsXNegZ, peakPositionsYNegZ
 			
 			break
 	endswitch
@@ -5879,9 +5707,13 @@ Function CAMTO_Peaks_BtnTableZeros(ba) : ButtonControl
 				return -1
 			endif
 			
-			Wave ValueZeros, PositionZeros
+			Wave/Z ValueZerosX, PositionZerosX
+			Wave/Z ValueZerosY, PositionZerosY
+			Wave/Z ValueZerosZ, PositionZerosZ
 			
-			Edit/N=ZerosTable/K=1 PositionZeros, ValueZeros
+			Edit/N=ZerosTable/K=1 PositionZerosX, ValueZerosX
+			Edit/N=ZerosTable/K=1 PositionZerosY, ValueZerosY
+			Edit/N=ZerosTable/K=1 PositionZerosZ, ValueZerosZ
 			
 			break
 	endswitch
@@ -5893,15 +5725,9 @@ End
 Static Function FindPeaks()
 
 	NVAR peaksAmpl     	= :varsFieldMap:PEAK_PEAKS_AMPL
-	NVAR peaksPosNeg    = :varsFieldMap:PEAK_POS_NEG
-	NVAR avgPeriodPeaksPosX = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_x
-	NVAR avgPeriodPeaksPosY = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Y
-	NVAR avgPeriodPeaksPosZ = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z
-	NVAR avgPeriodPeaksPosT = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_T
-	NVAR avgPeriodPeaksNegX = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_x
-	NVAR avgPeriodPeaksNegY = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Y
-	NVAR avgPeriodPeaksNegZ = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_Z
-	NVAR avgPeriodPeaksNegT = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_NEG_T
+	NVAR periodPeaks = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS
+	NVAR periodZeros = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS
+	NVAR periodPeaksT = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_T
 	NVAR posX = :varsFieldmap:PEAK_START_X
 	NVAR startL = :varsFieldmap:PEAK_START_L
 	NVAR endL = :varsFieldmap:PEAK_END_L
@@ -5939,7 +5765,7 @@ Static Function FindPeaks()
 	Killwaves/Z peakPositionsXPosX, peakPositionsYPosX, peakPositionsXNegX, peakPositionsYNegX
 	Killwaves/Z peakPositionsXPosY, peakPositionsYPosY, peakPositionsXNegY, peakPositionsYNegY
 	Killwaves/Z peakPositionsXPosZ, peakPositionsYPosZ, peakPositionsXNegZ, peakPositionsYNegZ
-	Killwaves/Z peakPositionsXPosT, peakPositionsYPosT, peakPositionsXNegT, peakPositionsYNegT
+	Killwaves/Z peakPositionsXPosT, peakPositionsYPosT
 
 	Make/O/N=(npX) peakPositionsXPosX= NaN, peakPositionsYPosX= NaN  
 	Make/O/N=(npX) peakPositionsXNegX= NaN, peakPositionsYNegX= NaN
@@ -5951,7 +5777,6 @@ Static Function FindPeaks()
 	Make/O/N=(npZ) peakPositionsXNegZ= NaN, peakPositionsYNegZ= NaN
 
 	Make/O/N=(npT) peakPositionsXPosT= NaN, peakPositionsYPosT= NaN  
-	Make/O/N=(npT) peakPositionsXNegT= NaN, peakPositionsYNegT= NaN
 
 	FindValue/V=(startL/1000) posL
 	startP = V_Value
@@ -5966,7 +5791,6 @@ Static Function FindPeaks()
 	variable baselineNegX = (WaveMin(wnX,startP,endP) - WaveMin(wnX,startP,endP) * (peaksAmpl/100))
 	variable baselineNegY = (WaveMin(wnY,startP,endP) - WaveMin(wnY,startP,endP) * (peaksAmpl/100))
 	variable baselineNegZ = (WaveMin(wnZ,startP,endP) - WaveMin(wnZ,startP,endP) * (peaksAmpl/100))
-	variable baselineNegT = (WaveMin(wnT,startP,endP) - WaveMin(wnT,startP,endP) * (peaksAmpl/100))
 
 	variable valorpeakPosX = baselinePosX
 	variable valorpeakPosY = baselinePosY
@@ -5975,7 +5799,15 @@ Static Function FindPeaks()
 	variable valorpeakNegX = baselineNegX
 	variable valorpeakNegY = baselineNegY
 	variable valorpeakNegZ = baselineNegZ
-	variable valorpeakNegT = baselineNegT		
+
+	Variable avgPeriodPeaksPosX, avgPeriodPeaksPosY, avgPeriodPeaksPosZ
+	Variable avgPeriodPeaksNegX, avgPeriodPeaksNegY, avgPeriodPeaksNegZ
+	Variable avgPeriodPeaksPosT
+
+	Variable avgPeriodZerosX, avgPeriodZerosY, avgPeriodZerosZ
+	Variable idx0, idx1
+	Variable baselineX, baselineY, baselineZ
+	Variable pos0, pos1, field0, field1
 
 	j = 0
 	for (i=startP+1; i<endP; i=i+1)
@@ -6124,27 +5956,6 @@ Static Function FindPeaks()
 	DeletePoints j, 1, peakPositionsXNegZ
 	DeletePoints j, 1, peakPositionsYNegZ
 
-	j = 0
-	for (i=startP+1; i<endP; i=i+1)
-		if (wnT[i] < baselineNegT)
-			if (valorpeakNegT > wnT[i])
-				valorpeakNegT = wnT[i]
-				peakPositionsXNegT[j] = posL[i]
-				peakPositionsYNegT[j] = wnT[i]
-			endif				
-		else
-			if (wnT[i-1] < baselineNegT)
-				valorpeakNegT = baselineNegT
-				j = j + 1
-				InsertPoints j, 1, peakPositionsXNegT
-				InsertPoints j, 1, peakPositionsYNegT
-				peaksFoundNegT+=1
-			endif
-		endif
-	endfor			
-	DeletePoints j, 1, peakPositionsXNegT
-	DeletePoints j, 1, peakPositionsYNegT
-
 	if(peaksFoundPosX)
     	Redimension/N=(peaksFoundPosX) peakPositionsXPosX, peakPositionsYPosX
     	KillWaves/Z peaksDiffPosX
@@ -6222,7 +6033,7 @@ Static Function FindPeaks()
 	else
     	KillWaves/Z peakPositionsXNegZ, peakPositionsYNegZ
 	endif
-
+	
 	if(peaksFoundPosT)
     	Redimension/N=(peaksFoundPosT) peakPositionsXPosT, peakPositionsYPosT
     	KillWaves/Z peaksDiffPosT
@@ -6236,57 +6047,15 @@ Static Function FindPeaks()
     	KillWaves/Z peakPositionsXPosT, peakPositionsYPosT
 	endif
 
-	if(peaksFoundNegT)
-    	Redimension/N=(peaksFoundNegT) peakPositionsXNegT, peakPositionsYNegT
-    	KillWaves/Z peaksDiffNegT
-    	Make/O/N=(peaksFoundNegT - 1) peaksDiffNegT
-    	for (i=0; i<peaksFoundNegT-1; i=i+1)
-			peaksDiffNegT[i] = peakPositionsXNegT[i+1] - peakPositionsXNegT[i]
-		endfor
-		avgPeriodPeaksNegT = Mean(peaksDiffNegT)*1000
-		KillWaves/Z peaksDiffNegT
-	else
-    	KillWaves/Z peakPositionsXNegT, peakPositionsYNegT
-	endif
-	KillWaves/Z wnT
 
-End
-
-Static Function FindZeros()
-
-	NVAR posX				= :varsFieldmap:PEAK_START_X
-	NVAR zerosAmpl     	= :varsFieldMap:PEAK_ZEROS_AMPL
-	NVAR avgPeriodZerosX = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS_X
-	NVAR avgPeriodZerosY = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Y
-	NVAR avgPeriodZerosZ = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS_Z
-	NVAR startL = :varsFieldmap:PEAK_START_L
-	NVAR endL = :varsFieldmap:PEAK_END_L
-
-	variable i, idx0, idx1
-	variable baselineX, baselineY, baselineZ
-	variable startP, endP
-	variable pos0, pos1, field0, field1
-	
-	Wave wnX = $("Bx_X"+num2str(posX/1000))
-	Wave wnY = $("By_X"+num2str(posX/1000))
-	Wave wnZ = $("Bz_X"+num2str(posX/1000))
-	
-	Wave posL
-	
-	FindValue/V=(startL/1000) posL
-	startP = V_Value
-	FindValue/V=(endL/1000) posL
-	endP = V_Value
-	
-	baselineX = (zerosAmpl/100)*WaveMax(wnX)
-	baselineY = (zerosAmpl/100)*WaveMax(wnY)
-	baselineZ = (zerosAmpl/100)*WaveMax(wnZ)
-	
+	baselineX = (peaksAmpl/100)*WaveMax(wnX)
+	baselineY = (peaksAmpl/100)*WaveMax(wnY)
+	baselineZ = (peaksAmpl/100)*WaveMax(wnZ)
 
 	FindLevels/EDGE=0/M=(baselineX)/P/Q/D=levels/R=[startP, endP] wnX, 0
 	Make/D/O/N=(V_LevelsFound) PositionZerosX
 	Make/D/O/N=(V_LevelsFound) ValueZerosX
-	
+
 	for (i=0; i<V_LevelsFound; i=i+1)
 		idx0 = Floor(levels[i])
 		idx1 = Ceil(levels[i])
@@ -6297,14 +6066,13 @@ Static Function FindZeros()
 		PositionZerosX[i] = pos0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + pos1*((levels[i] - idx0)/(idx1 -idx0))
 		ValueZerosX[i] = field0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + field1*((levels[i] - idx0)/(idx1 -idx0))
 	endfor
-	
 	Killwaves/Z levels
-	
+
 
 	FindLevels/EDGE=0/M=(baselineY)/P/Q/D=levels/R=[startP, endP] wnY, 0
 	Make/D/O/N=(V_LevelsFound) PositionZerosY
 	Make/D/O/N=(V_LevelsFound) ValueZerosY
-	
+
 	for (i=0; i<V_LevelsFound; i=i+1)
 		idx0 = Floor(levels[i])
 		idx1 = Ceil(levels[i])
@@ -6315,14 +6083,13 @@ Static Function FindZeros()
 		PositionZerosY[i] = pos0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + pos1*((levels[i] - idx0)/(idx1 -idx0))
 		ValueZerosY[i] = field0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + field1*((levels[i] - idx0)/(idx1 -idx0))
 	endfor
-	
 	Killwaves/Z levels
-	
+
 
 	FindLevels/EDGE=0/M=(baselineZ)/P/Q/D=levels/R=[startP, endP] wnZ, 0
 	Make/D/O/N=(V_LevelsFound) PositionZerosZ
 	Make/D/O/N=(V_LevelsFound) ValueZerosZ
-	
+
 	for (i=0; i<V_LevelsFound; i=i+1)
 		idx0 = Floor(levels[i])
 		idx1 = Ceil(levels[i])
@@ -6333,39 +6100,47 @@ Static Function FindZeros()
 		PositionZerosZ[i] = pos0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + pos1*((levels[i] - idx0)/(idx1 -idx0))
 		ValueZerosZ[i] = field0*(1 - (levels[i] - idx0)/(idx1 -idx0)) + field1*((levels[i] - idx0)/(idx1 -idx0))
 	endfor
-	
 	Killwaves/Z levels
-	
+
 	Make/O/N=(numpnts(PositionZerosX) - 1) tempDiff
 	for (i=0; i<numpnts(tempDiff); i=i+1)
 		tempDiff[i] = PositionZerosX[i+1] - PositionZerosX[i]
 	endfor
-	variable AvgPeriodX = Mean(tempDiff)
-
-	avgPeriodZerosX = 2*AvgPeriodX*1000
-
+	avgPeriodZerosX = 2*Mean(tempDiff)*1000
 	Killwaves/Z tempDiff
 	
 	Make/O/N=(numpnts(PositionZerosY) - 1) tempDiff
 	for (i=0; i<numpnts(tempDiff); i=i+1)
 		tempDiff[i] = PositionZerosY[i+1] - PositionZerosY[i]
 	endfor
-	variable AvgPeriodY = Mean(tempDiff)
-
-	avgPeriodZerosY = 2*AvgPeriodY*1000
-
+	avgPeriodZerosY = 2*Mean(tempDiff)*1000
 	Killwaves/Z tempDiff
 	
 	Make/O/N=(numpnts(PositionZerosZ) - 1) tempDiff
 	for (i=0; i<numpnts(tempDiff); i=i+1)
 		tempDiff[i] = PositionZerosZ[i+1] - PositionZerosZ[i]
 	endfor
-	variable AvgPeriodZ = Mean(tempDiff)
-
-	avgPeriodZerosZ = 2*AvgPeriodZ*1000
-
+	avgPeriodZerosZ = 2*Mean(tempDiff)*1000
 	Killwaves/Z tempDiff
 	
+	if (Mean(peakPositionsYPosX) > Mean(peakPositionsYPosY))
+  		if (Mean(peakPositionsYPosX) > Mean(peakPositionsYPosZ))
+  			periodPeaks = avgPeriodPeaksPosX
+  			periodZeros = avgPeriodZerosX
+  		else
+  			periodPeaks = avgPeriodPeaksPosZ
+  			periodZeros = avgPeriodZerosZ
+  		endif
+  	else
+  		if (Mean(peakPositionsYPosY) > Mean(peakPositionsYPosZ))
+  			periodPeaks = avgPeriodPeaksPosY
+  			periodZeros = avgPeriodZerosY
+  		else
+  			periodPeaks = avgPeriodPeaksPosZ
+  			periodZeros = avgPeriodZerosZ
+		endif
+	endif
+
 End
 
 Static Function ShowPeaks(graphName)
@@ -6518,11 +6293,22 @@ Function CAMTO_PhaseError_Panel() : Panel
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 	
-	TitleBox tbxTitle2, pos={m,h}, size={90,16}, fSize=14, fStyle=1, frame=0, title="Trajectory"
+	TitleBox tbxTitle2, pos={0,h}, size={320,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Longitudinal Position"
+	h += 25
+	
+	ValDisplay vldStartL, pos={m,h}, size={130,20}, title="Start L [mm]"
+	ValDisplay vldEndL, pos={m+160,h}, size={130,20}, title="End L [mm]"
+	h += 30
+	
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+	
+	TitleBox tbxTitle3, pos={m,h}, size={90,16}, fSize=14, fStyle=1, frame=0, title="Trajectory"
 	ValDisplay vldTrajX, pos={m+100,h}, size={200,18}, title="Start X [mm]"
-	h += 20
+	h += 25
 	ValDisplay vldTrajAngle, pos={m+100,h}, size={200,18}, title="Angle XY(Z) [°]"
-	h += 20
+	h += 25
 	ValDisplay vldTrajL, pos={m+100,h}, size={200,18}, title="Start L [mm]"
 	h += 30
 	
@@ -6530,10 +6316,15 @@ Function CAMTO_PhaseError_Panel() : Panel
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 	
-	TitleBox tbxTitle3, pos={m,h}, size={90,16}, fSize=14, fStyle=1, frame=0, title="ID Period"
+	TitleBox tbxTitle4, pos={m,h}, size={90,16}, fSize=14, fStyle=1, frame=0, title="ID Period"
 	CheckBox chbPeriodPeaks, pos={m+80,h}, mode=1, title=""
 	CheckBox chbPeriodPeaks, proc=CAMTO_Phase_ChbPeriodPeaks
 	ValDisplay vldPeriodPeaks, pos={m+100,h}, size={200,18}, title="Avg. from peaks [mm]"
+	h += 25
+	
+	CheckBox chbPeriodZeros, pos={m+80,h}, mode=1, title=""
+	CheckBox chbPeriodZeros, proc=CAMTO_Phase_ChbPeriodZeros
+	ValDisplay vldPeriodZeros, pos={m+100,h}, size={200,18}, title="Avg. from  zeros [mm]"
 	h += 25
 
 	CheckBox chbPeriodNominal, pos={m+80,h}, mode=1, title=""
@@ -6546,15 +6337,12 @@ Function CAMTO_PhaseError_Panel() : Panel
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 	
-	TitleBox tbxTitle4, pos={m+50,h}, size={200,24}, fSize=16, fStyle=1, frame=0, title="Insertion Device Phase Error"
+	TitleBox tbxTitle5, pos={m+50,h}, size={200,24}, fSize=16, fStyle=1, frame=0, title="Insertion Device Phase Error"
 	h += 25
-	
-	SetVariable svarCutPeriods, pos={m,h}, size={280,16}, title="Number of periods to skip at the endings", limits={0,1000,1}
-	h += 25
-	
+
 	Button btnCalcPhaseError, pos={m,h}, size={140,50}, fSize=14, fStyle=1, disable=2, title="Calculate \nPhase Error"
 	Button btnCalcPhaseError, proc=CAMTO_Phase_BtnCalcPhaseError
-	TitleBox tbxTitle5, pos={m+150,h}, size={120,18}, frame=0, title="RMS Phase Error [°]"
+	TitleBox tbxTitle6, pos={m+150,h}, size={120,18}, frame=0, title="RMS Phase Error [°]"
 	h += 25
 	
 	ValDisplay vldPhaseError, pos={m+150,h}, size={120,18}
@@ -6601,43 +6389,58 @@ Static Function UpdatePanelPhaseError()
 	if(strlen(df)>0)
 		NVAR periodPeaksZeros = root:$(df):varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
 
+		ValDisplay vldStartL, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_START_L" )
+		ValDisplay vldEndL, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_END_L" )
+
 		ValDisplay vldTrajX, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_X" )
 		ValDisplay vldTrajAngle,win=$windowName,value=#("root:"+ df + ":varsFieldMap:TRAJ_HORIZONTAL_ANGLE" )
 		ValDisplay vldTrajL, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_L" )
 
-		ValDisplay  vldPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z" )
+		ValDisplay vldPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS" )
+		ValDisplay vldPeriodZeros, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_ZEROS" )
 		SetVariable svarPeriodNominal, win=$windowName, value=root:$(df):varsFieldMap:PHASE_ID_PERIOD_NOMINAL
 		
 		CheckBox chbPeriodPeaks,win=$windowName,disable=0
+		CheckBox chbPeriodZeros,win=$windowName,disable=0
 		CheckBox chbPeriodNominal,win=$windowName,disable=0
 		
-		SetVariable svarCutPeriods, win=$windowName, value=root:$(df):varsFieldMap:PHASE_ID_CUT_PERIODS
-		
 		Button btnCalcPhaseError,win=$windowName,disable=0
-		ValDisplay vldPhaseError, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PHASE_ID_PHASE_ERROR" )
+		ValDisplay vldPhaseError,win=$windowName,value=#("root:"+ df + ":varsFieldMap:PHASE_ID_PHASE_ERROR" )
 		Button btnPhaseErrorGraph,win=$windowName,disable=0
 		Button btnPhaseErrorTable,win=$windowName,disable=0
 		
 		if (periodPeaksZeros == 0)
 			CheckBox chbPeriodPeaks,win=$windowName,value=1
+			CheckBox chbPeriodZeros,win=$windowName,value=0
 			CheckBox chbPeriodNominal,win=$windowName,value=0
-			ValDisplay  vldPeriodPeaks, win=$windowName, disable=0
+			ValDisplay vldPeriodPeaks, win=$windowName, disable=0
+			ValDisplay vldPeriodZeros, win=$windowName, disable=2
+			SetVariable svarPeriodNominal, win=$windowName, disable=2
+		elseif (periodPeaksZeros == 1)
+			CheckBox chbPeriodPeaks,win=$windowName,value=0
+			CheckBox chbPeriodZeros,win=$windowName,value=1
+			CheckBox chbPeriodNominal,win=$windowName,value=0
+			ValDisplay vldPeriodPeaks, win=$windowName, disable=2
+			ValDisplay vldPeriodZeros, win=$windowName, disable=0
 			SetVariable svarPeriodNominal, win=$windowName, disable=2
 		else
 			CheckBox chbPeriodPeaks,win=$windowName,value=0
+			CheckBox chbPeriodZeros,win=$windowName,value=0
 			CheckBox chbPeriodNominal,win=$windowName,value=1
-			ValDisplay  vldPeriodPeaks, win=$windowName, disable=2
+			ValDisplay vldPeriodPeaks, win=$windowName, disable=2
+			ValDisplay vldPeriodZeros, win=$windowName, disable=2
 			SetVariable svarPeriodNominal, win=$windowName, disable=0		
 		endif
 
 	else
-		PopupMenu popupSemiPeriodPos,win=$windowName,disable=2
 		Button btnCalcPhaseError,win=$windowName,disable=2
 		Button btnPhaseErrorGraph,win=$windowName,disable=2
-		Button tbnPhaseErrorTable,win=$windowName,disable=2
+		Button btnPhaseErrorTable,win=$windowName,disable=2
 		CheckBox chbPeriodPeaks,win=$windowName,disable=2
+		CheckBox chbPeriodZeros,win=$windowName,disable=2
 		CheckBox chbPeriodNominal,win=$windowName,disable=2
 		ValDisplay  vldPeriodPeaks, win=$windowName, disable=2
+		ValDisplay  vldPeriodZeros, win=$windowName, disable=2
 		SetVariable svarPeriodNominal, win=$windowName, disable=2		
 	endif
 	
@@ -6789,22 +6592,13 @@ Static Function CalcPhaseError()
 	NVAR startXTraj = :varsFieldmap:TRAJ_START_X
 	NVAR particleEnergy = :varsFieldmap:TRAJ_PARTICLE_ENERGY
 	NVAR periodPeaksZeros = :varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
-	NVAR avgPeriodPeaksPosX = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_X
-	NVAR avgPeriodPeaksPosY = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Y
-	NVAR avgPeriodPeaksPosZ = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_Z
-	NVAR avgPeriodPeaksPosT = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_POS_T
+	NVAR periodPeaks = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS
+	NVAR periodZeros = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS
 	NVAR IDPeriodNominal = :varsFieldMap:PHASE_ID_PERIOD_NOMINAL
 	NVAR IDPeriod = :varsFieldMap:PHASE_ID_PERIOD
-	NVAR IDCutPeriods = :varsFieldMap:PHASE_ID_CUT_PERIODS
 	NVAR IDPhaseError = :varsFieldMap:PHASE_ID_PHASE_ERROR
 
-	Wave/Z peakPositionsYPosX
-	Wave/Z peakPositionsYPosY
-	Wave/Z peakPositionsYPosZ
 	Wave/Z peakPositionsYPosT
-	Wave/Z peakPositionsXPosX
-	Wave/Z peakPositionsXPosY
-	Wave/Z peakPositionsXPosZ
 	Wave/Z peakPositionsXPosT
 
 	variable gama = GetLorentzFactor(particleEnergy)
@@ -6812,100 +6606,15 @@ Static Function CalcPhaseError()
 	variable idx, nsp, np
 	variable K, lambda
 	variable startP, endP
-	variable periodPeaks
 
 	Wave posL
 	Wave posL_calc
 	Wave ang_sum_int
 
-
-	Duplicate/O	peakPositionsXPosT, peakPositionsCut
-	Duplicate/O	peakPositionsYPosT, peakValuesCut
-
-	DeletePoints 0, IDCutPeriods, peakPositionsCut
-	DeletePoints 0, IDCutPeriods, peakValuesCut
-	DeletePoints numpnts(peakPositionsCut)-IDCutPeriods, IDCutPeriods, peakPositionsCut
-	DeletePoints numpnts(peakValuesCut)-IDCutPeriods, IDCutPeriods, peakValuesCut			
-
-	Duplicate/O peakPositionsCut, longPeakT
-	Duplicate/O peakValuesCut, peakT
-	Killwaves/Z peakPositionsCut, peakValuesCut
-
-
-	if(numpnts(peakPositionsXPosX) > 2*IDCutPeriods)
-		Duplicate/O	peakPositionsXPosX, peakPositionsCut
-		Duplicate/O	peakPositionsYPosX, peakValuesCut
-
-		DeletePoints 0, IDCutPeriods, peakPositionsCut
-		DeletePoints 0, IDCutPeriods, peakValuesCut
-		DeletePoints numpnts(peakPositionsCut)-IDCutPeriods, IDCutPeriods, peakPositionsCut
-		DeletePoints numpnts(peakValuesCut)-IDCutPeriods, IDCutPeriods, peakValuesCut	
-
-		Duplicate/O peakPositionsCut, longPeakX
-		Duplicate/O peakValuesCut, peakX	
-		Killwaves/Z peakPositionsCut, peakValuesCut
-	else
-		Wave longPeakX = peakPositionsXPosX
-		Wave peakX = peakPositionsYPosX
-	endif
-
-	if(numpnts(peakPositionsXPosY) > 2*IDCutPeriods)
-		Duplicate/O	peakPositionsXPosY, peakPositionsCut
-		Duplicate/O	peakPositionsYPosY, peakValuesCut
-	
-		DeletePoints 0, IDCutPeriods, peakPositionsCut
-		DeletePoints 0, IDCutPeriods, peakValuesCut
-		DeletePoints numpnts(peakPositionsCut)-IDCutPeriods, IDCutPeriods, peakPositionsCut
-		DeletePoints numpnts(peakValuesCut)-IDCutPeriods, IDCutPeriods, peakValuesCut	
-		
-		Duplicate/O peakPositionsCut, longPeakY
-		Duplicate/O peakValuesCut, peakY
-		Killwaves/Z peakPositionsCut, peakValuesCut
-	else
-		Wave longPeakY = peakPositionsXPosY
-		Wave peakY = peakPositionsYPosY
-	endif
-
-	if(numpnts(peakPositionsXPosZ) > 2*IDCutPeriods)
-		Duplicate/O	peakPositionsXPosZ, peakPositionsCut
-		Duplicate/O	peakPositionsYPosZ, peakValuesCut
-
-		DeletePoints 0, IDCutPeriods, peakPositionsCut
-		DeletePoints 0, IDCutPeriods, peakValuesCut
-		DeletePoints numpnts(peakPositionsCut)-IDCutPeriods, IDCutPeriods, peakPositionsCut
-		DeletePoints numpnts(peakValuesCut)-IDCutPeriods, IDCutPeriods, peakValuesCut	
-
-		Duplicate/O peakPositionsCut, longPeakZ
-		Duplicate/O peakValuesCut, peakZ
-		Killwaves/Z peakPositionsCut, peakValuesCut
-	else
-		Wave longPeakZ = peakPositionsXPosZ
-		Wave peakZ = peakPositionsYPosZ
-	endif
-
-	if (Mean(peakX) > Mean(peakY))
-  		if (Mean(peakX) > Mean(peakZ))
-  			Wave longPeak = longPeakX
-  			periodPeaks = avgPeriodPeaksPosX
-  		else
-  			Wave longPeak = longPeakZ
-  			periodPeaks = avgPeriodPeaksPosZ
-  		endif
-  	else
-  		if (Mean(peakY) > Mean(peakZ))
-  			Wave longPeak = longPeakY
-  			periodPeaks = avgPeriodPeaksPosY
-  		else
-  			Wave longPeak = longPeakZ
-  			periodPeaks = avgPeriodPeaksPosZ
-		endif
-	endif
-
-	Killwaves/Z peakX, peakY, peakZ
-	Killwaves/Z longPeakX, longPeakY, longPeakZ
-
 	if (periodPeaksZeros == 0)
 		IDPeriod = periodPeaks
+	elseif (periodPeaksZeros == 1)
+		IDPeriod = periodZeros
 	else
 		IDPeriod = IDPeriodNominal
 	endif
@@ -6919,13 +6628,13 @@ Static Function CalcPhaseError()
 	Wave IntBy = $("Int_By_X" + num2str(startXTraj/1000))
 	Wave IntBz = $("Int_Bz_X" + num2str(startXTraj/1000))
 
-	K = 0.0934*Mean(peakT)*IDPeriod
+	K = 0.0934*Mean(peakPositionsYPosT)*IDPeriod
 	lambda = ((IDPeriod/1000)/(2*(gama^2)))*(1 + (K^2)/2)
 
-	np = numpnts(longPeakT)
-	FindValue/V=(longPeakT[0]) posL
+	np = numpnts(peakPositionsXPosT)
+	FindValue/V=(peakPositionsXPosT[0]) posL
 	startP = V_Value
-	FindValue/V=(longPeakT[np-1]) posL
+	FindValue/V=(peakPositionsXPosT[np-1]) posL
 	endP = V_Value
 
 	Duplicate/O/R=(startP,endP) IntBx, IntBx_calc
@@ -6952,9 +6661,9 @@ Static Function CalcPhaseError()
 	Make/O/D/N=(np-1) errorp = NaN
 	Make/O/D/N=(np-1) errorp_sqrt = NaN
 	for (idx=0; idx < np-1; idx=idx+1)
-		FindValue/V=(longPeakT[idx]) posL
+		FindValue/V=(peakPositionsXPosT[idx]) posL
 		auxp1 = V_Value
-		FindValue/V=(longPeakT[idx+1]) posL
+		FindValue/V=(peakPositionsXPosT[idx+1]) posL
 		auxp2 = V_Value
 		errorp[idx] = Mean(phase_error, auxp1-startP+1, auxp2-startP-1)*180/Pi
 	endfor
