@@ -5773,13 +5773,7 @@ Function CAMTO_Peaks_Panel() : Panel
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
-	SetVariable svarCurrentFieldmap, win=$windowName, pos={m, h}, size={240,20}, noedit=1, title="Current Fieldmap "
-	SetVariable svarCurrentFieldmap, win=$windowName, value=root:varsCAMTO:FIELDMAP_FOLDER
-	h += 30
-
-	SetDrawEnv fillpat=0
-	DrawRect l1,h1,l2,h-5
-	h1 = h-5
+	h = AddFieldmapOptions(windowName, h1, l1, l2, copyConfigProc="CAMTO_Peaks_PopupCopyConfig", applyToAllProc="CAMTO_Peaks_BtnApplyToAll")
 
 	Display/W=(340,10,1140,545)/HOST=$windowName/N=$graphName	
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Positive Peaks\r", annotationStr, colorP[0], colorP[1], colorP[2]
@@ -5990,6 +5984,120 @@ Function CAMTO_Peaks_BtnTableZeros(ba) : ButtonControl
 			break
 	endswitch
 	
+	return 0
+
+End
+
+Function CAMTO_Peaks_PopupCopyConfig(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+
+	SVAR fieldmapCopy = root:varsCAMTO:FIELDMAP_COPY
+
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			fieldmapCopy = pa.popStr
+
+			CopyConfigPeaks(fieldmapCopy)
+			UpdatePanelPeaks()
+
+			break
+
+	endswitch
+
+	return 0
+
+End
+
+Static Function CopyConfigPeaks(dfc)
+	string dfc
+
+	WAVE/T fieldmapFolders= root:wavesCAMTO:fieldmapFolders
+
+	UpdateFieldmapFolders()
+	FindValue/Text=dfc/TXOP=4 fieldmapFolders
+
+	if (V_Value!=-1)
+		NVAR temp_df = :varsFieldmap:PEAK_START_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_START_X
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PEAK_END_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_END_X
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PEAK_STEP_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_STEP_X
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PEAK_START_L
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_START_L
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PEAK_END_L
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_END_L
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PEAK_FIELD_AXIS
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_FIELD_AXIS
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PEAK_PEAKS_AMPL
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_PEAKS_AMPL
+		temp_df = temp_dfc
+
+	else
+		DoAlert 0, "Data folder not found."
+		return -1
+	endif
+
+	return 0
+
+End
+
+Function CAMTO_Peaks_BtnApplyToAll(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	variable i
+	string tdf
+
+	switch(ba.eventCode)
+		case 2:
+
+			DoAlert 1, "Find peaks and zeros for all fieldmaps?"
+			if (V_flag != 1)
+				return -1
+			endif
+
+			UpdateFieldmapFolders()
+
+			Wave/T fieldmapFolders = root:wavesCAMTO:fieldmapFolders
+			NVAR fieldmapCount  = root:varsCAMTO:FIELDMAP_COUNT
+			SVAR fieldmapFolder= root:varsCAMTO:FIELDMAP_FOLDER
+
+			DFREF df = GetDataFolderDFR()
+			string dfc = GetDataFolder(0)
+
+			for (i=0; i < fieldmapCount; i=i+1)
+				tdf = fieldmapFolders[i]
+				fieldmapFolder = tdf
+				SetDataFolder root:$(tdf)
+				CopyConfigPeaks(dfc)
+				Print("Finding peaks and zeros for " + tdf)
+				FindPeaks()
+			endfor
+
+			fieldmapFolder = dfc
+			SetDataFolder df
+
+			UpdatePanelResults()
+
+			break
+	endswitch
+
 	return 0
 
 End
