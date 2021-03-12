@@ -1678,6 +1678,7 @@ Static Function InitializeFieldmapVariables()
 	variable/G FIELD_Z
 
 	variable/G INDEX_X
+	variable/G INDEX_Y
 	variable/G INDEX_L
 
 	variable/G VIEW_POS_X
@@ -3060,6 +3061,277 @@ Static Function CalcFieldAtPoint(px, pl)
 	
 End
 
+Static Function CalcFieldAtPoint3D(px, py, pl)
+	variable px, py, pl //horizontal, vertical and longitudinal positions in meters
+
+	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
+	NVAR nptsY = :varsFieldmap:LOAD_NPTS_Y
+	NVAR nptsL = :varsFieldmap:LOAD_NPTS_L
+
+	NVAR fieldX = :varsFieldmap:FIELD_X
+	NVAR fieldY = :varsFieldmap:FIELD_Y
+	NVAR fieldZ = :varsFieldmap:FIELD_Z
+
+	NVAR iX = :varsFieldmap:INDEX_X
+	NVAR iY = :varsFieldmap:INDEX_Y
+	NVAR iL = :varsFieldmap:INDEX_L
+
+	WAVE posX, posY, posL
+
+	variable i, ii, field1, field2, field3, field4, limitX, limitY, limitL
+	string posXStr1, posXStr2, posYStr1, posYStr2
+
+	limitX = 0
+	limitY = 0
+	limitL = 0
+
+	// Update horizontal index
+	if (nptsX == 1 || px <= posX[0])
+		iX = 0
+		limitX = 1
+
+	elseif (px >= posX[nptsX-1])
+		iX = nptsX-1
+		limitX = 1
+
+	else
+		if (px >= posX[iX])
+			ii = 1
+		else
+			ii = -1
+		endif
+
+		for (i=iX; i<nptsX; i=i+ii)
+			if (i < 0)
+				ii = 1
+				i = 0
+			endif
+
+			if (px >= posX[i] && px <= posX[i+1])
+				iX = i
+				break
+			endif
+
+		endfor
+
+	endif
+
+	// Update vertical index
+	if (nptsY == 1 || py <= posY[0])
+		iY = 0
+		limitY = 1
+
+	elseif (py >= posY[nptsY-1])
+		iY = nptsY-1
+		limitY = 1
+
+	else
+		if (py >= posY[iY])
+			ii = 1
+		else
+			ii = -1
+		endif
+
+		for (i=iY; i<nptsY; i=i+ii)
+			if (i < 0)
+				ii = 1
+				i = 0
+			endif
+
+			if (py >= posY[i] && py <= posY[i+1])
+				iY = i
+				break
+			endif
+
+		endfor
+
+	endif
+
+	// Update longitudinal index
+	if (nptsL == 1 || pl <= posL[0])
+		iL = 0
+		limitL = 1
+
+	elseif (pl >= posl[nptsL-1])
+		iL = nptsL-1
+		limitL = 1
+
+	else
+		if (pl >= posL[iL])
+			ii = 1
+		else
+			ii = -1
+		endif
+
+		for (i=iL; i<nptsL; i=i+ii)
+			if (i < 0)
+				ii = 1
+				i = 0
+			endif
+
+			if (pl >= posL[i] && pl <= posL[i+1])
+				iL = i
+				break
+			endif
+
+		endfor
+
+	endif
+
+	posXStr1 = num2str(posX[iX])
+	posYStr1 = num2str(posY[iY])
+	Wave waveBx_X1_Y1 = $("Bx_X" + posXStr1 + "Y" + posYStr1)
+	Wave waveBy_X1_Y1 = $("By_X" + posXStr1 + "Y" + posYStr1)
+	Wave waveBz_X1_Y1 = $("Bz_X" + posXStr1 + "Y" + posYStr1)
+
+	if (limitX && limitY && limitL)
+		fieldX = waveBx_X1_Y1[iL]
+		fieldY = waveBy_X1_Y1[iL]
+		fieldZ = waveBz_X1_Y1[iL]
+
+	elseif (limitX && limitY)
+		fieldX = waveBx_X1_Y1[iL] + ((waveBx_X1_Y1[iL+1] - waveBx_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldY = waveBy_X1_Y1[iL] + ((waveBy_X1_Y1[iL+1] - waveBy_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldZ = waveBz_X1_Y1[iL] + ((waveBz_X1_Y1[iL+1] - waveBz_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+
+	elseif (limitX && limitL)
+		posYStr2 = num2str(posY[iY+1])
+		Wave waveBx_X1_Y2 = $("Bx_X" + posXStr1 + "Y" + posYStr2)
+		Wave waveBy_X1_Y2 = $("By_X" + posXStr1 + "Y" + posYStr2)
+		Wave waveBz_X1_Y2 = $("Bz_X" + posXStr1 + "Y" + posYStr2)
+
+		fieldX = waveBx_X1_Y1[iL] + ((waveBx_X1_Y2[iL] - waveBx_X1_Y1[iL])/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+		fieldY = waveBy_X1_Y1[iL] + ((waveBy_X1_Y2[iL] - waveBy_X1_Y1[iL])/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+		fieldZ = waveBz_X1_Y1[iL] + ((waveBz_X1_Y2[iL] - waveBz_X1_Y1[iL])/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+	elseif (limitY && limitL)
+		posXStr2 = num2str(posX[iX+1])
+		Wave waveBx_X2_Y1 = $("Bx_X" + posXStr2 + "Y" + posYStr1)
+		Wave waveBy_X2_Y1 = $("By_X" + posXStr2 + "Y" + posYStr1)
+		Wave waveBz_X2_Y1 = $("Bz_X" + posXStr2 + "Y" + posYStr1)
+
+		fieldX = waveBx_X1_Y1[iL] + ((waveBx_X2_Y1[iL] - waveBx_X1_Y1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		fieldY = waveBy_X1_Y1[iL] + ((waveBy_X2_Y1[iL] - waveBy_X1_Y1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		fieldZ = waveBz_X1_Y1[iL] + ((waveBz_X2_Y1[iL] - waveBz_X1_Y1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+	elseif (limitX)
+		posYStr2 = num2str(posY[iY+1])
+		Wave waveBx_X1_Y2 = $("Bx_X" + posXStr1 + "Y" + posYStr2)
+		Wave waveBy_X1_Y2 = $("By_X" + posXStr1 + "Y" + posYStr2)
+		Wave waveBz_X1_Y2 = $("Bz_X" + posXStr1 + "Y" + posYStr2)
+
+		field1 = waveBx_X1_Y1[iL] + ((waveBx_X1_Y1[iL+1] - waveBx_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBx_X1_Y2[iL] + ((waveBx_X1_Y2[iL+1] - waveBx_X1_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldX = field1 + ((field2 - field1)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+		field1 = waveBy_X1_Y1[iL] + ((waveBy_X1_Y1[iL+1] - waveBy_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBy_X1_Y2[iL] + ((waveBy_X1_Y2[iL+1] - waveBy_X1_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldY = field1 + ((field2 - field1)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+		field1 = waveBz_X1_Y1[iL] + ((waveBz_X1_Y1[iL+1] - waveBz_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBz_X1_Y2[iL] + ((waveBz_X1_Y2[iL+1] - waveBz_X1_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldZ = field1 + ((field2 - field1)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+	elseif (limitY)
+		posXStr2 = num2str(posX[iX+1])
+		Wave waveBx_X2_Y1 = $("Bx_X" + posXStr2 + "Y" + posYStr1)
+		Wave waveBy_X2_Y1 = $("By_X" + posXStr2 + "Y" + posYStr1)
+		Wave waveBz_X2_Y1 = $("Bz_X" + posXStr2 + "Y" + posYStr1)
+
+		field1 = waveBx_X1_Y1[iL] + ((waveBx_X1_Y1[iL+1] - waveBx_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBx_X2_Y1[iL] + ((waveBx_X2_Y1[iL+1] - waveBx_X2_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldX = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		field1 = waveBy_X1_Y1[iL] + ((waveBy_X1_Y1[iL+1] - waveBy_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBy_X2_Y1[iL] + ((waveBy_X2_Y1[iL+1] - waveBy_X2_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldY = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		field1 = waveBz_X1_Y1[iL] + ((waveBz_X1_Y1[iL+1] - waveBz_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBz_X2_Y1[iL] + ((waveBz_X2_Y1[iL+1] - waveBz_X2_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		fieldZ = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+	elseif (limitL)
+		posXStr2 = num2str(posX[iX+1])
+		posYStr2 = num2str(posY[iY+1])
+
+		Wave waveBx_X2_Y1 = $("Bx_X" + posXStr2 + "Y" + posYStr1)
+		Wave waveBy_X2_Y1 = $("By_X" + posXStr2 + "Y" + posYStr1)
+		Wave waveBz_X2_Y1 = $("Bz_X" + posXStr2 + "Y" + posYStr1)
+
+		Wave waveBx_X1_Y2 = $("Bx_X" + posXStr1 + "Y" + posYStr2)
+		Wave waveBy_X1_Y2 = $("By_X" + posXStr1 + "Y" + posYStr2)
+		Wave waveBz_X1_Y2 = $("Bz_X" + posXStr1 + "Y" + posYStr2)
+
+		Wave waveBx_X2_Y2 = $("Bx_X" + posXStr2 + "Y" + posYStr2)
+		Wave waveBy_X2_Y2 = $("By_X" + posXStr2 + "Y" + posYStr2)
+		Wave waveBz_X2_Y2 = $("Bz_X" + posXStr2 + "Y" + posYStr2)
+
+		field1 = waveBx_X1_Y1[iL] + ((waveBx_X2_Y1[iL] - waveBx_X1_Y1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		field2 = waveBx_X1_Y2[iL] + ((waveBx_X2_Y2[iL] - waveBx_X1_Y2[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		fieldX = field1 + ((field2 - field1)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+		field1 = waveBy_X1_Y1[iL] + ((waveBy_X2_Y1[iL] - waveBy_X1_Y1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		field2 = waveBy_X1_Y2[iL] + ((waveBy_X2_Y2[iL] - waveBy_X1_Y2[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		fieldY = field1 + ((field2 - field1)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+		field1 = waveBz_X1_Y1[iL] + ((waveBz_X2_Y1[iL] - waveBz_X1_Y1[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		field2 = waveBz_X1_Y2[iL] + ((waveBz_X2_Y2[iL] - waveBz_X1_Y2[iL])/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+		fieldZ = field1 + ((field2 - field1)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+	else
+		posXStr2 = num2str(posX[iX+1])
+		posYStr2 = num2str(posY[iY+1])
+
+		Wave waveBx_X2_Y1 = $("Bx_X" + posXStr2 + "Y" + posYStr1)
+		Wave waveBy_X2_Y1 = $("By_X" + posXStr2 + "Y" + posYStr1)
+		Wave waveBz_X2_Y1 = $("Bz_X" + posXStr2 + "Y" + posYStr1)
+
+		Wave waveBx_X1_Y2 = $("Bx_X" + posXStr1 + "Y" + posYStr2)
+		Wave waveBy_X1_Y2 = $("By_X" + posXStr1 + "Y" + posYStr2)
+		Wave waveBz_X1_Y2 = $("Bz_X" + posXStr1 + "Y" + posYStr2)
+
+		Wave waveBx_X2_Y2 = $("Bx_X" + posXStr2 + "Y" + posYStr2)
+		Wave waveBy_X2_Y2 = $("By_X" + posXStr2 + "Y" + posYStr2)
+		Wave waveBz_X2_Y2 = $("Bz_X" + posXStr2 + "Y" + posYStr2)
+
+		// Find field X
+		field1 = waveBx_X1_Y1[iL] + ((waveBx_X1_Y1[iL+1] - waveBx_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBx_X2_Y1[iL] + ((waveBx_X2_Y1[iL+1] - waveBx_X2_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field3 = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		field1 = waveBx_X1_Y2[iL] + ((waveBx_X1_Y2[iL+1] - waveBx_X1_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBx_X2_Y2[iL] + ((waveBx_X2_Y2[iL+1] - waveBx_X2_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field4 = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		fieldX = field3 + ((field4 - field3)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+		// Find field Y
+		field1 = waveBy_X1_Y1[iL] + ((waveBy_X1_Y1[iL+1] - waveBy_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBy_X2_Y1[iL] + ((waveBy_X2_Y1[iL+1] - waveBy_X2_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field3 = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		field1 = waveBy_X1_Y2[iL] + ((waveBy_X1_Y2[iL+1] - waveBy_X1_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBy_X2_Y2[iL] + ((waveBy_X2_Y2[iL+1] - waveBy_X2_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field4 = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		fieldY = field3 + ((field4 - field3)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+		// Find field Z
+		field1 = waveBz_X1_Y1[iL] + ((waveBz_X1_Y1[iL+1] - waveBz_X1_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBz_X2_Y1[iL] + ((waveBz_X2_Y1[iL+1] - waveBz_X2_Y1[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field3 = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		field1 = waveBz_X1_Y2[iL] + ((waveBz_X1_Y2[iL+1] - waveBz_X1_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field2 = waveBz_X2_Y2[iL] + ((waveBz_X2_Y2[iL+1] - waveBz_X2_Y2[iL])/(posL[iL+1] - posL[iL]) * (pl - posL[iL]))
+		field4 = field1 + ((field2 - field1)/(posX[iX+1] - posX[iX]) * (px - posX[iX]))
+
+		fieldZ = field3 + ((field4 - field3)/(posY[iY+1] - posY[iY]) * (py - posY[iY]))
+
+	endif
+
+	return 0
+
+End
 
 Static Function/S GetDefaultFieldmapFilename([spectra])
 	variable spectra
