@@ -6738,13 +6738,7 @@ Function CAMTO_PhaseError_Panel() : Panel
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 	
-	SetVariable svarCurrentFieldmap, win=$windowName, pos={m, h}, size={240,20}, noedit=1, title="Current Fieldmap "
-	SetVariable svarCurrentFieldmap, win=$windowName, value=root:varsCAMTO:FIELDMAP_FOLDER
-	h += 30
-	
-	SetDrawEnv fillpat=0
-	DrawRect l1,h1,l2,h-5
-	h1 = h-5
+	h = AddFieldmapOptions(windowName, h1, l1, l2, copyConfigProc="CAMTO_PhaseError_PopupCopyConfig", applyToAllProc="CAMTO_PhaseError_BtnApplyToAll")
 	
 	Display/W=(340,10,1140,545)/HOST=$windowName/N=$graphName	
 	
@@ -6959,6 +6953,104 @@ Function CAMTO_Phase_BtnPhaseErrorTable(ba) : ButtonControl
 			break
 	endswitch
 	
+	return 0
+
+End
+
+Function CAMTO_PhaseError_PopupCopyConfig(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+
+	SVAR fieldmapCopy = root:varsCAMTO:FIELDMAP_COPY
+
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			fieldmapCopy = pa.popStr
+
+			CopyConfigPhaseError(fieldmapCopy)
+			UpdatePanelPhaseError()
+
+			break
+
+	endswitch
+
+	return 0
+
+End
+
+Static Function CopyConfigPhaseError(dfc)
+	string dfc
+
+	WAVE/T fieldmapFolders= root:wavesCAMTO:fieldmapFolders
+
+	UpdateFieldmapFolders()
+	FindValue/Text=dfc/TXOP=4 fieldmapFolders
+
+	if (V_Value!=-1)
+		NVAR temp_df = :varsFieldmap:PHASE_PERIOD_PEAKS_ZEROS
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PHASE_PERIOD_PEAKS_ZEROS
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PHASE_ID_PERIOD_NOMINAL
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PHASE_ID_PERIOD_NOMINAL
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PHASE_ID_PERIOD
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PHASE_ID_PERIOD
+		temp_df = temp_dfc
+
+	else
+		DoAlert 0, "Data folder not found."
+		return -1
+	endif
+
+	return 0
+
+End
+
+Function CAMTO_PhaseError_BtnApplyToAll(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	variable i
+	string tdf
+
+	switch(ba.eventCode)
+		case 2:
+
+			DoAlert 1, "Calculate Phase Error for all fieldmaps?"
+			if (V_flag != 1)
+				return -1
+			endif
+
+			UpdateFieldmapFolders()
+
+			Wave/T fieldmapFolders = root:wavesCAMTO:fieldmapFolders
+			NVAR fieldmapCount  = root:varsCAMTO:FIELDMAP_COUNT
+			SVAR fieldmapFolder= root:varsCAMTO:FIELDMAP_FOLDER
+
+			DFREF df = GetDataFolderDFR()
+			string dfc = GetDataFolder(0)
+
+			for (i=0; i < fieldmapCount; i=i+1)
+				tdf = fieldmapFolders[i]
+				fieldmapFolder = tdf
+				SetDataFolder root:$(tdf)
+				CopyConfigPhaseError(dfc)
+				Print("Calculating Phase Error for " + tdf)
+				CalcPhaseError()
+			endfor
+
+			fieldmapFolder = dfc
+			SetDataFolder df
+
+			UpdatePanelResults()
+
+			break
+	endswitch
+
 	return 0
 
 End
