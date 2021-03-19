@@ -6134,7 +6134,7 @@ Static Function FindPeaks()
 	Variable npY = DimSize(wnY,0)-1
 	Variable npZ = DimSize(wnZ,0)-1
 
-	Make/O/N=(npX+1) wnT= NaN
+	Make/D/O/N=(npX+1) wnT= NaN
 	for (idx=0; idx < npX+1; idx=idx+1)
 		wnT[idx] = sqrt(wnX[idx]^2+wnY[idx]^2+wnZ[idx]^2)
 	endfor
@@ -6147,16 +6147,16 @@ Static Function FindPeaks()
 	Killwaves/Z peakPositionsXPosZ, peakPositionsYPosZ, peakPositionsXNegZ, peakPositionsYNegZ
 	Killwaves/Z peakPositionsXPosT, peakPositionsYPosT
 
-	Make/O/N=(npX) peakPositionsXPosX= NaN, peakPositionsYPosX= NaN  
-	Make/O/N=(npX) peakPositionsXNegX= NaN, peakPositionsYNegX= NaN
+	Make/D/O/N=(npX) peakPositionsXPosX= NaN, peakPositionsYPosX= NaN
+	Make/D/O/N=(npX) peakPositionsXNegX= NaN, peakPositionsYNegX= NaN
 
-	Make/O/N=(npY) peakPositionsXPosY= NaN, peakPositionsYPosY= NaN  
-	Make/O/N=(npY) peakPositionsXNegY= NaN, peakPositionsYNegY= NaN 
+	Make/D/O/N=(npY) peakPositionsXPosY= NaN, peakPositionsYPosY= NaN
+	Make/D/O/N=(npY) peakPositionsXNegY= NaN, peakPositionsYNegY= NaN
 
-	Make/O/N=(npZ) peakPositionsXPosZ= NaN, peakPositionsYPosZ= NaN  
-	Make/O/N=(npZ) peakPositionsXNegZ= NaN, peakPositionsYNegZ= NaN
+	Make/D/O/N=(npZ) peakPositionsXPosZ= NaN, peakPositionsYPosZ= NaN
+	Make/D/O/N=(npZ) peakPositionsXNegZ= NaN, peakPositionsYNegZ= NaN
 
-	Make/O/N=(npT) peakPositionsXPosT= NaN, peakPositionsYPosT= NaN  
+	Make/D/O/N=(npT) peakPositionsXPosT= NaN, peakPositionsYPosT= NaN
 
 	FindValue/V=(startL/1000) posL
 	startP = V_Value
@@ -6946,9 +6946,9 @@ Function CAMTO_Phase_BtnPhaseErrorTable(ba) : ButtonControl
 				return -1
 			endif
 			
-			Wave phase_error
-			Wave posL_calc
-			Edit/N=PhaseErrorTable/K=1 posL_calc, phase_error
+			Wave error_pe
+			Wave trajL_pe
+			Edit/N=PhaseErrorTable/K=1 trajL_pe, error_pe
 			
 			break
 	endswitch
@@ -7079,10 +7079,6 @@ Static Function CalcPhaseError()
 	variable K, lambda
 	variable startP, endP
 
-	Wave posL
-	Wave posL_calc
-	Wave ang_sum_int
-
 	if (periodPeaksZeros == 0)
 		IDPeriod = periodPeaks
 	elseif (periodPeaksZeros == 1)
@@ -7096,30 +7092,30 @@ Static Function CalcPhaseError()
 		return -1	
 	endif
 
-	Wave IntBx = $("Int_Bx_X" + num2str(startXTraj/1000))
-	Wave IntBy = $("Int_By_X" + num2str(startXTraj/1000))
-	Wave IntBz = $("Int_Bz_X" + num2str(startXTraj/1000))
+	Wave trajVx = $("trajVx_X" + num2str(startXTraj/1000))
+	Wave trajVy = $("trajVy_X" + num2str(startXTraj/1000))
+	Wave trajVz = $("trajVz_X" + num2str(startXTraj/1000))
+	Wave trajL = $("trajL_X" + num2str(startXTraj/1000))
 
-	K = 0.0934*Mean(peakPositionsYPosT)*IDPeriod
+	K = ((Mean(peakPositionsYPosT)*abs(particleCharge))/(particleMass*lightSpeed))*((IDPeriod/1000)/(2*Pi))
 	lambda = ((IDPeriod/1000)/(2*(gama^2)))*(1 + (K^2)/2)
 
 	np = numpnts(peakPositionsXPosT)
-	FindValue/V=(peakPositionsXPosT[0]) posL
+	FindValue/V=(peakPositionsXPosT[0]) trajL
 	startP = V_Value
-	FindValue/V=(peakPositionsXPosT[np-1]) posL
+	FindValue/V=(peakPositionsXPosT[np-1]) trajL
 	endP = V_Value
 
-	Duplicate/O/R=(startP,endP) IntBx, IntBx_calc
-	Duplicate/O/R=(startP,endP) IntBy, IntBy_calc
-	Duplicate/O/R=(startP,endP) IntBz, IntBz_calc
-	Duplicate/O/R=(startP,endP) posL, posL_calc
+	Duplicate/D/O/R=[startP,endP] trajVx, trajVx_pe
+	Duplicate/D/O/R=[startP,endP] trajVy, trajVy_pe
+	Duplicate/D/O/R=[startP,endP] trajVz, trajVz_pe
+	Duplicate/D/O/R=[startP,endP] trajL, trajL_pe
 
-	nsp = numpnts(posL_calc)
+	nsp = numpnts(trajL_pe)
 	Make/O/D/N=(nsp) ang_sum = NaN
-	ang_sum = ((IntBx_calc+IntBy_calc+IntBz_calc)*(particleCharge/(gama*particleMass*lightSpeed)))^2
-	KillWaves/Z IntBx_calc, IntBy_calc, IntBz_calc
+	ang_sum = (trajVx_pe/lightSpeed)^2 + (trajVy_pe/lightSpeed)^2
 
-	Integrate/METH=1 ang_sum/X=posL_calc/D=ang_sum_int
+	Integrate/METH=1 ang_sum/X=trajL_pe/D=ang_sum_int
 
 	Make/O/D/N=(nsp) phase = NaN
 	phase[0,nsp-1] = (Pi/lambda)*((p/(gama^2))+ang_sum_int)
@@ -7128,38 +7124,35 @@ Static Function CalcPhaseError()
 	Make/O/D/N=(nsp) phase_fit = NaN
 	Make/O/D/N=(nsp) phase_error = NaN
 	CurveFit/Q line phase/D=phase_fit
-	phase_error = phase-phase_fit
+	phase_error = phase - phase_fit
 
-	Make/O/D/N=(np-1) errorp = NaN
-	Make/O/D/N=(np-1) errorp_sqrt = NaN
+	Make/O/D/N=(np-1) error_pe = NaN
+	Make/O/D/N=(np-1) error_pe_sqrt = NaN
 	for (idx=0; idx < np-1; idx=idx+1)
-		FindValue/V=(peakPositionsXPosT[idx]) posL
+		FindValue/V=(peakPositionsXPosT[idx]) trajL
 		auxp1 = V_Value
-		FindValue/V=(peakPositionsXPosT[idx+1]) posL
+		FindValue/V=(peakPositionsXPosT[idx+1]) trajL
 		auxp2 = V_Value
-		errorp[idx] = Mean(phase_error, auxp1-startP+1, auxp2-startP-1)*180/Pi
+		error_pe[idx] = Mean(phase_error, auxp1-startP+1, auxp2-startP-1)*180/Pi
 	endfor
 
-	errorp_sqrt = errorp*errorp
-	IDPhaseError = Sqrt(Sum(errorp_sqrt)/numpnts(errorp_sqrt))
+	error_pe_sqrt = error_pe*error_pe
+	IDPhaseError = Sqrt(Sum(error_pe_sqrt)/numpnts(error_pe_sqrt))
 
 	KillWaves/Z phase, phase_fit
-	KillWaves/Z errorp, errorp_sqrt
+	KillWaves/Z phase_error, error_pe_sqrt
+
 End
 
 Static Function ShowPhaseErrorGraph(graphname)
 	string graphname
-	
+
 	DeleteTracesFromGraph(graphName)
-		
-	Wave phase_error
-	Wave posL_calc
-	
-	phase_error *= 180/Pi
-	
-	AppendToGraph/W=$graphName/C=(65000,0,0) phase_error vs posL_calc
-	Label/W=$graphName bottom "\\Z12Longitudinal Position [m]"
-	Label/W=$graphName left "\\Z12Local Phase Error [°]"	
+
+	Wave error_pe
+
+	AppendToGraph/W=$graphName/C=(65000,0,0) error_pe
+	Label/W=$graphName left "\\Z12Phase Error [deg]"	
 
 End
 
