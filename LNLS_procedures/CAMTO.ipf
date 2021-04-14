@@ -91,9 +91,10 @@ Function CAMTO_Init()
 	variable/G LOAD_STATIC_TRANSIENT = 1
 	variable/G LOAD_SYMMETRY_LONGITUDINAL = 0
 	variable/G LOAD_SYMMETRY_HORIZONTAL = 0
-	variable/G LOAD_BEAM_DIRECTION = 2 // 1: Y-Axis, 2: Z-Axis
+	variable/G LOAD_SYMMETRY_VERTICAL = 0
 	variable/G LOAD_SYMMETRY_LONGITUDINAL_BC = 2 // 1: Normal, 2: Tangencial
 	variable/G LOAD_SYMMETRY_HORIZONTAL_BC = 1 // 1: Normal, 2: Tangencial
+	variable/G LOAD_SYMMETRY_VERTICAL_BC = 1 // 1: Normal, 2: Tangencial
 
 //	variable/G COMPARE_POS_H = 0
 //	variable/G COMPARE_POS_START_H = 0
@@ -861,7 +862,7 @@ Function CAMTO_Load_Panel() : Panel
 	endif
 	
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(750,60,1190,605) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(750,60,1190,635) as windowTitle
 	SetDrawLayer UserBack
 	
 	variable m, h, h1, l1, l2 
@@ -908,9 +909,7 @@ Function CAMTO_Load_Panel() : Panel
 	TitleBox tbxTitle4, pos={0,h}, size={440,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Fieldmap"
 	h += 30
 
-	PopupMenu popupBeamDirection, pos={m,h}, size={140,25}, mode=0, proc=CAMTO_Load_PopupBeamDirection, title="Beam Direction"
-	PopupMenu popupBeamDirection, value=#"\"Y-Axis;Z-Axis\""
-	PopupMenu popupStaticTransient, pos={m+220,h}, size={115,25}, mode=0, proc=CAMTO_Load_PopupStaticTransient, title="Data Type"
+	PopupMenu popupStaticTransient, pos={m,h}, size={115,25}, mode=0, proc=CAMTO_Load_PopupStaticTransient, title="Data Type"
 	PopupMenu popupStaticTransient, value=#"\"Static;Transient\""
 	h += 30
 
@@ -929,6 +928,11 @@ Function CAMTO_Load_Panel() : Panel
 	CheckBox chbSymHorizontal, pos={m,h}, size={170,20}, value=0, proc=CAMTO_Load_PopupSymHorizontal, title=" Along Horizontal Direction"
 	PopupMenu popupSymHorizontalBC, pos={m+180,h-2}, size={160,20}, proc=CAMTO_Load_PopupSymHorizontalBC, title="Boundary Condition At 90°"
 	PopupMenu popupSymHorizontalBC, value=#"\"Normal;Tangential\"", mode=0
+	h += 30
+
+	CheckBox chbSymVertical, pos={m,h}, size={170,20}, value=0, proc=CAMTO_Load_PopupSymVertical, title=" Along Vertical Direction"
+	PopupMenu popupSymVerticalBC, pos={m+180,h-2}, size={160,20}, proc=CAMTO_Load_PopupSymVerticalBC, title="Boundary Condition At 90°"
+	PopupMenu popupSymVerticalBC, value=#"\"Normal;Tangential\"", mode=0
 	h += 30
 
 	SetDrawEnv fillpat=0
@@ -983,11 +987,12 @@ Static Function UpdatePanelLoad()
 	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
 	NVAR fieldmapCount = root:varsCAMTO:FIELDMAP_COUNT
 	NVAR staticTransient = root:varsCAMTO:LOAD_STATIC_TRANSIENT
-	NVAR beamDirection   = root:varsCAMTO:LOAD_BEAM_DIRECTION
 	NVAR symmetryLongitudinal = root:varsCAMTO:LOAD_SYMMETRY_LONGITUDINAL
 	NVAR symmetryLongitudinalBC = root:varsCAMTO:LOAD_SYMMETRY_LONGITUDINAL_BC
 	NVAR symmetryHorizontal = root:varsCAMTO:LOAD_SYMMETRY_HORIZONTAL
 	NVAR symmetryHorizontalBC = root:varsCAMTO:LOAD_SYMMETRY_HORIZONTAL_BC
+	NVAR symmetryVertical = root:varsCAMTO:LOAD_SYMMETRY_VERTICAL
+	NVAR symmetryVerticalBC = root:varsCAMTO:LOAD_SYMMETRY_VERTICAL_BC
 
 	WAVE/T fieldmapFolders = root:wavesCAMTO:fieldmapFolders
 	
@@ -1028,20 +1033,22 @@ Static Function UpdatePanelLoad()
 
 	if (strlen(df) > 0 && cmpstr(df, "_none_")!=0)
 		NVAR dataLoaded = root:$(df):varsFieldmap:DATA_LOADED
-		NVAR localBeamDirection = root:$(df):varsFieldmap:LOAD_BEAM_DIRECTION
 		NVAR localStaticTransient = root:$(df):varsFieldmap:LOAD_STATIC_TRANSIENT
 		NVAR localSymmetryLongitudinal = root:$(df):varsFieldmap:LOAD_SYMMETRY_LONGITUDINAL
 		NVAR localSymmetryLongitudinalBC = root:$(df):varsFieldmap:LOAD_SYMMETRY_LONGITUDINAL_BC
 		NVAR localSymmetryHorizontal = root:$(df):varsFieldmap:LOAD_SYMMETRY_HORIZONTAL
 		NVAR localSymmetryHorizontalBC = root:$(df):varsFieldmap:LOAD_SYMMETRY_HORIZONTAL_BC
+		NVAR localSymmetryVertical = root:$(df):varsFieldmap:LOAD_SYMMETRY_VERTICAL
+		NVAR localSymmetryVerticalBC = root:$(df):varsFieldmap:LOAD_SYMMETRY_VERTICAL_BC
 
 		if (dataLoaded)
-			localBeamDirection = localBeamDirection		
 			staticTransient = localStaticTransient
 			symmetryLongitudinal = localSymmetryLongitudinal
 			symmetryLongitudinalBC = SymmetryLongitudinalBC
 			symmetryHorizontal = localSymmetryHorizontal
 			symmetryHorizontalBC = localSymmetryHorizontalBC
+			symmetryVertical = localSymmetryVertical
+			symmetryVerticalBC = localSymmetryVerticalBC
 		endif
 
 		ValDisplay vdispStartX, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_START_X" )
@@ -1053,28 +1060,6 @@ Static Function UpdatePanelLoad()
 		ValDisplay vdispStartZ, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_START_Z")
 		ValDisplay vdispEndZ, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_END_Z")
 		ValDisplay vdispStepZ, win=$windowName, value=#("root:" + df + ":varsFieldmap:LOAD_STEP_Z")
-	
-		if (beamDirection == 1)
-		 	TitleBox tbxTitleY, win=$windowName, disable=0
-		 	ValDisplay vdispStartY, win=$windowName, disable=0
-		 	ValDisplay vdispEndY, win=$windowName, disable=0
-		 	ValDisplay vdispStepY, win=$windowName, disable=0
-		 	TitleBox tbxTitleZ, win=$windowName, disable=2
-		 	ValDisplay vdispStartZ, win=$windowName, disable=2
-		 	ValDisplay vdispEndZ, win=$windowName, disable=2
-		 	ValDisplay vdispStepZ, win=$windowName, disable=2
-		
-		else
-		 	TitleBox tbxTitleY, win=$windowName, disable=2
-		 	ValDisplay vdispStartY, win=$windowName, disable=2
-		 	ValDisplay vdispEndY, win=$windowName, disable=2
-		 	ValDisplay vdispStepY, win=$windowName, disable=2
-		 	TitleBox tbxTitleZ, win=$windowName, disable=0	 
-		 	ValDisplay vdispStartZ, win=$windowName, disable=0
-		 	ValDisplay vdispEndZ, win=$windowName, disable=0
-		 	ValDisplay vdispStepZ, win=$windowName, disable=0	
-		
-		endif
 
 	else
 		ValDisplay vdispStartX, win=$windowName, value=_NUM:0
@@ -1089,10 +1074,10 @@ Static Function UpdatePanelLoad()
 	endif
 		
 	PopupMenu popupStaticTransient, win=$windowName, mode=StaticTransient
-	PopupMenu popupBeamDirection, win=$windowName, mode=BeamDirection
 
 	CheckBox chbSymLongitudinal, win=$windowName, variable=symmetryLongitudinal
 	CheckBox chbSymHorizontal, win=$windowName, variable=symmetryHorizontal
+	CheckBox chbSymVertical, win=$windowName, variable=symmetryVertical
 	
 	if (symmetryLongitudinal)
 		PopupMenu popupSymLongitudinalBC, win=$windowName, mode=symmetryLongitudinalBC, disable=0
@@ -1104,6 +1089,12 @@ Static Function UpdatePanelLoad()
 		PopupMenu popupSymHorizontalBC, win=$windowName, mode=symmetryHorizontalBC, disable=0
 	else
 		PopupMenu popupSymHorizontalBC, win=$windowName, mode=0, disable=2
+	endif
+
+	if (symmetryVertical)
+		PopupMenu popupSymVerticalBC, win=$windowName, mode=symmetryVerticalBC, disable=0
+	else
+		PopupMenu popupSymVerticalBC, win=$windowName, mode=0, disable=2
 	endif
 	
 	return 0
@@ -1218,48 +1209,6 @@ Function CAMTO_Load_PopupChangeDir(pa) : PopupMenuControl
 End
 
 
-Function CAMTO_Load_PopupBeamDirection(pa) : PopupMenuControl
-	struct WMPopupAction &pa
-
-	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
-
-	switch(pa.eventCode)
-		case 2:
-			
-			beamDirection = pa.popNum
-			
-			if (pa.popNum == 1)
-			 	TitleBox tbxTitleY, win=$pa.win, disable=0
-			 	ValDisplay vdispStartY, win=$pa.win, disable=0
-			 	ValDisplay vdispEndY, win=$pa.win, disable=0
-			 	ValDisplay vdispStepY, win=$pa.win, disable=0
-			 	TitleBox tbxTitleZ, win=$pa.win, disable=2
-			 	ValDisplay vdispStartZ, win=$pa.win, disable=2
-			 	ValDisplay vdispEndZ, win=$pa.win, disable=2
-			 	ValDisplay vdispStepZ, win=$pa.win, disable=2
-			
-			else
-			 	TitleBox tbxTitleY, win=$pa.win, disable=2
-			 	ValDisplay vdispStartY, win=$pa.win, disable=2
-			 	ValDisplay vdispEndY, win=$pa.win, disable=2
-			 	ValDisplay vdispStepY, win=$pa.win, disable=2
-			 	TitleBox tbxTitleZ, win=$pa.win, disable=0	 
-			 	ValDisplay vdispStartZ, win=$pa.win, disable=0
-			 	ValDisplay vdispEndZ, win=$pa.win, disable=0
-			 	ValDisplay vdispStepZ, win=$pa.win, disable=0	
-			endif
-			
-			PopupMenu popupBeamDirection, win=$pa.win, mode=pa.popNum
-
-			break
-	
-	endswitch
-
-	return 0
-	
-End
-
-
 Function CAMTO_Load_PopupStaticTransient(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 
@@ -1319,6 +1268,26 @@ Function CAMTO_Load_PopupSymHorizontal(ca) : CheckBoxControl
 End
 
 
+Function CAMTO_Load_PopupSymVertical(ca) : CheckBoxControl
+	STRUCT WMCheckboxAction& ca
+	
+	switch(ca.eventCode)
+		case 2:
+			if (ca.checked)
+				PopupMenu popupSymVerticalBC, win=$ca.win, disable=0
+			else
+				PopupMenu popupSymVerticalBC, win=$ca.win, disable=2
+			endif
+
+			break
+	
+	endswitch
+
+	return 0
+
+End
+
+
 Function CAMTO_Load_PopupSymLongitudinalBC(pa) : PopupMenuControl
 	struct WMPopupAction &pa
 
@@ -1351,6 +1320,26 @@ Function CAMTO_Load_PopupSymHorizontalBC(pa) : PopupMenuControl
 
 			break
 	
+	endswitch
+
+	return 0
+
+End
+
+
+Function CAMTO_Load_PopupSymVerticalBC(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+
+	NVAR symVerticalBC = root:varsCAMTO:LOAD_SYMMETRY_VERTICAL_BC
+
+	switch(pa.eventCode)
+		case 2:
+
+			symVerticalBC = pa.popNum
+			PopupMenu popupSymVerticalBC, win=$pa.win, mode=pa.popNum
+
+			break
+
 	endswitch
 
 	return 0
@@ -1453,12 +1442,13 @@ End
 Function CAMTO_Load_BtnClearFieldmap(ba) : ButtonControl
 	struct WMButtonAction &ba
 
-	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
 	NVAR staticTransient = root:varsCAMTO:LOAD_STATIC_TRANSIENT
 	NVAR symmetryLongitudinal = root:varsCAMTO:LOAD_SYMMETRY_LONGITUDINAL
 	NVAR symmetryHorizontal = root:varsCAMTO:LOAD_SYMMETRY_HORIZONTAL
+	NVAR symmetryVertical = root:varsCAMTO:LOAD_SYMMETRY_VERTICAL
 	NVAR symmetryLongitudinalBC = root:varsCAMTO:LOAD_SYMMETRY_LONGITUDINAL_BC
 	NVAR symmetryHorizontalBC = root:varsCAMTO:LOAD_SYMMETRY_HORIZONTAL_BC
+	NVAR symmetryVerticalBC = root:varsCAMTO:LOAD_SYMMETRY_VERTICAL_BC
 	
 	switch(ba.eventCode)
 		case 2:		
@@ -1466,12 +1456,13 @@ Function CAMTO_Load_BtnClearFieldmap(ba) : ButtonControl
 				return -1
 			endif
 
-			beamDirection = 2
 			staticTransient = 1
 			symmetryLongitudinal = 0
 			symmetryHorizontal = 0
+			symmetryVertical = 0
 			symmetryLongitudinalBC = 2
-			symmetryHorizontalBC = 1 
+			symmetryHorizontalBC = 1
+			symmetryVerticalBC = 1
 
 			InitializeFieldmapVariables()	
 			UpdatePanels()
@@ -1630,12 +1621,13 @@ Static Function InitializeFieldmapVariables()
 	variable/G IRREGULAR_GRID = 0
 	
 	variable/G LOAD_TIME_INSTANT = 0
-	variable/G LOAD_BEAM_DIRECTION
 	variable/G LOAD_STATIC_TRANSIENT
 	variable/G LOAD_SYMMETRY_LONGITUDINAL
 	variable/G LOAD_SYMMETRY_HORIZONTAL
+	variable/G LOAD_SYMMETRY_VERTICAL
 	variable/G LOAD_SYMMETRY_LONGITUDINAL_BC
 	variable/G LOAD_SYMMETRY_HORIZONTAL_BC
+	variable/G LOAD_SYMMETRY_VERTICAL_BC
 	
 	variable/G LOAD_START_X = 0
 	variable/G LOAD_END_X = 0
@@ -1682,18 +1674,26 @@ Static Function InitializeFieldmapVariables()
 	variable/G INDEX_L
 
 	variable/G VIEW_POS_X
+	variable/G VIEW_POS_Y
 	variable/G VIEW_POS_L
 	variable/G VIEW_PLOT_X
 	variable/G VIEW_PLOT_START_X
 	variable/G VIEW_PLOT_END_X
 	variable/G VIEW_PLOT_STEP_X
+	variable/G VIEW_PLOT_Y
+	variable/G VIEW_PLOT_START_Y
+	variable/G VIEW_PLOT_END_Y
+	variable/G VIEW_PLOT_STEP_Y
 	variable/G VIEW_PLOT_L
 	variable/G VIEW_FIELD_X
 	variable/G VIEW_FIELD_Y
 	variable/G VIEW_FIELD_Z
-	variable/G VIEW_HOM_X
-	variable/G VIEW_HOM_Y
-	variable/G VIEW_HOM_Z
+	variable/G VIEW_HOM_H_X
+	variable/G VIEW_HOM_H_Y
+	variable/G VIEW_HOM_H_Z
+	variable/G VIEW_HOM_V_X
+	variable/G VIEW_HOM_V_Y
+	variable/G VIEW_HOM_V_Z
 	variable/G VIEW_APPEND_FIELD = 0
 
 	variable/G TRAJ_PARTICLE_ENERGY = 3.0	// [GeV]
@@ -1702,6 +1702,7 @@ Static Function InitializeFieldmapVariables()
 	variable/G TRAJ_IGNORE_OUT_MATRIX = 1
 	variable/G TRAJ_OUT_MATRIX_ERROR = 0
 	variable/G TRAJ_NEGATIVE_DIRECTION = 0
+	variable/G TRAJ_START_Y
 	variable/G TRAJ_START_X
 	variable/G TRAJ_END_X
 	variable/G TRAJ_STEP_X
@@ -1721,6 +1722,9 @@ Static Function InitializeFieldmapVariables()
 	variable/G PEAK_START_X
 	variable/G PEAK_END_X
 	variable/G PEAK_STEP_X
+	variable/G PEAK_START_Y
+	variable/G PEAK_END_Y
+	variable/G PEAK_STEP_Y
 
 	variable/G PHASE_PERIOD_PEAKS_ZEROS = 1
 	variable/G PHASE_ID_PERIOD_NOMINAL = 0
@@ -2003,25 +2007,43 @@ Static Function UpdatePositionVariablesViewField()
 	NVAR startX = :varsFieldmap:LOAD_START_X
 	NVAR endX = :varsFieldmap:LOAD_END_X
 	NVAR stepX = :varsFieldmap:LOAD_STEP_X
+	NVAR startY = :varsFieldmap:LOAD_START_Y
+	NVAR endY = :varsFieldmap:LOAD_END_Y
+	NVAR stepY = :varsFieldmap:LOAD_STEP_Y
 
 	NVAR viewposX = :varsFieldmap:VIEW_POS_X
+	NVAR viewposY = :varsFieldmap:VIEW_POS_Y
 	NVAR viewposL = :varsFieldmap:VIEW_POS_L
 	NVAR plotX = :varsFieldmap:VIEW_PLOT_X
+	NVAR plotY = :varsFieldmap:VIEW_PLOT_Y
 	NVAR plotL = :varsFieldmap:VIEW_PLOT_L
 	NVAR plotStartX = :varsFieldmap:VIEW_PLOT_START_X
 	NVAR plotEndX = :varsFieldmap:VIEW_PLOT_END_X
 	NVAR plotStepX = :varsFieldmap:VIEW_PLOT_STEP_X
+	NVAR plotStartY = :varsFieldmap:VIEW_PLOT_START_Y
+	NVAR plotEndY = :varsFieldmap:VIEW_PLOT_END_Y
+	NVAR plotStepY = :varsFieldmap:VIEW_PLOT_STEP_Y
 	
-	WAVE posX, posL
+	WAVE posX, posY, posL
 
 	plotStartX = startX
 	plotEndX = endX
 	plotStepX = stepX
-	
+
+	plotStartY = startY
+	plotEndY = endY
+	plotStepY = stepY
+
 	FindValue/T=(tol)/V=0 posX
 	if (V_Value != -1)
 		viewposX = 0
 		plotX = 0
+	endif
+	
+	FindValue/T=(tol)/V=0 posY
+	if (V_Value != -1)
+		viewposY = 0
+		plotY = 0
 	endif
 
 	FindValue/T=(tol)/V=0 posL
@@ -2037,21 +2059,24 @@ End
 
 Static Function UpdatePositionVariablesTraj()
 	NVAR tol = root:varsCAMTO:POSITION_TOLERANCE
-	
+
+	NVAR startY = :varsFieldmap:LOAD_START_Y
 	NVAR startX = :varsFieldmap:LOAD_START_X
 	NVAR endX = :varsFieldmap:LOAD_END_X
 	NVAR stepX = :varsFieldmap:LOAD_STEP_X
 	NVAR startL = :varsFieldmap:LOAD_START_L
 	NVAR endL = :varsFieldmap:LOAD_END_L
 
+	NVAR trajStartY = :varsFieldmap:TRAJ_START_Y
 	NVAR trajStartX = :varsFieldmap:TRAJ_START_X
 	NVAR trajEndX = :varsFieldmap:TRAJ_END_X
 	NVAR trajStepX = :varsFieldmap:TRAJ_STEP_X
 	NVAR trajStartL = :varsFieldmap:TRAJ_START_L
 	NVAR trajEndL = :varsFieldmap:TRAJ_END_L
 
-	WAVE posX
+	WAVE posX, posY
 
+	trajStartY = startY
 	trajStartX = startX
 	trajEndX = endX
 	trajStepX = stepX
@@ -2061,6 +2086,11 @@ Static Function UpdatePositionVariablesTraj()
 	FindValue/T=(tol)/V=0 posX
 	if (V_Value != -1)
 		trajStartX = 0
+	endif
+
+	FindValue/T=(tol)/V=0 posY
+	if (V_Value != -1)
+		trajStartY = 0
 	endif
 
 	return 0
@@ -2073,26 +2103,40 @@ Static Function UpdatePositionVariablesPeak()
 	NVAR startX = :varsFieldmap:LOAD_START_X
 	NVAR endX = :varsFieldmap:LOAD_END_X
 	NVAR stepX = :varsFieldmap:LOAD_STEP_X
+	NVAR startY = :varsFieldmap:LOAD_START_Y
+	NVAR endY = :varsFieldmap:LOAD_END_Y
+	NVAR stepY = :varsFieldmap:LOAD_STEP_Y
 	NVAR startL = :varsFieldmap:LOAD_START_L
 	NVAR endL = :varsFieldmap:LOAD_END_L
 
 	NVAR peakStartX = :varsFieldmap:PEAK_START_X
 	NVAR peakEndX = :varsFieldmap:PEAK_END_X
 	NVAR peakStepX = :varsFieldmap:PEAK_STEP_X
+	NVAR peakStartY = :varsFieldmap:PEAK_START_Y
+	NVAR peakEndY = :varsFieldmap:PEAK_END_Y
+	NVAR peakStepY = :varsFieldmap:PEAK_STEP_Y
 	NVAR peakStartL = :varsFieldmap:PEAK_START_L
 	NVAR peakEndL = :varsFieldmap:PEAK_END_L
 
-	WAVE posX
+	WAVE posX, posY
 
 	peakStartX = startX
 	peakEndX = endX
 	peakStepX = stepX
+	peakStartY = startY
+	peakEndY = endY
+	peakStepY = stepY
 	peakStartL = startL
 	peakEndL = endL
 
 	FindValue/T=(tol)/V=0 posX
 	if (V_Value != -1)
 		peakStartX = 0
+	endif
+	
+	FindValue/T=(tol)/V=0 posY
+	if (V_Value != -1)
+		peakStartY = 0
 	endif
 
 	return 0
@@ -2113,12 +2157,13 @@ Static Function LoadFieldmap([filename, overwrite])
 	endif
 
 	NVAR tol = root:varsCAMTO:POSITION_TOLERANCE
-	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
 	NVAR staticTransient = root:varsCAMTO:LOAD_STATIC_TRANSIENT
 	NVAR symmetryLongitudinal = root:varsCAMTO:LOAD_SYMMETRY_LONGITUDINAL
 	NVAR symmetryHorizontal = root:varsCAMTO:LOAD_SYMMETRY_HORIZONTAL
+	NVAR symmetryVertical = root:varsCAMTO:LOAD_SYMMETRY_VERTICAL
 	NVAR symmetryLongitudinalBC = root:varsCAMTO:LOAD_SYMMETRY_LONGITUDINAL_BC
 	NVAR symmetryHorizontalBC = root:varsCAMTO:LOAD_SYMMETRY_HORIZONTAL_BC
+	NVAR symmetryVerticalBC = root:varsCAMTO:LOAD_SYMMETRY_VERTICAL_BC
 
 	SVAR fieldmapFilename = :varsFieldmap:FIELDMAP_FILENAME
 	SVAR fieldmapFilepath = :varsFieldmap:FIELDMAP_FILEPATH
@@ -2126,12 +2171,13 @@ Static Function LoadFieldmap([filename, overwrite])
 	NVAR dataLoaded = :varsFieldmap:DATA_LOADED
 	NVAR irregularGrid = :varsFieldmap:IRREGULAR_GRID
 	NVAR timeInstant = :varsFieldmap:LOAD_TIME_INSTANT	
-	NVAR localBeamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
 	NVAR localStaticTransient = :varsFieldmap:LOAD_STATIC_TRANSIENT
 	NVAR localSymmetryLongitudinal = :varsFieldmap:LOAD_SYMMETRY_LONGITUDINAL
 	NVAR localSymmetryLongitudinalBC = :varsFieldmap:LOAD_SYMMETRY_LONGITUDINAL_BC
 	NVAR localSymmetryHorizontal = :varsFieldmap:LOAD_SYMMETRY_HORIZONTAL
 	NVAR localSymmetryHorizontalBC = :varsFieldmap:LOAD_SYMMETRY_HORIZONTAL_BC
+	NVAR localSymmetryVertical = :varsFieldmap:LOAD_SYMMETRY_VERTICAL
+	NVAR localSymmetryVerticalBC = :varsFieldmap:LOAD_SYMMETRY_VERTICAL_BC
 
 	NVAR startX = :varsFieldmap:LOAD_START_X
 	NVAR endX = :varsFieldmap:LOAD_END_X
@@ -2153,10 +2199,11 @@ Static Function LoadFieldmap([filename, overwrite])
 	NVAR stepL = :varsFieldmap:LOAD_STEP_L
 	NVAR nptsL = :varsFieldmap:LOAD_NPTS_L
 
-	variable i
+	variable i, j
 	variable symmetryBxL, symmetryByL, symmetryBzL
 	variable symmetryBxX, symmetryByX, symmetryBzX
-	string waveStr, waveStrAux, posXStr
+	variable symmetryBxY, symmetryByY, symmetryBzY
+	string waveStr, waveStrAux, posXStr, posYStr
 
 	if (IsCorrectFolder() == -1)
 		return -1
@@ -2177,11 +2224,12 @@ Static Function LoadFieldmap([filename, overwrite])
 	endif
 
 	localStaticTransient = staticTransient
-	localBeamDirection = beamDirection
 	localSymmetryLongitudinal = symmetryLongitudinal
 	localSymmetryLongitudinalBC = symmetryLongitudinalBC
 	localSymmetryHorizontal = symmetryHorizontal
 	localSymmetryHorizontalBC = symmetryHorizontalBC
+	localSymmetryVertical = symmetryVertical
+	localSymmetryVerticalBC = symmetryVerticalBC
 	
 	LoadWave/H/O/G/D/W/A filename
 
@@ -2241,21 +2289,11 @@ Static Function LoadFieldmap([filename, overwrite])
 	nptsZ = Round((endZ - startZ)/stepZ + 1)
 	
 	// Set longitudinal position start, end, step and npts
-	if (beamDirection == 1) // Y-axis
-		startL = startY
-		endL = endY 
-		stepL = stepY
-		nptsL = nptsY
-		WAVE waveLUnique = waveYUnique
-	
-	else
-		startL = startZ
-		endL = endZ
-		stepL = stepZ
-		nptsL = nptsZ
-		WAVE waveLUnique = waveZUnique
-	
-	endif
+	startL = startZ
+	endL = endZ
+	stepL = stepZ
+	nptsL = nptsZ
+	WAVE waveLUnique = waveZUnique
 
 	// Check longitudinal symmetry 
 	if (symmetryLongitudinal == 1)
@@ -2266,32 +2304,16 @@ Static Function LoadFieldmap([filename, overwrite])
 			return -1
 		endif
 	
-		if (beamDirection == 1) // Y-axis
-			if (symmetryLongitudinalBC == 1)
-				// Normal Boundary Condition
-				symmetryBxL = -1
-				symmetryByL = 1
-				symmetryBzL = -1			
-			else
-				// Tangencial Boundary Condition
-				symmetryBxL = 1 
-				symmetryByL = -1
-				symmetryBzL = 1			
-			endif
-		
+		if (symmetryLongitudinalBC == 1)
+			// Normal Boundary Condition
+			symmetryBxL = -1
+			symmetryByL = -1
+			symmetryBzL = 1
 		else
-			if (symmetryLongitudinalBC == 1)
-				// Normal Boundary Condition
-				symmetryBxL = -1
-				symmetryByL = -1
-				symmetryBzL = 1
-			else
-				// Tangencial Boundary Condition
-				symmetryBxL = 1
-				symmetryByL = 1
-				symmetryBzL = -1
-			endif
-
+			// Tangencial Boundary Condition
+			symmetryBxL = 1
+			symmetryByL = 1
+			symmetryBzL = -1
 		endif
 	
 	else
@@ -2329,7 +2351,35 @@ Static Function LoadFieldmap([filename, overwrite])
 	
 	endif
 
-	// Make horizontal and longitudinal position waves (convert from millimeter to meter)
+	// Check vertical symmetry 
+	if (symmetryVertical == 1)
+		if (startY != 0)
+			DoAlert 0, "Can't apply vertical symmetry. Non-zero initial position."
+			Killwaves/Z wave0, wave1, wave2, wave3, wave4, wave5, wave6
+			Killwaves/Z waveXUnique, waveYUnique, waveZUnique
+			return -1
+		endif
+		
+		if (symmetryVerticalBC == 1)
+			// Normal Boundary Condition
+			symmetryBxY = 1
+			symmetryByY = -1
+			symmetryBzY = -1			
+		else
+			// Tangencial Boundary Condition
+			symmetryBxY = -1
+			symmetryByY = 1
+			symmetryBzY = 1			
+		endif
+	
+	else
+		symmetryBxY = 1
+		symmetryByY = 1
+		symmetryBzY = 1
+	
+	endif
+
+	// Make horizontal, vertical and longitudinal position waves (convert from millimeter to meter)
 	Make/D/O posX
 	if (numpnts(waveXUnique) != nptsX)
 		Duplicate/O waveXUnique, posX
@@ -2340,7 +2390,18 @@ Static Function LoadFieldmap([filename, overwrite])
 		Redimension/N=(nptsX) posX
 		posX = (startX + stepX*p) / 1000
 	endif  
-	
+
+	Make/D/O posY
+	if (numpnts(waveYUnique) != nptsY)
+		Duplicate/O waveYUnique, posY
+		posY = posY / 1000
+		nptsY = numpnts(posY)
+		irregularGrid = 1
+	else
+		Redimension/N=(nptsY) posY
+		posY = (startY + stepY*p) / 1000
+	endif  
+
 	Make/D/O posL
 	if (numpnts(waveLUnique) != nptsL)
 		Duplicate/O waveLUnique, posL
@@ -2353,47 +2414,51 @@ Static Function LoadFieldmap([filename, overwrite])
 	endif
 	
 	// Get Bx, By and Bz values
-	for(i=0; i<nptsX; i+=1)
+	for(i=0; i<nptsY; i+=1)
+		posYStr = num2Str(posY[i])
 		
-		posXStr = num2str(posX[i])
+		for(j=0; j<nptsX; j+=1)
+			posXStr = num2str(posX[j])
 		
-		waveStr = "Bx_X" + posXStr
-		Make/D/O/N=(nptsL) $waveStr
-		WAVE waveBx = $waveStr
+			waveStr = "Bx_X" + posXStr + "Y" + posYStr
+			Make/D/O/N=(nptsL) $waveStr
+			WAVE waveBx = $waveStr
 		
-		waveStr = "By_X" + posXStr
-		Make/D/O/N=(nptsL) $waveStr
-		WAVE waveBy = $waveStr
+			waveStr = "By_X" + posXStr + "Y" + posYStr
+			Make/D/O/N=(nptsL) $waveStr
+			WAVE waveBy = $waveStr
 
-		waveStr = "Bz_X" + posXStr
-		Make/D/O/N=(nptsL) $waveStr
-		WAVE waveBz = $waveStr
+			waveStr = "Bz_X" + posXStr + "Y" + posYStr
+			Make/D/O/N=(nptsL) $waveStr
+			WAVE waveBz = $waveStr
 
-		waveBx = wave3[p*nptsX + i]
-		waveBy = wave4[p*nptsX + i]
-		waveBz = wave5[p*nptsX + i]
-
-		if (symmetryLongitudinal == 1)
-			Duplicate/O waveBx, tmpWavePos
-			Duplicate/O/R=[1, nptsL-1] waveBx, tmpWaveNeg
-			Reverse tmpWaveNeg
-			tmpWaveNeg = symmetryBxL*tmpWaveNeg
-			Concatenate/KILL/NP/O {tmpWaveNeg, tmpWavePos}, $NameOfWave(waveBx)
+			waveBx = wave3[p*nptsX*nptsY + i*nptsX + j]
+			waveBy = wave4[p*nptsX*nptsY + i*nptsX + j]
+			waveBz = wave5[p*nptsX*nptsY + i*nptsX + j]
+ 
+			if (symmetryLongitudinal == 1)
+				Duplicate/O waveBx, tmpWavePos
+				Duplicate/O/R=[1, nptsL-1] waveBx, tmpWaveNeg
+				Reverse tmpWaveNeg
+				tmpWaveNeg = symmetryBxL*tmpWaveNeg
+				Concatenate/KILL/NP/O {tmpWaveNeg, tmpWavePos}, $NameOfWave(waveBx)
 		
-			Duplicate/O waveBy, tmpWavePos
-			Duplicate/O/R=[1, nptsL-1] waveBy, tmpWaveNeg
-			Reverse tmpWaveNeg
-			tmpWaveNeg = symmetryByL*tmpWaveNeg
-			Concatenate/KILL/NP/O {tmpWaveNeg, tmpWavePos}, $NameOfWave(waveBy)
+				Duplicate/O waveBy, tmpWavePos
+				Duplicate/O/R=[1, nptsL-1] waveBy, tmpWaveNeg
+				Reverse tmpWaveNeg
+				tmpWaveNeg = symmetryByL*tmpWaveNeg
+				Concatenate/KILL/NP/O {tmpWaveNeg, tmpWavePos}, $NameOfWave(waveBy)
 
-			Duplicate/O waveBz, tmpWavePos
-			Duplicate/O/R=[1, nptsL-1] waveBz, tmpWaveNeg
-			Reverse tmpWaveNeg
-			tmpWaveNeg = symmetryBzL*tmpWaveNeg
-			Concatenate/KILL/NP/O {tmpWaveNeg, tmpWavePos}, $NameOfWave(waveBz)
+				Duplicate/O waveBz, tmpWavePos
+				Duplicate/O/R=[1, nptsL-1] waveBz, tmpWaveNeg
+				Reverse tmpWaveNeg
+				tmpWaveNeg = symmetryBzL*tmpWaveNeg
+				Concatenate/KILL/NP/O {tmpWaveNeg, tmpWavePos}, $NameOfWave(waveBz)
 
-		endif
+			endif
 		
+		endfor
+	
 	endfor
 
 	if (symmetryLongitudinal == 1)
@@ -2407,39 +2472,38 @@ Static Function LoadFieldmap([filename, overwrite])
 		startL = posL[0]*1000
 		nptsL = numpnts(posL)
 
-		if (beamDirection == 1)
-			startY = startL
-			nptsY = nptsL
-		else
-			startZ = startL
-			nptsZ = nptsL
-		endif
+		startZ = startL
+		nptsZ = nptsL
 
 	endif
 
 	if (symmetryHorizontal == 1)
 
-		for(i=0; i<nptsX; i+=1)
-			
-			posXStr = num2str(posX[i])
-			
-			waveStr = "Bx_X" + posXStr
-			waveStrAux = "Bx_X-" + posXStr
-			Duplicate/O $waveStr, $waveStrAux
-			WAVE tmpWave = $waveStrAux
-			tmpWave = symmetryBxX*tmpWave
-	
-			waveStr = "By_X" + posXStr
-			waveStrAux = "By_X-" + posXStr
-			Duplicate/O $waveStr, $waveStrAux
-			WAVE tmpWave = $waveStrAux
-			tmpWave = symmetryByX*tmpWave				
+		for(i=0; i<nptsY; i+=1)
+			posYStr = num2str(posY[i])
 
-			waveStr = "Bz_X" + posXStr
-			waveStrAux = "Bz_X-" + posXStr
-			Duplicate/O $waveStr, $waveStrAux
-			WAVE tmpWave = $waveStrAux
-			tmpWave = symmetryBzX*tmpWave
+			for(j=0; i<nptsX; j+=1)
+				posXStr = num2str(posX[j])
+			
+				waveStr = "Bx_X" + posXStr + "Y" + posYStr
+				waveStrAux = "Bx_X-" + posXStr + "Y" + posYStr
+				Duplicate/O $waveStr, $waveStrAux
+				WAVE tmpWave = $waveStrAux
+				tmpWave = symmetryBxX*tmpWave
+	
+				waveStr = "By_X" + posXStr + "Y" + posYStr
+				waveStrAux = "By_X-" + posXStr + "Y" + posYStr
+				Duplicate/O $waveStr, $waveStrAux
+				WAVE tmpWave = $waveStrAux
+				tmpWave = symmetryByX*tmpWave				
+
+				waveStr = "Bz_X" + posXStr + "Y" + posYStr
+				waveStrAux = "Bz_X-" + posXStr + "Y" + posYStr
+				Duplicate/O $waveStr, $waveStrAux
+				WAVE tmpWave = $waveStrAux
+				tmpWave = symmetryBzX*tmpWave
+
+			endfor
 
 		endfor
 
@@ -2452,7 +2516,47 @@ Static Function LoadFieldmap([filename, overwrite])
 		nptsX = numpnts(posX)
 
 	endif
+
+	if (symmetryVertical == 1)
+
+		for(i=0; i<nptsY; i+=1)
+			posYStr = num2str(posY[i])
+
+			for(j=0; i<nptsX; j+=1)
+				posXStr = num2str(posX[j])
+			
+				waveStr = "Bx_X" + posXStr + "Y" + posYStr
+				waveStrAux = "Bx_X-" + posXStr + "Y" + posYStr
+				Duplicate/O $waveStr, $waveStrAux
+				WAVE tmpWave = $waveStrAux
+				tmpWave = symmetryBxY*tmpWave
 	
+				waveStr = "By_X" + posXStr + "Y" + posYStr
+				waveStrAux = "By_X-" + posXStr + "Y" + posYStr
+				Duplicate/O $waveStr, $waveStrAux
+				WAVE tmpWave = $waveStrAux
+				tmpWave = symmetryByY*tmpWave				
+
+				waveStr = "Bz_X" + posXStr + "Y" + posYStr
+				waveStrAux = "Bz_X-" + posXStr + "Y" + posYStr
+				Duplicate/O $waveStr, $waveStrAux
+				WAVE tmpWave = $waveStrAux
+				tmpWave = symmetryBzY*tmpWave
+
+			endfor
+
+		endfor
+
+		Duplicate/O posY, tmpWavePos
+		Duplicate/O/R=[1, nptsY-1] posY, tmpWaveNeg
+		Reverse tmpWaveNeg
+		tmpWaveNeg = (-1)*tmpWaveNeg
+		Concatenate/KILL/NP/O {tmpWaveNeg, tmpWavePos}, posY
+		startY = posY[0]*1000
+		nptsY = numpnts(posY)
+
+	endif
+
 	Killwaves/Z wave0, wave1, wave2, wave3, wave4, wave5, wave6
 	Killwaves/Z waveXUnique, waveYUnique, waveZUnique
 	
@@ -2466,53 +2570,58 @@ End
 
 
 Static Function CalcFieldIntegrals()
- 	WAVE posX, posL
+ 	WAVE posX, posY, posL
 
- 	variable i, nptsX	
- 	string posXStr, wn, wnInt, wnInt2
+ 	variable i, j, nptsX, nptsY	
+ 	string posXStr, posYStr, wn, wnInt, wnInt2
  	
  	nptsX = numpnts(posX)
+ 	nptsY = numpnts(posY)
  	
-	Make/D/O/N=(nptsX) Int_Bx	
-	Make/D/O/N=(nptsX) Int_By	
-	Make/D/O/N=(nptsX) Int_Bz	
-	Make/D/O/N=(nptsX) Int2_Bx	
-	Make/D/O/N=(nptsX) Int2_By
-	Make/D/O/N=(nptsX) Int2_Bz	
+	Make/D/O/N=(nptsX, nptsY) Int_Bx	
+	Make/D/O/N=(nptsX, nptsY) Int_By	
+	Make/D/O/N=(nptsX, nptsY) Int_Bz	
+	Make/D/O/N=(nptsX, nptsY) Int2_Bx	
+	Make/D/O/N=(nptsX, nptsY) Int2_By
+	Make/D/O/N=(nptsX, nptsY) Int2_Bz	
 	
 	for (i=0; i<nptsX; i++)
 		posXStr = num2str(posX[i])
-
-		wn = "Bx_X" + posXstr
-		wnInt = "Int_Bx_X" + posXstr
-		wnInt2 = "Int2_Bx_X" + posXstr
-		Integrate/METH=1 $wn/X=posL/D=$wnInt
-		Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
-		WAVE waveBInt = $wnInt	
-		WAVE waveBInt2 = $wnInt2		
-		Int_Bx[i] = waveBInt[numpnts(waveBInt)-1]
-		Int2_Bx[i] = waveBInt2[numpnts(waveBInt2)-1]
 		
-		wn = "By_X" + posXstr
-		wnInt = "Int_By_X" + posXstr
-		wnInt2 = "Int2_By_X" + posXstr
-		Integrate/METH=1 $wn/X=posL/D=$wnInt
-		Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
-		WAVE waveBInt = $wnInt	
-		WAVE waveBInt2 = $wnInt2		
-		Int_By[i] = waveBInt[numpnts(waveBInt)-1]
-		Int2_By[i] = waveBInt2[numpnts(waveBInt2)-1]
+		for(j=0; j<nptsY; j++)
+			posYStr = num2str(posY[j])
 
-		wn = "Bz_X" + posXstr
-		wnInt = "Int_Bz_X" + posXstr
-		wnInt2 = "Int2_Bz_X" + posXstr
-		Integrate/METH=1 $wn/X=posL/D=$wnInt
-		Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
-		WAVE waveBInt = $wnInt	
-		WAVE waveBInt2 = $wnInt2		
-		Int_Bz[i] = waveBInt[numpnts(waveBInt)-1]
-		Int2_Bz[i] = waveBInt2[numpnts(waveBInt2)-1]
+			wn = "Bx_X" + posXStr + "Y" + posYStr
+			wnInt = "Int_Bx_X" + posXStr + "Y" + posYStr
+			wnInt2 = "Int2_Bx_X" + posXStr + "Y" + posYStr
+			Integrate/METH=1 $wn/X=posL/D=$wnInt
+			Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
+			WAVE waveBInt = $wnInt	
+			WAVE waveBInt2 = $wnInt2		
+			Int_Bx[i][j] = waveBInt[numpnts(waveBInt)-1]
+			Int2_Bx[i][j] = waveBInt2[numpnts(waveBInt2)-1]
+		
+			wn = "By_X" + posXStr + "Y" + posYStr
+			wnInt = "Int_By_X" + posXStr + "Y" + posYStr
+			wnInt2 = "Int2_By_X" + posXStr + "Y" + posYStr
+			Integrate/METH=1 $wn/X=posL/D=$wnInt
+			Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
+			WAVE waveBInt = $wnInt	
+			WAVE waveBInt2 = $wnInt2		
+			Int_By[i][j] = waveBInt[numpnts(waveBInt)-1]
+			Int2_By[i][j] = waveBInt2[numpnts(waveBInt2)-1]
 
+			wn = "Bz_X" + posXStr + "Y" + posYStr
+			wnInt = "Int_Bz_X" + posXStr + "Y" + posYStr
+			wnInt2 = "Int2_Bz_X" + posXStr + "Y" + posYStr
+			Integrate/METH=1 $wn/X=posL/D=$wnInt
+			Integrate/METH=1 $wnInt/X=posL/D=$wnInt2
+			WAVE waveBInt = $wnInt	
+			WAVE waveBInt2 = $wnInt2		
+			Int_Bz[i][j] = waveBInt[numpnts(waveBInt)-1]
+			Int2_Bz[i][j] = waveBInt2[numpnts(waveBInt2)-1]
+
+		endfor
 	endfor	
 	
 End
@@ -2702,7 +2811,6 @@ Static Function UpdatePanelExport()
 	UpdateFieldmapOptions(windowName)
 	
 	if (strlen(df) > 0 && cmpstr(df, "_none_")!=0)				
-		NVAR beamDirection = root:$(df):varsFieldmap:LOAD_BEAM_DIRECTION
 		NVAR startX = root:$(df):varsFieldmap:LOAD_START_X
 		NVAR endX = root:$(df):varsFieldmap:LOAD_END_X
 		NVAR startY = root:$(df):varsFieldmap:LOAD_START_Y
@@ -2734,26 +2842,6 @@ Static Function UpdatePanelExport()
 		SetVariable svarStartZ, win=$windowName, value=exportStartZ, limits={startZ, endZ, 1}
 		SetVariable svarEndZ, win=$windowName, value=exportEndZ, limits={startZ, endZ, 1}
 		SetVariable svarStepZ, win=$windowName, value=exportStepZ, limits={0, (endZ - startZ), 1}
-
-		if (beamDirection == 1)
-		 	TitleBox tbxTitleZ, win=$windowName, disable=2
-		 	SetVariable svarStartZ, win=$windowName, disable=2
-		 	SetVariable svarEndZ, win=$windowName, disable=2
-		 	SetVariable svarStepZ, win=$windowName, disable=2
-		 	TitleBox tbxTitleY, win=$windowName, disable=0
-		 	SetVariable svarStartY, win=$windowName, disable=0
-		 	SetVariable svarEndY, win=$windowName, disable=0
-		 	SetVariable svarStepY, win=$windowName, disable=0
-		else
-		 	TitleBox tbxTitleY, win=$windowName, disable=2
-		 	SetVariable svarStartY, win=$windowName, disable=2
-		 	SetVariable svarEndY, win=$windowName, disable=2
-		 	SetVariable svarStepY, win=$windowName, disable=2 
-		 	TitleBox tbxTitleZ, win=$windowName, disable=0
-		 	SetVariable svarStartZ, win=$windowName, disable=0
-		 	SetVariable svarEndZ, win=$windowName, disable=0
-		 	SetVariable svarStepZ, win=$windowName, disable=0
-		endif
 
 		CheckBox chbExportBx, win=$windowName, variable=exportBx, disable=0
 		CheckBox chbExportBy, win=$windowName, variable=exportBy, disable=0
@@ -3457,7 +3545,6 @@ End
 Static Function ExportFieldmap()
 
 	SVAR fieldmapFilepath = :varsFieldmap:FIELDMAP_FILEPATH
-	NVAR beamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
 
 	NVAR loadStartX = :varsFieldmap:LOAD_START_X
 	NVAR loadEndX = :varsFieldmap:LOAD_END_X
@@ -3491,11 +3578,11 @@ Static Function ExportFieldmap()
 	NVAR exportBy = :varsFieldmap:EXPORT_BY
 	NVAR exportBz = :varsFieldmap:EXPORT_BZ
 
-	string filename, posXStr
-	variable allPositions, i, j, count
+	string filename, posXStr, posYStr
+	variable allPositions, i, j, k, count
 	variable nptsX, nptsY, nptsZ
 	variable startL, endL, stepL, nptsL
-	variable xpos, lpos
+	variable xpos, ypos, lpos
 
 	allPositions = 0
 	if (startX == loadStartX && endX == loadEndX && stepX == loadStepX)
@@ -3507,48 +3594,48 @@ Static Function ExportFieldmap()
 	endif
 	
 	if (allPositions)
-		WAVE posX, posL
+		WAVE posX, posY, posL
 		
-		nptsx = numpnts(posX)
-		nptsl = numpnts(posL)
+		nptsX = numpnts(posX)
+		nptsY = numpnts(posY)
+		nptsL = numpnts(posL)
 		
-		make/D/O/N=(nptsX, nptsL) Px = 0
-		make/D/O/N=(nptsX, nptsL) Py = 0
-		make/D/O/N=(nptsX, nptsL) Pz = 0
-		make/D/O/N=(nptsX, nptsL) Bx = 0
-		make/D/O/N=(nptsX, nptsL) By = 0
-		make/D/O/N=(nptsX, nptsL) Bz = 0
+		make/D/O/N=(nptsX, nptsY, nptsL) Px = 0
+		make/D/O/N=(nptsX, nptsY, nptsL) Py = 0
+		make/D/O/N=(nptsX, nptsY, nptsL) Pz = 0
+		make/D/O/N=(nptsX, nptsY, nptsL) Bx = 0
+		make/D/O/N=(nptsX, nptsY, nptsL) By = 0
+		make/D/O/N=(nptsX, nptsY, nptsL) Bz = 0
 			
 		for (i=0; i<nptsX; i=i+1)
-			Px[i][] = posX[i]*1000
-		
-			if (beamDirection == 1)
-				Py[i][] = posL[q]*1000
-				Pz[i][] = startZ
-			else
-				Py[i][] = startY
-				Pz[i][] = posL[q]*1000
-			endif
-		
 			posXStr = num2str(posX[i])
+
+			for(j=0; j<nptsY; j=j+1)
+				posYStr = num2str(posY[j])
+
+				Px[i][j][] = posX[i]*1000
+				Py[i][j][] = posY[j]*1000
+				Pz[i][j][] = posL[q]*1000
 	
-			Wave waveBx = $("Bx_X" + posXStr)
-			Bx[i][] = waveBx[q]
+				Wave waveBx = $("Bx_X" + posXStr + "Y" + posYStr)
+				Bx[i][j][] = waveBx[q]
 			
-			Wave waveBy = $("By_X" + posXStr)
-			By[i][] = waveBy[q]
+				Wave waveBy = $("By_X" + posXStr + "Y" + posYStr)
+				By[i][j][] = waveBy[q]
 	
-			Wave waveBz = $("Bz_X" + posXStr)
-			Bz[i][] = waveBz[q]
+				Wave waveBz = $("Bz_X" + posXStr + "Y" + posYStr)
+				Bz[i][j][] = waveBz[q]
 			
+			endfor
+		
 		endfor
 		
-		Redimension/N=(nptsX*nptsL) Px
-		Redimension/N=(nptsX*nptsL) Py
-		Redimension/N=(nptsX*nptsL) Pz
-		Redimension/N=(nptsX*nptsL) Bx
-		Redimension/N=(nptsX*nptsL) By
-		Redimension/N=(nptsX*nptsL) Bz
+		Redimension/N=(nptsX*nptsY*nptsL) Px
+		Redimension/N=(nptsX*nptsY*nptsL) Py
+		Redimension/N=(nptsX*nptsY*nptsL) Pz
+		Redimension/N=(nptsX*nptsY*nptsL) Bx
+		Redimension/N=(nptsX*nptsY*nptsL) By
+		Redimension/N=(nptsX*nptsY*nptsL) Bz
 	
 	else
 		if (stepX == 0 || stepY == 0 || stepZ == 0)
@@ -3559,50 +3646,42 @@ Static Function ExportFieldmap()
 		nptsX = (endX - startX)/stepX + 1
 		nptsY = (endY - startY)/stepY + 1
 		nptsZ = (endZ - startZ)/stepZ + 1
-		
-		if (beamDirection == 1)
-			startL = startY
-			endL = endY
-			stepL = stepY
-			nptsL	= nptsY
-		else
-			startL = startZ
-			endL = endZ
-			stepL = stepZ
-			nptsL	= nptsZ
-		endif
 
-		make/D/O/N=(nptsX*nptsL) Px = 0
-		make/D/O/N=(nptsX*nptsL) Py = 0
-		make/D/O/N=(nptsX*nptsL) Pz = 0
-		make/D/O/N=(nptsX*nptsL) Bx = 0
-		make/D/O/N=(nptsX*nptsL) By = 0
-		make/D/O/N=(nptsX*nptsL) Bz = 0
+		startL = startZ
+		endL = endZ
+		stepL = stepZ
+		nptsL	= nptsZ
+
+		make/D/O/N=(nptsX*nptsY*nptsL) Px = 0
+		make/D/O/N=(nptsX*nptsY*nptsL) Py = 0
+		make/D/O/N=(nptsX*nptsY*nptsL) Pz = 0
+		make/D/O/N=(nptsX*nptsY*nptsL) Bx = 0
+		make/D/O/N=(nptsX*nptsY*nptsL) By = 0
+		make/D/O/N=(nptsX*nptsY*nptsL) Bz = 0
 
 		count = 0
-		for (j=0; j<nptsL; j=j+1)
-			lpos = (startL + j*stepL)
+		for (i=0; i<nptsL; i=i+1)
+			lpos = (startL + i*stepL)
 				
-			for (i=0; i<nptsX; i=i+1)
-				xpos = (startX + i*stepX)
+			for (j=0; j<nptsX; j=j+1)
+				xpos = (startX + j*stepX)
+				
+				for(k=0; k<nptsY; k=k+1)
+					ypos = (startY + k*stepY)
 
-				CalcFieldAtPoint(xpos/1000, lpos/1000)
+					CalcFieldAtPoint3D(xpos/1000, ypos/1000, lpos/1000)
 				
-				Px[count] = xpos
-				if (beamDirection == 1)
-					Py[count] = lpos
-					Pz[count] = startZ
-				else
-					Py[count] = startY
+					Px[count] = xpos
+					Py[count] = ypos
 					Pz[count] = lpos
-				endif
 				
-				Bx[count] = FieldX			
-				By[count] = FieldY
-				Bz[count] = FieldZ
+					Bx[count] = FieldX			
+					By[count] = FieldY
+					Bz[count] = FieldZ
 				
-				count +=1
-			
+					count +=1
+
+				endfor
 			endfor
 		endfor
 	
@@ -3643,7 +3722,6 @@ End
 Static Function ExportSpectra()
 	
 	SVAR fieldmapFilepath = :varsFieldmap:FIELDMAP_FILEPATH
-	NVAR beamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
 
 	NVAR startX = :varsFieldmap:EXPORT_START_X
 	NVAR endX = :varsFieldmap:EXPORT_END_X
@@ -3676,18 +3754,11 @@ Static Function ExportSpectra()
 	nptsX = (endX - startX)/stepX + 1
 	nptsY = (endY - startY)/stepY + 1
 	nptsZ = (endZ - startZ)/stepZ + 1
-	
-	If (beamDirection == 1)
-		startL = startY
-		endL = endY
-		stepL = stepY
-		nptsL	= nptsY
-	Else
-		startL = startZ
-		endL = endZ
-		stepL = stepZ
-		nptsL	= nptsZ
-	Endif
+
+	startL = startZ
+	endL = endZ
+	stepL = stepZ
+	nptsL	= nptsZ
 
 	if (nptsL < 4)
 		DoAlert 0, "The number of points in the longitudinal direction must be greater than 4."
@@ -3695,7 +3766,7 @@ Static Function ExportSpectra()
 	endif
 	
 	string filename, headerStr
-	variable i, j, k, count, xpos, lpos
+	variable i, j, k, count, xpos, ypos, lpos
 	variable nptsV = 2
 	variable stepV = 1
 	
@@ -3708,11 +3779,12 @@ Static Function ExportSpectra()
 		xpos = (startX + i*stepX)		
 		
 		for (k=0; k<nptsV; k++)
-			
+			ypos = (startY + k*stepY)
+
 			for (j=0; j<nptsL; j++)
 				lpos = (startL + j*stepL)
 				
-				CalcFieldAtPoint(xpos/1000, lpos/1000)
+				CalcFieldAtPoint3D(xpos/1000, ypos/1000, lpos/1000)
 				
 				Bx[count] = FieldX			
 				By[count] = FieldY
@@ -3794,12 +3866,12 @@ Function CAMTO_ViewField_Panel() : Panel
 	WAVE colorL = root:wavesCAMTO:colorL
 	
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(200,150,1380,625) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(200,150,1380,725) as windowTitle
 	SetDrawLayer UserBack
 		
 	CAMTO_SubViewField_Panel(windowName, 0, 0)
 	
-	Display/W=(370,10,1170,465)/HOST=$windowName/N=$graphName	
+	Display/W=(370,10,1170,565)/HOST=$windowName/N=$graphName	
 
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Horizontal \r", annotationStr, colorH[0], colorH[1], colorH[2]
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Vertical \r", annotationStr, colorV[0], colorV[1], colorV[2]
@@ -3821,7 +3893,7 @@ Function CAMTO_SubViewField_Panel(windowName, startH, startV)
 
 	string subwindowName = "SubViewField"
 	
-	NewPanel/W=(startH, startV, startH+360, startV+435)/HOST=$windowName/N=$subwindowName
+	NewPanel/W=(startH, startV, startH+360, startV+570)/HOST=$windowName/N=$subwindowName
 	SetDrawLayer UserBack
 		
 	variable m, h, h1, l1, l2, l 
@@ -3834,8 +3906,9 @@ Function CAMTO_SubViewField_Panel(windowName, startH, startV)
 	TitleBox tbxTitle1, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Field At Point"
 	h += 25
 	
-	SetVariable svarPosX, pos={m,h+10}, size={140,20}, title="Pos X [mm]"
-	SetVariable svarPosL, pos={m,h+40}, size={140,20}, title="Pos L [mm]"
+	SetVariable svarPosX, pos={m,h}, size={140,20}, title="Pos X [mm]"
+	SetVariable svarPosY, pos={m,h+25}, size={140,20}, title="Pos Y [mm]"
+	SetVariable svarPosL, pos={m,h+50}, size={140,20}, title="Pos L [mm]"
 	ValDisplay vdispFieldX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field X [T]"
 	ValDisplay vdispFieldY, pos={m+150,h+25}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field Y [T]"
 	ValDisplay vdispFieldZ, pos={m+150,h+50}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Field Z [T]"
@@ -3852,10 +3925,11 @@ Function CAMTO_SubViewField_Panel(windowName, startH, startV)
 	TitleBox tbxTitle2, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Longitudinal Profile"
 	h += 25
 	
-	Button btnLongitudinalProfile, pos={m,h}, size={150,25}, fstyle=1, title="Show field at X [mm] ="
+	Button btnLongitudinalProfile, pos={m,h}, size={90,25}, fstyle=1, title="Show field at "
 	Button btnLongitudinalProfile, proc=CAMTO_SubViewField_BtnLProfile
-	SetVariable svarPlotX, pos={m+160,h+4}, size={80,25}, title=" "
-	CheckBox chbAppend, pos={m+250,h+5}, size={80,25}, title="Append"
+	SetVariable svarPlotLX, pos={m+95,h+4}, size={75,25}, title="X ="
+	SetVariable svarPlotLY, pos={m+180,h+4}, size={75,25}, title="Y ="
+	CheckBox chbAppend, pos={m+270,h+5}, size={80,25}, title="Append"
 	h += 35
 
 	SetDrawEnv fillpat=0
@@ -3866,27 +3940,53 @@ Function CAMTO_SubViewField_Panel(windowName, startH, startV)
 	h += 25
 
 	SetVariable svarPlotStartX, pos={m,h}, size={140,20}, title="Start X [mm]"
-	ValDisplay vdispHomX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. X [%]"
+	ValDisplay vdispHomHX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. X [%]"
 	h += 25
 	
 	SetVariable svarPlotEndX, pos={m,h}, size={140,20}, title="End X [mm]"
-	ValDisplay vdispHomY, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Y [%]"
+	ValDisplay vdispHomHY, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Y [%]"
 	h += 25
 	
 	SetVariable svarPlotStepX, pos={m,h}, size={140,20}, title="Step X [mm]"
-	ValDisplay vdispHomZ, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Z [%]"	
+	ValDisplay vdispHomHZ, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Z [%]"	
 	h += 25
 	
-	Button btnHorizontalProfile, pos={m,h}, size={240,25}, fstyle=1, title="Show field and homogeneity at L [mm] ="
+	Button btnHorizontalProfile, pos={m,h}, size={160,25}, fstyle=1, title="Field and homogeneity at "
 	Button btnHorizontalProfile, proc=CAMTO_SubViewField_BtnXProfile
-	SetVariable svarPlotL, pos={m+250,h+4}, size={70,25}, title=" "
+	SetVariable svarPlotHL, pos={m+170,h+4}, size={70,25}, title="L ="
+	SetVariable svarPlotHY, pos={m+250,h+4}, size={70,25}, title="Y ="
+	h += 35
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	TitleBox tbxTitle4, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Vertical Profile"
+	h += 25
+
+	SetVariable svarPlotStartY, pos={m,h}, size={140,20}, title="Start Y [mm]"
+	ValDisplay vdispHomVX, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. X [%]"
+	h += 25
+	
+	SetVariable svarPlotEndY, pos={m,h}, size={140,20}, title="End Y [mm]"
+	ValDisplay vdispHomVY, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Y [%]"
+	h += 25
+	
+	SetVariable svarPlotStepY, pos={m,h}, size={140,20}, title="Step Y [mm]"
+	ValDisplay vdispHomVZ, pos={m+150,h}, size={170,20}, limits={0,0,0}, barmisc={0,1000}, title="Homog. Z [%]"	
+	h += 25
+	
+	Button btnVerticalProfile, pos={m,h}, size={160,25}, fstyle=1, title="Field and homogeneity at "
+	Button btnVerticalProfile, proc=CAMTO_SubViewField_BtnYProfile
+	SetVariable svarPlotVL, pos={m+170,h+4}, size={70,25}, title="L ="
+	SetVariable svarPlotVX, pos={m+250,h+4}, size={70,25}, title="X ="
 	h += 35
 	
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
-	TitleBox tbxTitle4, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Field Integrals"
+	TitleBox tbxTitle5, pos={0,h}, size={360,20}, fsize=14, frame=0, fstyle=1, anchor=MC, title="Field Integrals"
 	h += 25
 
 	Button btnFirstInt, pos={m,h}, size={210,25}, fstyle=1, title="Show First Integrals over lines"
@@ -3936,38 +4036,58 @@ Static Function UpdatePanelSubViewField(windowName)
 		NVAR startX = root:$(df):varsFieldmap:LOAD_START_X
 		NVAR endX = root:$(df):varsFieldmap:LOAD_END_X
 		NVAR stepX = root:$(df):varsFieldmap:LOAD_STEP_X
+		NVAR startY = root:$(df):varsFieldmap:LOAD_START_Y
+		NVAR endY = root:$(df):varsFieldmap:LOAD_END_Y
+		NVAR stepY = root:$(df):varsFieldmap:LOAD_STEP_Y
 		NVAR startL = root:$(df):varsFieldmap:LOAD_START_L
 		NVAR endL = root:$(df):varsFieldmap:LOAD_END_L
 		NVAR stepL = root:$(df):varsFieldmap:LOAD_STEP_L
  
 		NVAR posX = root:$(df):varsFieldmap:VIEW_POS_X
+		NVAR posY = root:$(df):varsFieldmap:VIEW_POS_Y
 		NVAR posL = root:$(df):varsFieldmap:VIEW_POS_L	
 		NVAR plotX = root:$(df):varsFieldmap:VIEW_PLOT_X
 		NVAR appendField = root:$(df):varsFieldmap:VIEW_APPEND_FIELD
 		NVAR plotStartX = root:$(df):varsFieldmap:VIEW_PLOT_START_X
 		NVAR plotEndX = root:$(df):varsFieldmap:VIEW_PLOT_END_X
 		NVAR plotStepX = root:$(df):varsFieldmap:VIEW_PLOT_STEP_X
+		NVAR plotY = root:$(df):varsFieldmap:VIEW_PLOT_Y
+		NVAR plotStartY = root:$(df):varsFieldmap:VIEW_PLOT_START_Y
+		NVAR plotEndY = root:$(df):varsFieldmap:VIEW_PLOT_END_Y
+		NVAR plotStepY = root:$(df):varsFieldmap:VIEW_PLOT_STEP_Y
 		NVAR plotL = root:$(df):varsFieldmap:VIEW_PLOT_L
 						
 		SetVariable svarPosX, win=$windowName#$subwindowName, value=posX, limits={startX, endX, stepX}
+		SetVariable svarPosY, win=$windowName#$subwindowName, value=posY, limits={startY, endY, stepY}
 		SetVariable svarPosL, win=$windowName#$subwindowName, value=posL, limits={startL, endL, stepL}
-		SetVariable svarPlotX, win=$windowName#$subwindowName, value=plotX, limits={startX, endX, stepX}
+		SetVariable svarPlotLX, win=$windowName#$subwindowName, value=plotX, limits={startX, endX, stepX}
 		SetVariable svarPlotStartX, win=$windowName#$subwindowName, value=plotStartX, limits={startX, endX, stepX}
 		SetVariable svarPlotEndX, win=$windowName#$subwindowName, value=plotEndX, limits={startX, endX, stepX}
 		SetVariable svarPlotStepX, win=$windowName#$subwindowName, value=plotStepX, limits={0, (endX - startX), 1}
-		SetVariable svarPlotL, win=$windowName#$subwindowName, value=plotL, limits={startL, endL, stepL}
+		SetVariable svarPlotLY, win=$windowName#$subwindowName, value=plotY, limits={startY, endY, stepY}
+		SetVariable svarPlotStartY, win=$windowName#$subwindowName, value=plotStartY, limits={startY, endY, stepY}
+		SetVariable svarPlotEndY, win=$windowName#$subwindowName, value=plotEndY, limits={startY, endY, stepY}
+		SetVariable svarPlotStepY, win=$windowName#$subwindowName, value=plotStepY, limits={0, (endY - startY), 1}
+		SetVariable svarPlotHL, win=$windowName#$subwindowName, value=plotL, limits={startL, endL, stepL}
+		SetVariable svarPlotHY, win=$windowName#$subwindowName, value=plotY, limits={startY, endY, stepY}
+		SetVariable svarPlotVL, win=$windowName#$subwindowName, value=plotL, limits={startL, endL, stepL}
+		SetVariable svarPlotVX, win=$windowName#$subwindowName, value=plotX, limits={startX, endX, stepX}
 		
 		ValDisplay vdispFieldX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_X")
 		ValDisplay vdispFieldY, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_Y")
 		ValDisplay vdispFieldZ, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_FIELD_Z")
-		ValDisplay vdispHomX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_X")
-		ValDisplay vdispHomY, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_Y")
-		ValDisplay vdispHomZ, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_Z")
+		ValDisplay vdispHomHX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_H_X")
+		ValDisplay vdispHomHY, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_H_Y")
+		ValDisplay vdispHomHZ, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_H_Z")
+		ValDisplay vdispHomVX, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_V_X")
+		ValDisplay vdispHomVY, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_V_Y")
+		ValDisplay vdispHomVZ, win=$windowName#$subwindowName, value=#("root:" + df + ":varsFieldmap:VIEW_HOM_V_Z")
 
 		CheckBox chbAppend, win=$windowName#$subwindowName, variable=appendField, disable=0		
 		Button btnFieldAtPoint, win=$windowName#$subwindowName, disable=0
 		Button btnLongitudinalProfile, win=$windowName#$subwindowName, disable=0
 		Button btnHorizontalProfile, win=$windowName#$subwindowName, disable=0
+		Button btnVerticalProfile, win=$windowName#$subwindowName, disable=0
 		Button btnFirstInt, win=$windowName#$subwindowName, disable=0
 		Button btnFirstIntTable, win=$windowName#$subwindowName, disable=0
 		Button btnSecondInt, win=$windowName#$subwindowName, disable=0
@@ -3978,6 +4098,7 @@ Static Function UpdatePanelSubViewField(windowName)
 		Button btnFieldAtPoint, win=$windowName#$subwindowName, disable=2
 		Button btnLongitudinalProfile, win=$windowName#$subwindowName, disable=2
 		Button btnHorizontalProfile, win=$windowName#$subwindowName, disable=2
+		Button btnVerticalProfile, win=$windowName#$subwindowName, disable=2
 		Button btnFirstInt, win=$windowName#$subwindowName, disable=2
 		Button btnFirstIntTable, win=$windowName#$subwindowName, disable=2
 		Button btnSecondInt, win=$windowName#$subwindowName, disable=2
@@ -4000,6 +4121,7 @@ Function CAMTO_SubViewField_BtnFieldAtPoint(ba) : ButtonControl
 			endif
 		
 			NVAR posX = :varsFieldmap:VIEW_POS_X
+			NVAR posY = :varsFieldmap:VIEW_POS_Y
 			NVAR posL = :varsFieldmap:VIEW_POS_L
 			NVAR fieldX = :varsFieldmap:FIELD_X
 			NVAR fieldY = :varsFieldmap:FIELD_Y
@@ -4008,7 +4130,7 @@ Function CAMTO_SubViewField_BtnFieldAtPoint(ba) : ButtonControl
 			NVAR viewFieldY = :varsFieldmap:VIEW_FIELD_Y
 			NVAR viewFieldZ = :varsFieldmap:VIEW_FIELD_Z	
 			
-			CalcFieldAtPoint(posX/1000, posL/1000)
+			CalcFieldAtPoint3D(posX/1000, posY/1000, posL/1000)
 			
 			viewFieldX = fieldX
 			viewFieldY = fieldY
@@ -4085,6 +4207,42 @@ Function CAMTO_SubViewField_BtnXProfile(ba) : ButtonControl
 			endif
 						
 			PlotFieldHorizontalProfile(graphXName, graphYName, graphZName, subwindow)
+			
+			break
+	endswitch
+	
+	return 0
+
+End
+
+
+Function CAMTO_SubViewField_BtnYProfile(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	switch(ba.eventCode)
+		case 2:		
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+			
+			variable subwindow
+			string windowName, subwindowName, graphXName, graphYName, graphZName	
+			
+			SplitString/E=("([[:alpha:]]+)#([[:alpha:]]+)") ba.win, windowName, subwindowName
+			
+			if (!cmpstr(windowName, "ViewField"))
+				graphXName = windowName + "#Graph"
+				graphYName = graphXName
+				graphZName = graphXName
+				subwindow = 1
+			else
+				graphXName = "VerticalProfileX"
+				graphYName = "VerticalProfileY"
+				graphZName = "VerticalProfileZ"
+				subwindow = 0
+			endif
+						
+			PlotFieldVerticalProfile(graphXName, graphYName, graphZName, subwindow)
 			
 			break
 	endswitch
@@ -4248,7 +4406,6 @@ Static Function ChangeTraceColor(graphName, traceName, component)
 	WAVE colorH = root:wavesCAMTO:colorH
 	WAVE colorV = root:wavesCAMTO:colorV
 	WAVE colorL = root:wavesCAMTO:colorL
-	NVAR beamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
 
 	strswitch(component)
 		case "x":
@@ -4257,21 +4414,13 @@ Static Function ChangeTraceColor(graphName, traceName, component)
 			break
 		
 		case "y":
-			if (beamDirection == 1)
-				ModifyGraph/W=$graphName rgb($traceName)=(colorL[0], colorL[1], colorL[2])
-			else
-				ModifyGraph/W=$graphName rgb($traceName)=(colorV[0], colorV[1], colorV[2])
-			endif
-			
+			ModifyGraph/W=$graphName rgb($traceName)=(colorV[0], colorV[1], colorV[2])
+
 			break
 		
 		case "z":
-			if (beamDirection == 1)
-				ModifyGraph/W=$graphName rgb($traceName)=(colorV[0], colorV[1], colorV[2])
-			else
-				ModifyGraph/W=$graphName rgb($traceName)=(colorL[0], colorL[1], colorL[2])
-			endif
-			
+			ModifyGraph/W=$graphName rgb($traceName)=(colorL[0], colorL[1], colorL[2])
+
 			break
 	
 	endswitch
@@ -4288,15 +4437,16 @@ Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName,
 	NVAR tol = root:varsCAMTO:POSITION_TOLERANCE
 
 	NVAR plotX = :varsFieldmap:VIEW_PLOT_X
+	NVAR plotY = :varsFieldmap:VIEW_PLOT_Y
 	NVAR appendField =:varsFieldmap:VIEW_APPEND_FIELD
 	NVAR fieldX =:varsFieldmap:FIELD_X
 	NVAR fieldY =:varsFieldmap:FIELD_Y
 	NVAR fieldZ =:varsFieldmap:FIELD_Z
 
-	WAVE posX, posL
+	WAVE posX, posY, posL
 
-	variable i
-	string posXStr, posXStrmm, traceNames
+	variable i, calc
+	string posXStr, posXStrmm, posYStr, posYStrmm, traceNames
 	string tnX, tnY, tnZ, wnX, wnY, wnZ
 	
 	if (subwindow)
@@ -4327,9 +4477,10 @@ Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName,
 	endif
 	
 	posXStrmm = num2str(plotX)
-	tnX = "Bx x=" + posXStrmm + "mm"
-	tnY = "By x=" + posXStrmm + "mm"
-	tnZ = "Bz x=" + posXStrmm + "mm"
+	posYStrmm = num2str(plotY)
+	tnX = "Bx x=" + posXStrmm + "mm" + "y=" + posYStrmm + "mm"
+	tnY = "By x=" + posXStrmm + "mm" + "y=" + posYStrmm + "mm"
+	tnZ = "Bz x=" + posXStrmm + "mm" + "y=" + posYStrmm + "mm"
 	
 	traceNames = TraceNameList(graphXName, ";", 1)
 	if (strsearch(traceNames, tnX, 0) != -1)
@@ -4337,17 +4488,29 @@ Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName,
 	endif
 
 	posXStr = num2str(plotX/1000)
-	wnX = "Bx_X" + posXStr
-	wnY = "By_X" + posXStr
-	wnZ = "Bz_X" + posXStr
+	posYStr = num2str(plotY/1000)
+	
+	wnX = "Bx_X" + posXStr + "Y" + posYStr
+	wnY = "By_X" + posXStr + "Y" + posYStr
+	wnZ = "Bz_X" + posXStr + "Y" + posYStr
  	
  	FindValue/T=(tol)/V=(plotX/1000) posX
 	if (V_Value != -1)
-		WAVE waveBx = $wnX
-		WAVE waveBy = $wnY
-		WAVE waveBz = $wnZ
-	
+		FindValue/T=(tol)/V=(plotY/1000) posY
+		if (V_Value != -1)
+			WAVE waveBx = $wnX
+			WAVE waveBy = $wnY
+			WAVE waveBz = $wnZ
+			calc = 1
+		else
+			calc = 0
+		endif
+
 	else
+		calc = 0
+	endif
+	
+	if (!calc)
 		Make/O/N=(numpnts(posL)) $wnX
 		Make/O/N=(numpnts(posL)) $wnY
 		Make/O/N=(numpnts(posL)) $wnZ
@@ -4356,7 +4519,7 @@ Static Function PlotFieldLongitudinalProfile(graphXName, graphYName, graphZName,
 		WAVE waveBz = $wnZ
 		
 		for(i=0; i<numpnts(posL); i++)
-			CalcFieldAtPoint(plotX/1000, posL[i])
+			CalcFieldAtPoint3D(plotX/1000, plotY/1000, posL[i])
 			waveBx[i] = fieldX
 			waveBy[i] = fieldY
 			waveBz[i] = fieldZ
@@ -4400,9 +4563,10 @@ Static Function PlotFieldHorizontalProfile(graphXName, graphYName, graphZName, s
 	NVAR plotStartX = :varsFieldmap:VIEW_PLOT_START_X
 	NVAR plotEndX = :varsFieldmap:VIEW_PLOT_END_X
 	NVAR plotStepX = :varsFieldmap:VIEW_PLOT_STEP_X
-	NVAR homX = :varsFieldmap:VIEW_HOM_X
-	NVAR homY = :varsFieldmap:VIEW_HOM_Y
-	NVAR homZ = :varsFieldmap:VIEW_HOM_Z
+	NVAR homHX = :varsFieldmap:VIEW_HOM_H_X
+	NVAR homHY = :varsFieldmap:VIEW_HOM_H_Y
+	NVAR homHZ = :varsFieldmap:VIEW_HOM_H_Z
+	NVAR plotY = :varsFieldmap:VIEW_PLOT_Y
 	NVAR plotL = :varsFieldmap:VIEW_PLOT_L
 
 	variable i, nptsX
@@ -4451,15 +4615,15 @@ Static Function PlotFieldHorizontalProfile(graphXName, graphYName, graphZName, s
 	WAVE waveBz = $wnZ
 
 	for(i=0; i<nptsX; i++)
-		CalcFieldAtPoint(horizontalProfile_posX[i], plotL/1000)
+		CalcFieldAtPoint3D(horizontalProfile_posX[i], plotY/1000, plotL/1000)
 		waveBx[i] = fieldX
 		waveBy[i] = fieldY
 		waveBz[i] = fieldZ
 	endfor	
 
-	homX = 100*Abs((WaveMax(waveBx) - WaveMin(waveBx))/WaveMax(waveBx))
-	homY = 100*Abs((WaveMax(waveBy) - WaveMin(waveBy))/WaveMax(waveBy))
-	homZ = 100*Abs((WaveMax(waveBz) - WaveMin(waveBz))/WaveMax(waveBz))
+	homHX = 100*Abs((WaveMax(waveBx) - WaveMin(waveBx))/WaveMax(waveBx))
+	homHY = 100*Abs((WaveMax(waveBy) - WaveMin(waveBy))/WaveMax(waveBy))
+	homHZ = 100*Abs((WaveMax(waveBz) - WaveMin(waveBz))/WaveMax(waveBz))
 
 	Appendtograph/W=$graphXName waveBx vs horizontalProfile_posX
 	ChangeTraceColor(graphXName, wnX, "x")
@@ -4482,16 +4646,117 @@ Static Function PlotFieldHorizontalProfile(graphXName, graphYName, graphZName, s
 
 End
 
+Static Function PlotFieldVerticalProfile(graphXName, graphYName, graphZName, subwindow)
+	string graphXName, graphYName, graphZName
+	variable subwindow
+
+	NVAR fieldX =:varsFieldmap:FIELD_X
+	NVAR fieldY =:varsFieldmap:FIELD_Y
+	NVAR fieldZ =:varsFieldmap:FIELD_Z
+
+	NVAR startY = :varsFieldmap:LOAD_START_Y
+	NVAR endY = :varsFieldmap:LOAD_END_Y
+	NVAR stepY = :varsFieldmap:LOAD_STEP_Y
+	
+	NVAR plotStartY = :varsFieldmap:VIEW_PLOT_START_Y
+	NVAR plotEndY = :varsFieldmap:VIEW_PLOT_END_Y
+	NVAR plotStepY = :varsFieldmap:VIEW_PLOT_STEP_Y
+	NVAR homVX = :varsFieldmap:VIEW_HOM_V_X
+	NVAR homVY = :varsFieldmap:VIEW_HOM_V_Y
+	NVAR homVZ = :varsFieldmap:VIEW_HOM_V_Z
+	NVAR plotX = :varsFieldmap:VIEW_PLOT_X
+	NVAR plotL = :varsFieldmap:VIEW_PLOT_L
+
+	variable i, nptsY
+	string wnX, wnY, wnZ
+
+	if (subwindow)
+		DeleteTracesFromGraph(graphXName)
+		DeleteTracesFromGraph(graphYName)
+		DeleteTracesFromGraph(graphZName)
+	
+	else
+		DoWindow/K $graphXName
+		DoWindow/K $graphYName
+		DoWindow/K $graphZName
+		
+		Display/N=$graphXName/K=1
+		Display/N=$graphYName/K=1
+		Display/N=$graphZName/K=1
+		
+	endif
+
+	Make/D/O verticalProfile_posY
+	if (plotStartY == startY && plotEndY == endY && plotStepY == stepY)
+		WAVE posY
+		Duplicate/O posY, verticalProfile_posY
+		nptsY = numpnts(verticalProfile_posY)
+	
+	else
+		if (plotStepY == 0)
+		   plotStepY = 1
+		endif
+		nptsY = Round((plotEndY - plotStartY)/plotStepY + 1)
+		Redimension/N=(nptsY) verticalProfile_posY
+		verticalProfile_posY = (plotStartY + plotStepY*p) / 1000
+	
+	endif
+
+	wnX = "verticalProfile_Bx"
+	wnY = "verticalProfile_By"
+	wnZ = "verticalProfile_Bz"
+	Make/O/N=(nptsY) $wnX
+	Make/O/N=(nptsY) $wnY
+	Make/O/N=(nptsY) $wnZ
+	WAVE waveBx = $wnX
+	WAVE waveBy = $wnY
+	WAVE waveBz = $wnZ
+
+	for(i=0; i<nptsY; i++)
+		CalcFieldAtPoint3D(plotX/1000, verticalProfile_posY[i], plotL/1000)
+		waveBx[i] = fieldX
+		waveBy[i] = fieldY
+		waveBz[i] = fieldZ
+	endfor	
+
+	homVX = 100*Abs((WaveMax(waveBx) - WaveMin(waveBx))/WaveMax(waveBx))
+	homVY = 100*Abs((WaveMax(waveBy) - WaveMin(waveBy))/WaveMax(waveBy))
+	homVZ = 100*Abs((WaveMax(waveBz) - WaveMin(waveBz))/WaveMax(waveBz))
+
+	Appendtograph/W=$graphXName waveBx vs verticalProfile_posY
+	ChangeTraceColor(graphXName, wnX, "x")
+	
+	Appendtograph/W=$graphYName waveBy vs verticalProfile_posY
+	ChangeTraceColor(graphYName, wnY, "y")
+	
+	Appendtograph/W=$graphZName waveBz vs verticalProfile_posY
+	ChangeTraceColor(graphZName, wnZ, "z")
+	
+	if (subwindow)
+		ConfigureGraph(graphXName, "Vertical Position [m]", "Field [T]")
+	
+	else
+		ConfigureGraph(graphXName, "Vertical Position [m]", "Field Bx[T]")
+		ConfigureGraph(graphYName, "Vertical Position [m]", "Field By[T]")
+		ConfigureGraph(graphZName, "Vertical Position [m]", "Field Bz[T]")
+
+	endif
+
+End
+
 
 Static Function PlotFieldIntegral(graphXName, graphYName, graphZName, subwindow, [secondIntegral])
 	string graphXName, graphYName, graphZName
 	variable subwindow, secondIntegral
+	variable nptsY, j, index
+
+	NVAR plotY = :varsFieldmap:VIEW_PLOT_Y
 
 	if (ParamIsDefault(secondIntegral))
 		secondIntegral = 0
 	endif
 
-	WAVE posX
+	WAVE posX, posY
 	
 	string wnX, wnY, wnZ, ylabel, yunit
 	
@@ -4528,14 +4793,22 @@ Static Function PlotFieldIntegral(graphXName, graphYName, graphZName, subwindow,
 	WAVE waveBx = $wnX
 	WAVE waveBy = $wnY
 	WAVE waveBz = $wnZ
+	
+	nptsY = numpnts(posY)
+	for(j=0; j<nptsY; j++)
+		if (plotY == posY[j])
+			index = j
+			break
+		endif
+	endfor
 
-	Appendtograph/W=$graphXName waveBx vs posX
+	Appendtograph/W=$graphXName waveBx[][index] vs posX
 	ChangeTraceColor(graphXName, wnX, "x")
 	
-	Appendtograph/W=$graphYName waveBy vs posX
+	Appendtograph/W=$graphYName waveBy[][index] vs posX
 	ChangeTraceColor(graphYName, wnY, "y")
 	
-	Appendtograph/W=$graphZName waveBz vs posX
+	Appendtograph/W=$graphZName waveBz[][index] vs posX
 	ChangeTraceColor(graphZName, wnZ, "z")
 	
 	if (subwindow)
@@ -4568,7 +4841,7 @@ Function CAMTO_Traj_Panel() : Panel
 	WAVE colorV = root:wavesCAMTO:colorV
 
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(440,200,1590,755) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(440,200,1590,815) as windowTitle
 	SetDrawLayer UserBack
 
 	variable m, h, h1, l1, l2, l 
@@ -4590,12 +4863,15 @@ Function CAMTO_Traj_Panel() : Panel
 	PopupMenu popupCalcMethod, proc=CAMTO_Traj_PopupCalcMethod
 	h += 25
 
-	SetVariable svarEnergy, pos={m,h}, size={280,20}, title="Particle Eenergy [GeV] "
+	SetVariable svarEnergy, pos={m,h}, size={280,20}, title="Particle Energy [GeV] "
 	h += 25
-	
+
+	SetVariable svarStartY, pos={m,h}, size={290,20}, title="Vertical Position [mm] "
+	h += 25
+
 	CheckBox chbIgnoreOutMatrix, pos={m,h}, size={290,20}, title=" Use constant field if trajectory is out of field matrix"
 	h += 30
-	
+
 	SetDrawEnv fillpat=0
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
@@ -4650,11 +4926,14 @@ Function CAMTO_Traj_Panel() : Panel
 		
 	Button btnCalcTraj, pos={m,h}, size={285,30}, fsize=14, fstyle=1, title="Calculate Trajectories"
 	Button btnCalcTraj, proc=CAMTO_Traj_BtnCalcTrajectories
-	h += 35
+	h += 40
 
-	Button btnShowTraj, pos={m,h}, size={140,30}, fsize=14, fstyle=1, title="Show Trajectories"
-	Button btnShowTraj, proc=CAMTO_Traj_BtnShowTrajectories
+	CheckBox chbShowTrajH, pos={m,h+7}, size={100,20}, title=" Horizontal"
+	CheckBox chbShowTrajV, pos={m+80,h+7}, size={100,20}, title=" Vertical"
 	CheckBox chbRelativeDisplacement, pos={m+150,h+7}, size={100,20}, title=" Relative Displacement"
+	h += 30
+	Button btnShowTraj, pos={m,h}, size={285,30}, fsize=14, fstyle=1, title="Show Trajectories"
+	Button btnShowTraj, proc=CAMTO_Traj_BtnShowTrajectories
 	h += 40
 
 	SetDrawEnv fillpat=0
@@ -4663,7 +4942,7 @@ Function CAMTO_Traj_Panel() : Panel
 	
 	h = AddFieldmapOptions(windowName, h1, l1, l2, copyConfigProc="CAMTO_Traj_PopupCopyConfig", applyToAllProc="CAMTO_Traj_BtnApplyToAll")
 
-	Display/W=(340,10,1140,545)/HOST=$windowName/N=$graphName	
+	Display/W=(340,10,1140,605)/HOST=$windowName/N=$graphName	
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Horizontal\r", annotationStr, colorH[0], colorH[1], colorH[2]
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Vertical", annotationStr, colorV[0], colorV[1], colorV[2]
 	TextBox/W=$windowName#$graphName/A=LT/C/N=$annotationName annotationStr
@@ -4693,6 +4972,9 @@ Static Function UpdatePanelTraj()
 		NVAR singleMulti = root:$(df):varsFieldmap:TRAJ_SINGLE_MULTI
 		NVAR ignoreOutMatrix = root:$(df):varsFieldmap:TRAJ_IGNORE_OUT_MATRIX
 		NVAR negativeDirection = root:$(df):varsFieldmap:TRAJ_NEGATIVE_DIRECTION
+		NVAR startY = root:$(df):varsFieldmap:TRAJ_START_Y
+		NVAR endY = root:$(df):varsFieldmap:LOAD_END_Y
+		NVAR stepY = root:$(df):varsFieldmap:LOAD_STEP_Y
 		NVAR startX = root:$(df):varsFieldmap:TRAJ_START_X
 		NVAR endX = root:$(df):varsFieldmap:TRAJ_END_X
 		NVAR stepX = root:$(df):varsFieldmap:TRAJ_STEP_X
@@ -4702,13 +4984,14 @@ Static Function UpdatePanelTraj()
 		NVAR verticalAngle = root:$(df):varsFieldmap:TRAJ_VERTICAL_ANGLE
 	
 		SetVariable svarEnergy, win=$windowName, value=particleEnergy
+		SetVariable svarStartY, win=$windowName, value=startY, limits={startY, endY, stepY}
 		SetVariable svarStartX, win=$windowName, value=startX
 		SetVariable svarEndX, win=$windowName, value=endX
 		SetVariable svarStepX, win=$windowName, value=stepX
 		SetVariable svarStartL, win=$windowName, value=startL
 		SetVariable svarEndL, win=$windowName, value=endL	
 		SetVariable svarHorizontalAngle, win=$windowName, value=horizontalAngle
-		SetVariable svarVerticalAngle, win=$windowName, value=verticalAngle, disable=2
+		SetVariable svarVerticalAngle, win=$windowName, value=verticalAngle
 	
 		if (singleMulti == 1)
 			SetVariable svarEndX, win=$windowName, disable=2
@@ -4792,7 +5075,11 @@ Static Function CopyConfigTraj(dfc)
 		NVAR temp_df = :varsFieldmap:TRAJ_CALC_METHOD
 		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_CALC_METHOD
 		temp_df = temp_dfc		
-		
+
+		NVAR temp_df = :varsFieldmap:TRAJ_START_Y
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_START_Y
+		temp_df = temp_dfc		
+
 		NVAR temp_df = :varsFieldmap:TRAJ_START_X
 		NVAR temp_dfc = root:$(dfc):varsFieldmap:TRAJ_START_X
 		temp_df = temp_dfc		
@@ -4941,8 +5228,12 @@ Function CAMTO_Traj_BtnShowTrajectories(ba) : ButtonControl
 			
 			ControlInfo/W=$ba.win chbRelativeDisplacement
 			variable relativeDisplacement = V_Value
+			ControlInfo/W=$ba.win chbShowTrajH
+			variable trajH = V_Value
+			ControlInfo/W=$ba.win chbShowTrajV
+			variable trajV = V_Value
 			
-			ShowTrajectories(graphName, relativeDisplacement)
+			ShowTrajectories(graphName, relativeDisplacement, trajH, trajV)
 			
 			break
 	endswitch
@@ -5023,9 +5314,9 @@ End
 
 Static Function CalcTrajectories()
 	
-	NVAR beamDirection = :varsFieldmap:LOAD_BEAM_DIRECTION
 	NVAR singleMulti = :varsFieldmap:TRAJ_SINGLE_MULTI
 	NVAR outMatrixError = :varsFieldmap:TRAJ_OUT_MATRIX_ERROR
+	NVAR startY = :varsFieldmap:TRAJ_START_Y
 	NVAR startX = :varsFieldmap:TRAJ_START_X
 	NVAR endX = :varsFieldmap:TRAJ_END_X
 	NVAR stepX = :varsFieldmap:TRAJ_STEP_X
@@ -5036,7 +5327,7 @@ Static Function CalcTrajectories()
 	variable nrTraj, nptsTraj, numWaves
 	variable localOutMatrixError
 	variable success
-	string posXStr, wn, wnList
+	string posXStr, posYStr, wn, wnList
 
 	localOutMatrixError = 0
 
@@ -5072,13 +5363,14 @@ Static Function CalcTrajectories()
 	wnList = wnList + "trajIntBx;trajIntBy;trajIntBz;"
 	wnList = wnList + "trajInt2Bx;trajInt2By;trajInt2Bz;"
 	
-	numWaves = ItemsInList(wnList)		
+	numWaves = ItemsInList(wnList)	
+	posYStr = num2str(startY/1000)
 
 	for (i=0; i<nrTraj; i++)
 		// Calculate trajectory for each X position
 		posXStr = num2str(trajGridX[i])
-		print("Calculating Trajectory X [m] = " + posXStr)
-		success = CalcTrajectory(trajGridX[i]*1000, startL, endL)
+		print("Calculating Trajectory Y [m] = " + posYStr + " X [m] = " + posXStr)
+		success = CalcTrajectory(trajGridX[i]*1000, startL, endL, startY)
 
 		if (success == -1)
 			return -1
@@ -5124,23 +5416,16 @@ Static Function CalcTrajectories()
 		trajGridInt2Bz = trajInt2Bz[nptsTraj-1]
 
 		// Calculate deflection
-		if (beamDirection == 1)	
-			trajGridDeflectionX[i] = atan(trajVx[nptsTraj-1]/trajVy[nptsTraj-1])/pi * 180
-			trajGridDeflectionZ[i] = atan(trajVz[nptsTraj-1]/trajVy[nptsTraj-1])/pi * 180
-			trajGridTotalDeflectionX[i] = trajGridDeflectionX[i] - atan(trajVx[0]/trajVy[0])/pi * 180
-			trajGridTotalDeflectionZ[i] = trajGridDeflectionZ[i] - atan(trajVz[0]/trajVy[0])/pi * 180
-		else
-			trajGridDeflectionX[i] = atan(trajVx[nptsTraj-1]/trajVz[nptsTraj-1])/pi * 180
-			trajGridDeflectionY[i] = atan(trajVy[nptsTraj-1]/trajVz[nptsTraj-1])/pi * 180
-			trajGridTotalDeflectionX[i] = trajGridDeflectionX[i] - atan(trajVx[0]/trajVz[0])/pi * 180
-			trajGridTotalDeflectionY[i] = trajGridDeflectionY[i] - atan(trajVy[0]/trajVz[0])/pi * 180
-		endif
+		trajGridDeflectionX[i] = atan(trajVx[nptsTraj-1]/trajVz[nptsTraj-1])/pi * 180
+		trajGridDeflectionY[i] = atan(trajVy[nptsTraj-1]/trajVz[nptsTraj-1])/pi * 180
+		trajGridTotalDeflectionX[i] = trajGridDeflectionX[i] - atan(trajVx[0]/trajVz[0])/pi * 180
+		trajGridTotalDeflectionY[i] = trajGridDeflectionY[i] - atan(trajVy[0]/trajVz[0])/pi * 180
 
 		// Rename waves
 		for(j=0; j<numWaves; j++)
     		wn = StringFromList(j, wnList)
     		WAVE w = $(wn)
-    		Duplicate/D/O w $(wn + "_X" + posXStr)
+    		Duplicate/D/O w $(wn + "_X" + posXStr + "Y" + posYStr)
     		Killwaves/Z w
 		endfor
 
@@ -5157,16 +5442,18 @@ Static Function CalcTrajectories()
 End
 
 
-Static Function ShowTrajectories(graphName, relativeDisplacement)
+Static Function ShowTrajectories(graphName, relativeDisplacement, trajH, trajV)
 	string graphName 
 	variable relativeDisplacement
-	
-	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
+	variable trajH, trajV
+
+	NVAR startY = :varsFieldmap:TRAJ_START_Y
 
 	WAVE/Z trajGridX
 	
 	variable i
 	string posXStr, posXStrmm, tnH, tnV
+	string posYStr, posYStrmm
 	
 	DeleteTracesFromGraph(graphName)
 
@@ -5174,33 +5461,29 @@ Static Function ShowTrajectories(graphName, relativeDisplacement)
 		return -1
 	endif
 
+	posYStr = num2str(startY/1000)
+	posYStrmm = num2str(startY)
+
 	for (i=0; i<numpnts(trajGridX); i++)
 		posXStr = num2str(trajGridX[i])
 		posXStrmm = num2str(trajGridX[i]*1000)
 		
-		WAVE wx = $("trajX_X" + posXStr)
-		WAVE wy = $("trajY_X" + posXStr)
-		WAVE wz = $("trajZ_X" + posXStr)
+		WAVE wx = $("trajX_X" + posXStr + "Y" + posYStr)
+		WAVE wy = $("trajY_X" + posXStr + "Y" + posYStr)
+		WAVE wz = $("trajZ_X" + posXStr + "Y" + posYStr)
 	
-		tnH = "Horizontal x=" + posXStrmm + "mm"
-		tnV = "Vertical x=" + posXStrmm + "mm"
-		
-		if (beamDirection == 1)
-			Appendtograph/W=$graphName wx/TN=$tnH vs wy
-			Appendtograph/W=$graphName wz/TN=$tnV vs wy
-
-			ChangeTraceColor(graphName, tnH, "x")
-			ChangeTraceColor(graphName, tnV, "z")
-			
-		else
+		if (trajH)
+			tnH = "Horizontal x=" + posXStrmm + "mm" + " y=" + posYStrmm + "mm"
 			Appendtograph/W=$graphName wx/TN=$tnH vs wz
-			Appendtograph/W=$graphName wy/TN=$tnV vs wz
-			
 			ChangeTraceColor(graphName, tnH, "x")
-			ChangeTraceColor(graphName, tnV, "y")
-			
 		endif
-		
+
+		if (trajV)
+			tnV = "Vertical x=" + posXStrmm + "mm" + " y=" + posYStrmm + "mm"
+			Appendtograph/W=$graphName wy/TN=$tnV vs wz
+			ChangeTraceColor(graphName, tnV, "y")
+		endif
+
 		if (relativeDisplacement)
 			ModifyGraph/W=$graphName offset($tnH)={0,-trajGridX[i]}
 		endif
@@ -5218,8 +5501,8 @@ Static Function ShowTrajectories(graphName, relativeDisplacement)
 End
 
 
-Static Function CalcTrajectory(startX, startL, endL)
-	variable startX, startL, endL
+Static Function CalcTrajectory(startX, startL, endL, startY)
+	variable startX, startL, endL, startY
 
 	NVAR calcMethod = :varsFieldmap:TRAJ_CALC_METHOD
 	NVAR negativeDirection = :varsFieldmap:TRAJ_NEGATIVE_DIRECTION
@@ -5243,9 +5526,9 @@ Static Function CalcTrajectory(startX, startL, endL)
 	endif
 
 	if (calcMethod == 1)
-		success = CalcTrajectoryAnalytical(startX, startL, localEndL)
+		success = CalcTrajectoryAnalytical(startX, startL, localEndL, startY)
 	else
-		success = CalcTrajectoryRungeKutta(startX, startL, localEndL)
+		success = CalcTrajectoryRungeKutta(startX, startL, localEndL, startY)
 	endif
 	
 	if (success == -1)
@@ -5261,9 +5544,9 @@ Static Function CalcTrajectory(startX, startL, endL)
 		endfor
 
 		if (calcMethod == 1)
-			success = CalcTrajectoryAnalytical(startX, startL, -localEndL)
+			success = CalcTrajectoryAnalytical(startX, startL, -localEndL, startY)
 		else
-			success = CalcTrajectoryRungeKutta(startX, startL, -localEndL)
+			success = CalcTrajectoryRungeKutta(startX, startL, -localEndL, startY)
 		endif
 		
 		if (success == -1)
@@ -5293,8 +5576,8 @@ Static Function CalcTrajectory(startX, startL, endL)
 End
 
 
-Static Function CalcTrajectoryRungeKutta(startX, startL, endL)
-	variable startX, startL, endL
+Static Function CalcTrajectoryRungeKutta(startX, startL, endL, startY)
+	variable startX, startL, endL, startY
 
 	NVAR particleCharge = root:varsCAMTO:PARTICLE_CHARGE
 	NVAR particleMass = root:varsCAMTO:PARTICLE_MASS
@@ -5303,48 +5586,38 @@ Static Function CalcTrajectoryRungeKutta(startX, startL, endL)
 	NVAR fieldX = :varsFieldmap:FIELD_X
 	NVAR fieldY = :varsFieldmap:FIELD_Y
 	NVAR fieldZ = :varsFieldmap:FIELD_Z
-	
-	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
+
 	NVAR particleEnergy = :varsFieldmap:TRAJ_PARTICLE_ENERGY
 	NVAR horizontalAngle = :varsFieldmap:TRAJ_HORIZONTAL_ANGLE
 	NVAR verticalAngle = :varsFieldmap:TRAJ_VERTICAL_ANGLE
 	NVAR ignoreOutMatrix = :varsFieldmap:TRAJ_IGNORE_OUT_MATRIX
 	NVAR outMatrixError = :varsFieldmap:TRAJ_OUT_MATRIX_ERROR
-		
-	WAVE posX, posL
+
+	WAVE posX, posY, posL
 
 	variable gama = GetLorentzFactor(particleEnergy)
 	variable particleVelocity = GetParticleVelocity(particleEnergy)
-	
+
 	variable px0, py0, pz0
 	variable vx0, vy0, vz0
 	variable i, k, nptsTraj
 	variable px, py, pz
 	variable vx, vy, vz
 	variable pxmin, pxmax
+	variable pymin, pymax
 	variable plmin, plmax
 	variable pl
 	variable fx, fy, fz
 	variable timeStep
-		
+
 	px0 = startX/1000
-	if (beamDirection==1)
-		py0 = startL/1000
-		pz0 = 0
-	else
-		py0 = 0
-		pz0 = startL/1000
-	endif
+	py0 = startY/1000
+	pz0 = startL/1000
 
 	vx0 = sin(horizontalAngle*pi/180)*particleVelocity
-	if (beamDirection == 1)
-		vy0 = cos(horizontalAngle*pi/180)*particleVelocity
-		vz0 = 0
-	else
-		vy0 = 0
-		vz0 = cos(horizontalAngle*pi/180)*particleVelocity
-	endif	
-	
+	vy0 = sin(verticalAngle*pi/180)*particleVelocity
+	vz0 = cos(horizontalAngle*pi/180)*particleVelocity
+
 	timeStep = trajectoryStep/particleVelocity
 	if (startL > endL)
 		timeStep = -1*timeStep
@@ -5352,6 +5625,9 @@ Static Function CalcTrajectoryRungeKutta(startX, startL, endL)
 
 	pxmin = posX[0]
 	pxmax = posX[numpnts(posX)-1]
+
+	pymin = posY[0]
+	pymax = posY[numpnts(posY)-1]
 
 	plmin = posL[0]
 	plmax = posL[numpnts(posL)-1]
@@ -5394,16 +5670,13 @@ Static Function CalcTrajectoryRungeKutta(startX, startL, endL)
 	trajVz[0] = vz
 				
 	for (k=1; k<nptsTraj; k++)
-		if ((px < pxmin || px > pxmax) && ignoreOutMatrix==0)
+		if (((px < pxmin || px > pxmax) || (py < pymin || py > pymax)) && ignoreOutMatrix==0)
 			outMatrixError = 1
 			break
 		endif
 		
-		if (beamDirection == 1)			
-			CalcFieldAtPoint(px, py)
-		else
-			CalcFieldAtPoint(px, pz)			
-		endif
+		CalcFieldAtPoint3D(px, py, pz)			
+
 		trajBx[k-1] = fieldX
 		trajBy[k-1] = fieldY
 		trajBz[k-1] = fieldZ
@@ -5427,11 +5700,7 @@ Static Function CalcTrajectoryRungeKutta(startX, startL, endL)
 		trajVy[k] = vy
 		trajVz[k] = vz
 		
-		if (beamDirection == 1)			
-			pl = py
-		else
-			pl = pz			
-		endif
+		pl = pz			
 		
 		if ((timeStep >= 0 && pl >= endL/1000) || (timeStep < 0 && pl <= endL/1000))
 			break
@@ -5450,19 +5719,15 @@ Static Function CalcTrajectoryRungeKutta(startX, startL, endL)
 	Redimension/D/N=(nptsTraj) trajBy
 	Redimension/D/N=(nptsTraj) trajBz		
 	
-	if (beamDirection == 1)
-   		Duplicate/O/D trajY, trajL
-   	else
-   		Duplicate/O/D trajZ, trajL
-	endif
+   Duplicate/O/D trajZ, trajL
 	
 	return 0
 	
 End
 
 
-Static Function CalcTrajectoryAnalytical(startX, startL, endL)
-	variable startX, startL, endL
+Static Function CalcTrajectoryAnalytical(startX, startL, endL, startY)
+	variable startX, startL, endL, startY
 
 	NVAR particleCharge = root:varsCAMTO:PARTICLE_CHARGE
 	NVAR particleMass = root:varsCAMTO:PARTICLE_MASS
@@ -5472,14 +5737,13 @@ Static Function CalcTrajectoryAnalytical(startX, startL, endL)
 	NVAR fieldY = :varsFieldmap:FIELD_Y
 	NVAR fieldZ = :varsFieldmap:FIELD_Z
 	
-	NVAR beamDirection = root:varsCAMTO:LOAD_BEAM_DIRECTION
 	NVAR particleEnergy = :varsFieldmap:TRAJ_PARTICLE_ENERGY
 	NVAR horizontalAngle = :varsFieldmap:TRAJ_HORIZONTAL_ANGLE
 	NVAR verticalAngle = :varsFieldmap:TRAJ_VERTICAL_ANGLE
 	NVAR ignoreOutMatrix = :varsFieldmap:TRAJ_IGNORE_OUT_MATRIX
 	NVAR outMatrixError = :varsFieldmap:TRAJ_OUT_MATRIX_ERROR
 		
-	WAVE posX, posL
+	WAVE posX, posY, posL
 
 	variable gama = GetLorentzFactor(particleEnergy)
 	variable particleVelocity = GetParticleVelocity(particleEnergy)
@@ -5490,28 +5754,19 @@ Static Function CalcTrajectoryAnalytical(startX, startL, endL)
 	variable px, py, pz
 	variable vx, vy, vz
 	variable pxmin, pxmax
+	variable pymin, pymax
 	variable plmin, plmax
 	variable pl
 	variable fx, fy, fz
 	variable timeStep
 		
 	px0 = startX/1000
-	if (beamDirection==1)
-		py0 = startL/1000
-		pz0 = 0
-	else
-		py0 = 0
-		pz0 = startL/1000
-	endif
+	py0 = startY/1000
+	pz0 = startL/1000
 
 	vx0 = sin(horizontalAngle*pi/180)*particleVelocity
-	if (beamDirection == 1)
-		vy0 = cos(horizontalAngle*pi/180)*particleVelocity
-		vz0 = 0
-	else
-		vy0 = 0
-		vz0 = cos(horizontalAngle*pi/180)*particleVelocity
-	endif	
+	vy0 = sin(verticalAngle*pi/180)*particleVelocity
+	vz0 = cos(horizontalAngle*pi/180)*particleVelocity
 	
 	timeStep = trajectoryStep/particleVelocity
 	if (startL > endL)
@@ -5520,6 +5775,9 @@ Static Function CalcTrajectoryAnalytical(startX, startL, endL)
 
 	pxmin = posX[0]
 	pxmax = posX[numpnts(posX)-1]
+
+	pymin = posY[0]
+	pymax = posY[numpnts(posY)-1]
 
 	plmin = posL[0]
 	plmax = posL[numpnts(posL)-1]
@@ -5565,16 +5823,13 @@ Static Function CalcTrajectoryAnalytical(startX, startL, endL)
 	cte = gama * particleMass/ particleCharge
 
 	for (k=1; k<nptsTraj; k++)
-		if ((px < pxmin || px > pxmax) && ignoreOutMatrix==0)
+		if (((px < pxmin || px > pxmax) || (py < pymin || py > pymax)) && ignoreOutMatrix==0)
 			outMatrixError = 1
 			break
 		endif
 		
-		if (beamDirection == 1)			
-			CalcFieldAtPoint(px, py)
-		else
-			CalcFieldAtPoint(px, pz)			
-		endif
+		CalcFieldAtPoint3D(px, py, pz)			
+
 		trajBx[k-1] = fieldX
 		trajBy[k-1] = fieldY
 		trajBz[k-1] = fieldZ
@@ -5603,11 +5858,7 @@ Static Function CalcTrajectoryAnalytical(startX, startL, endL)
 		vy = trajVy[k]
 		vz = trajVz[k]
 		
-		if (beamDirection == 1)			
-			pl = py
-		else
-			pl = pz			
-		endif
+		pl = pz			
 		
 		if ((timeStep >= 0 && pl >= endL/1000) || (timeStep < 0 && pl <= endL/1000))
 			break
@@ -5626,11 +5877,7 @@ Static Function CalcTrajectoryAnalytical(startX, startL, endL)
 	Redimension/D/N=(nptsTraj) trajBy
 	Redimension/D/N=(nptsTraj) trajBz		
 
-	if (beamDirection == 1)
-   		Duplicate/O/D trajY, trajL
-   	else
-   		Duplicate/O/D trajZ, trajL
-	endif
+   Duplicate/O/D trajZ, trajL
 	
 	return 0
 	
@@ -5674,7 +5921,7 @@ Static Function UpdatePanelResults()
 	return 0
 
 End
-// Ok até aqui
+
 
 Function CAMTO_Peaks_Panel() : Panel
 
@@ -5712,7 +5959,8 @@ Function CAMTO_Peaks_Panel() : Panel
 	DrawRect l1,h1,l2,h-5
 	h1 = h-5
 
-	SetVariable svarPosXPeaks, pos={m+60,h}, size={170,18}, title="Position in X [mm] "
+	SetVariable svarPosXPeaks, pos={m,h}, size={160,20}, title="Position:		X [mm] "
+	SetVariable svarPosYPeaks, pos={m+170,h}, size={100,20}, title="Y [mm] "
 	h += 30
 
 	SetDrawEnv fillpat=0
@@ -5734,7 +5982,7 @@ Function CAMTO_Peaks_Panel() : Panel
 	SetVariable svarPeaksAmpl, limits={0,100,1}
 	h += 25
 
-	Button btnPeaks,pos={m,h}, size={285,30}, fsize=14, fstyle=1, disable=2, title="Find Peaks and Zeros"
+	Button btnPeaks,pos={m,h}, size={305,30}, fsize=14, fstyle=1, disable=2, title="Find Peaks and Zeros"
 	Button btnPeaks, proc=CAMTO_Peaks_BtnFindPeaks
 	h += 40
 
@@ -5748,24 +5996,24 @@ Function CAMTO_Peaks_Panel() : Panel
 	h += 25
 
 	TitleBox tbxTitle3, pos={0,h}, size={120,18}, fsize=14, frame=0, anchor=MC, title="Peaks"
-	TitleBox tbxTitle4, pos={70,h}, size={320,20}, fsize=14, frame=0, anchor=MC, title="Zeros"
+	TitleBox tbxTitle4, pos={80,h}, size={320,20}, fsize=14, frame=0, anchor=MC, title="Zeros"
 	h += 25
 
 	TitleBox tbxTitle5, pos={m,h},size={120,18},frame=0,title="Average Period [mm] "
 	ValDisplay vldAvgPeriodPeaks,pos={m,h+20},size={120,18}
-	TitleBox tbxTitle6, pos={m+170,h},size={120,18},frame=0,title="Average Period [mm] "
-	ValDisplay vldAvgPeriodZeros,pos={m+170,h+20},size={120,18}
+	TitleBox tbxTitle6, pos={m+180,h},size={120,18},frame=0,title="Average Period [mm] "
+	ValDisplay vldAvgPeriodZeros,pos={m+180,h+20},size={120,18}
 	h += 60
 
 	Button btnPeaksGraph, pos={m,h}, size={120,24}, fstyle=1, disable=2, title="Show Peaks"
 	Button btnPeaksGraph, proc=CAMTO_Peaks_BtnGraphPeaks
-	Button btnZerosGraph, pos={m+170,h}, size={120,24}, fstyle=1, disable=2, title="Show Zeros"
+	Button btnZerosGraph, pos={m+180,h}, size={120,24}, fstyle=1, disable=2, title="Show Zeros"
 	Button btnZerosGraph, proc=CAMTO_Peaks_BtnGraphZeros
 	h += 30
 
 	Button btnPeaksTable, pos={m,h},size={120,24}, fstyle=1, disable=2, title="Show Table"
 	Button btnPeaksTable, proc=CAMTO_Peaks_BtnTablePeaks
-	Button btnZerosTable, pos={m+170,h},size={120,24}, fstyle=1, disable=2, title="Show Table"
+	Button btnZerosTable, pos={m+180,h},size={120,24}, fstyle=1, disable=2, title="Show Table"
 	Button btnZerosTable, proc=CAMTO_Peaks_BtnTableZeros
 	h += 40
 
@@ -5775,7 +6023,7 @@ Function CAMTO_Peaks_Panel() : Panel
 
 	h = AddFieldmapOptions(windowName, h1, l1, l2, copyConfigProc="CAMTO_Peaks_PopupCopyConfig", applyToAllProc="CAMTO_Peaks_BtnApplyToAll")
 
-	Display/W=(340,10,1140,545)/HOST=$windowName/N=$graphName	
+	Display/W=(340,10,1140,457)/HOST=$windowName/N=$graphName	
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Positive Peaks\r", annotationStr, colorP[0], colorP[1], colorP[2]
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Negative Peaks\r", annotationStr, colorN[0], colorN[1], colorN[2]
 	sprintf annotationStr, "%s\\K(%d,%d,%d) Zeros", annotationStr, colorZ[0], colorZ[1], colorZ[2]
@@ -5803,12 +6051,16 @@ Static Function UpdatePanelPeaks()
 		NVAR startX = root:$(df):varsFieldmap:PEAK_START_X
 		NVAR endX = root:$(df):varsFieldmap:PEAK_END_X
 		NVAR stepX = root:$(df):varsFieldmap:PEAK_STEP_X
+		NVAR startY = root:$(df):varsFieldmap:PEAK_START_Y
+		NVAR endY = root:$(df):varsFieldmap:PEAK_END_Y
+		NVAR stepY = root:$(df):varsFieldmap:PEAK_STEP_Y
 		NVAR startL = root:$(df):varsFieldmap:PEAK_START_L
 		NVAR endL = root:$(df):varsFieldmap:PEAK_END_L
 		NVAR fieldAxisPeak = root:$(df):varsFieldMap:PEAK_FIELD_AXIS
 		NVAR peaksPeaksAmpl = root:$(df):varsFieldMap:PEAK_PEAKS_AMPL
 
 		SetVariable svarPosXPeaks, win=$windowName, value=startX, limits={startX, endX, stepX}
+		SetVariable svarPosYPeaks, win=$windowName, value=startY, limits={startY, endY, stepY}
 		PopupMenu popupFieldAxisPeak, win=$windowName,disable=0, mode=fieldAxisPeak
 		SetVariable svarStartLPeaks, win=$windowName,value=startL
 		SetVariable svarEndLPeaks, win=$windowName,value=endL
@@ -6032,6 +6284,18 @@ Static Function CopyConfigPeaks(dfc)
 		NVAR temp_df = :varsFieldmap:PEAK_STEP_X
 		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_STEP_X
 		temp_df = temp_dfc
+		
+		NVAR temp_df = :varsFieldmap:PEAK_START_Y
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_START_Y
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PEAK_END_Y
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_END_Y
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PEAK_STEP_Y
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_STEP_Y
+		temp_df = temp_dfc
 
 		NVAR temp_df = :varsFieldmap:PEAK_START_L
 		NVAR temp_dfc = root:$(dfc):varsFieldmap:PEAK_START_L
@@ -6109,12 +6373,18 @@ Static Function FindPeaks()
 	NVAR periodZeros = :varsFieldMap:PEAK_AVG_PERIOD_ZEROS
 	NVAR periodPeaksT = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS_T
 	NVAR posX = :varsFieldmap:PEAK_START_X
+	NVAR posY = :varsFieldmap:PEAK_START_Y
 	NVAR startL = :varsFieldmap:PEAK_START_L
 	NVAR endL = :varsFieldmap:PEAK_END_L
 
-	Wave wnX = $("Bx_X"+num2str(posX/1000))
-	Wave wnY = $("By_X"+num2str(posX/1000))	
-	Wave wnZ = $("Bz_X"+num2str(posX/1000))
+	string posXStr, posYStr
+	
+	posXStr = num2str(posX/1000)
+	posYStr = num2str(posY/1000)
+	
+	Wave wnX = $("Bx_X" + posXStr + "Y" + posYStr)
+	Wave wnY = $("By_X" + posXStr + "Y" + posYStr)	
+	Wave wnZ = $("Bz_X" + posXStr + "Y" + posYStr)
 	Wave posL
 
 	Variable peaksFoundPosX=0
@@ -6527,7 +6797,10 @@ Static Function ShowPeaks(graphName)
 	String graphName
 
 	NVAR posX = :varsFieldmap:PEAK_START_X
+	NVAR posY = :varsFieldmap:PEAK_START_Y
 	NVAR fieldAxisPeak = :varsFieldMap:PEAK_FIELD_AXIS
+	
+	string posXStr, posYStr
 	
 	Wave/Z peakPositionsYPosX
 	Wave/Z peakPositionsXPosX
@@ -6543,17 +6816,20 @@ Static Function ShowPeaks(graphName)
 	Wave/Z peakPositionsXPosZ
 	Wave/Z peakPositionsYNegZ
 	Wave/Z peakPositionsXNegZ
-	
-	Wave wnX = $("Bx_X"+num2str(posX/1000))
-	Wave wnY = $("By_X"+num2str(posX/1000))
-	Wave wnZ = $("Bz_X"+num2str(posX/1000))
+
+	posXStr = num2str(posX/1000)
+	posYStr = num2str(posY/1000)
+
+	Wave wnX = $("Bx_X" + posXStr + "Y" + posYStr)
+	Wave wnY = $("By_X" + posXStr + "Y" + posYStr)
+	Wave wnZ = $("Bz_X" + posXStr + "Y" + posYStr)
 	Wave posL
-	
+
 	WAVE colorP = root:wavesCAMTO:colorP
 	WAVE colorN = root:wavesCAMTO:colorN
-	
+
 	DeleteTracesFromGraph(graphName)
-	
+
 	if (fieldAxisPeak == 1)
 		if ((WaveExists(peakPositionsYPosX)) || (WaveExists(peakPositionsYNegX)))
 			AppendToGraph/W=$graphName/C=(0,0,0) wnX vs posL
@@ -6597,7 +6873,10 @@ Static Function ShowZeros(graphName)
 	String graphName
 		
 	NVAR posX       = :varsFieldmap:PEAK_START_X
+	NVAR posY       = :varsFieldmap:PEAK_START_Y
 	NVAR fieldAxisPeak = :varsFieldMap:PEAK_FIELD_AXIS
+	
+	string posXStr, posYStr
 
 	Wave posL
 	Wave/Z ValueZerosX
@@ -6607,14 +6886,17 @@ Static Function ShowZeros(graphName)
 	Wave/Z PositionZerosY
 	Wave/Z PositionZerosZ
 	
+	posXStr = num2str(posX/1000)
+	posYStr = num2str(posY/1000)
+	
 	if (fieldAxisPeak == 1)
-		Wave wn = $("Bx_X"+num2str(posX/1000))
+		Wave wn = $("Bx_X" + posXStr + "Y" + posYStr)
 			
 	elseif (fieldAxisPeak == 2)
-		Wave wn = $("By_X"+num2str(posX/1000))
+		Wave wn = $("By_X" + posXStr + "Y" + posYStr)
 	
 	elseif (fieldAxisPeak == 3)	
-		Wave wn = $("Bz_X"+num2str(posX/1000))
+		Wave wn = $("Bz_X" + posXStr + "Y" + posYStr)
 	
 	endif
 	
@@ -6656,7 +6938,7 @@ Function CAMTO_PhaseError_Panel() : Panel
 	endif
 
 	DoWindow/K $windowName
-	NewPanel/K=1/N=$windowName/W=(440,60,1703,527) as windowTitle
+	NewPanel/K=1/N=$windowName/W=(440,60,1703,577) as windowTitle
 	SetDrawLayer UserBack
 	
 	variable m, h, h1, l1, l2, l 
@@ -6687,7 +6969,11 @@ Function CAMTO_PhaseError_Panel() : Panel
 	TitleBox tbxTitle3, pos={m,h}, size={90,16}, fSize=14, fStyle=1, frame=0, title="Trajectory"
 	ValDisplay vldTrajX, pos={m+100,h}, size={200,18}, title="Start X [mm]"
 	h += 25
-	ValDisplay vldTrajAngle, pos={m+100,h}, size={200,18}, title="Angle XY(Z) [°]"
+	ValDisplay vldTrajY, pos={m+100,h}, size={200,18}, title="Start Y [mm]"
+	h += 25
+	ValDisplay vldTrajAngleH, pos={m+100,h}, size={200,18}, title="Horizontal Angle [°]"
+	h += 25
+	ValDisplay vldTrajAngleV, pos={m+100,h}, size={200,18}, title="Vertical Angle [°]"
 	h += 25
 	ValDisplay vldTrajL, pos={m+100,h}, size={200,18}, title="Start L [mm]"
 	h += 30
@@ -6740,7 +7026,7 @@ Function CAMTO_PhaseError_Panel() : Panel
 	
 	h = AddFieldmapOptions(windowName, h1, l1, l2, copyConfigProc="CAMTO_PhaseError_PopupCopyConfig", applyToAllProc="CAMTO_PhaseError_BtnApplyToAll")
 	
-	Display/W=(340,10,1140,545)/HOST=$windowName/N=$graphName	
+	Display/W=(340,10,1140,507)/HOST=$windowName/N=$graphName	
 	
 	UpdatePanelPhaseError()
 	
@@ -6767,7 +7053,9 @@ Static Function UpdatePanelPhaseError()
 		ValDisplay vldEndL, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_END_L" )
 
 		ValDisplay vldTrajX, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_X" )
-		ValDisplay vldTrajAngle,win=$windowName,value=#("root:"+ df + ":varsFieldMap:TRAJ_HORIZONTAL_ANGLE" )
+		ValDisplay vldTrajY, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_Y" )
+		ValDisplay vldTrajAngleH,win=$windowName,value=#("root:"+ df + ":varsFieldMap:TRAJ_HORIZONTAL_ANGLE" )
+		ValDisplay vldTrajAngleV,win=$windowName,value=#("root:"+ df + ":varsFieldMap:TRAJ_VERTICAL_ANGLE" )
 		ValDisplay vldTrajL, win=$windowName, value=#("root:"+ df + ":varsFieldMap:TRAJ_START_L" )
 
 		ValDisplay vldPeriodPeaks, win=$windowName, value=#("root:"+ df + ":varsFieldMap:PEAK_AVG_PERIOD_PEAKS" )
@@ -7061,7 +7349,8 @@ Static Function CalcPhaseError()
 	NVAR particleMass = root:varsCAMTO:PARTICLE_MASS
 	NVAR lightSpeed = root:varsCAMTO:LIGHT_SPEED
 
-	NVAR startXTraj = :varsFieldmap:TRAJ_START_X
+	NVAR startX = :varsFieldmap:TRAJ_START_X
+	NVAR startY = :varsFieldmap:TRAJ_START_Y
 	NVAR particleEnergy = :varsFieldmap:TRAJ_PARTICLE_ENERGY
 	NVAR periodPeaksZeros = :varsFieldMap:PHASE_PERIOD_PEAKS_ZEROS
 	NVAR periodPeaks = :varsFieldMap:PEAK_AVG_PERIOD_PEAKS
@@ -7079,6 +7368,8 @@ Static Function CalcPhaseError()
 	variable K, lambda
 	variable startP, endP
 
+	string posXStr, posYStr
+
 	if (periodPeaksZeros == 0)
 		IDPeriod = periodPeaks
 	elseif (periodPeaksZeros == 1)
@@ -7092,10 +7383,12 @@ Static Function CalcPhaseError()
 		return -1	
 	endif
 
-	Wave trajVx = $("trajVx_X" + num2str(startXTraj/1000))
-	Wave trajVy = $("trajVy_X" + num2str(startXTraj/1000))
-	Wave trajVz = $("trajVz_X" + num2str(startXTraj/1000))
-	Wave trajL = $("trajL_X" + num2str(startXTraj/1000))
+	posXStr = num2str(startX/1000)
+	posYStr = num2str(startY/1000)
+	Wave trajVx = $("trajVx_X" + posXStr + "Y" + posYStr)
+	Wave trajVy = $("trajVy_X" + posXStr + "Y" + posYStr)
+	Wave trajVz = $("trajVz_X" + posXStr + "Y" + posYStr)
+	Wave trajL = $("trajL_X" + posXStr + "Y" + posYStr)
 
 	K = ((Mean(peakPositionsYPosT)*abs(particleCharge))/(particleMass*lightSpeed))*((IDPeriod/1000)/(2*Pi))
 	lambda = ((IDPeriod/1000)/(2*(gama^2)))*(1 + (K^2)/2)
