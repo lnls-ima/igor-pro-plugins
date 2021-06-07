@@ -13,7 +13,7 @@ Menu "CAMTO 14.0.0"
 	"Load Fieldmap", CAMTO_Load_Panel()
 	"Export Field Data", CAMTO_Export_Panel()
 	"View Magnetic Field", CAMTO_ViewField_Panel()
-//	"Hall Probe Correction", CAMTO_HallProbe()
+	"Hall Probe Correction", CAMTO_HallProbe_Panel()
 	"Trajectories", CAMTO_Traj_Panel()
 //	"Integrals and Multipoles", CAMTO_Multipoles()
 //	"Dynamic Multipoles", CAMTO_DynMultipoles()
@@ -1560,7 +1560,7 @@ Static Function UpdatePanels()
 	UpdatePanelViewField()
 	UpdatePanelTraj()
 	UpdatePanelResults()
-//	UpdateHallProbePanel()
+	UpdatePanelHallProbe()
 //	UpdateIntegralsMultipolesPanel()
 //	UpdateDynMultipolesPanel()
 //	UpdateCompareResultsPanel()
@@ -1730,6 +1730,23 @@ Static Function InitializeFieldmapVariables()
 	variable/G PHASE_ID_PERIOD_NOMINAL = 0
 	variable/G PHASE_ID_PERIOD = 0
 	variable/G PHASE_ID_PHASE_ERROR = inf
+
+	variable/G PROBE_PX_ANG_Y = 0
+	variable/G PROBE_PX_ANG_Z = 0
+	variable/G PROBE_PY_ANG_X = 0
+	variable/G PROBE_PY_ANG_Z = 0
+	variable/G PROBE_PZ_ANG_X = 0
+	variable/G PROBE_PZ_ANG_Y = 0
+	variable/G PROBE_SHIFT_X = 0
+	variable/G PROBE_SHIFT_Y = 0
+	variable/G PROBE_SHIFT_L = 0
+	variable/G PROBE_PX_OFFSET = 0
+	variable/G PROBE_PY_OFFSET = 0
+	variable/G PROBE_PZ_OFFSET = 0
+	variable/G PROBE_PX_ANG_CORRECTED = 0
+	variable/G PROBE_PY_ANG_CORRECTED = 0
+	variable/G PROBE_PZ_ANG_CORRECTED = 0
+	variable/G PROBE_DISPLACEMENT_CORRECTED = 0
 
 //	variable/G StartYZ = 0
 //	variable/G EndYZ = 0
@@ -7449,6 +7466,644 @@ Static Function ShowPhaseErrorGraph(graphname)
 
 End
 
+
+Function CAMTO_HallProbe_Panel() : Panel
+
+	string windowName = "HallProbe"
+	string windowTitle = "Hall Probe Correction"
+
+	if (DataFolderExists("root:varsCAMTO")==0)
+		DoAlert 0, "CAMTO variables not found."
+		return -1
+	endif
+
+	DoWindow/K $windowName
+	NewPanel/K=1/N=$windowName/W=(505,60,830,760) as windowTitle
+	SetDrawLayer UserBack
+
+	variable m, h, h1, l1, l2, l
+	m = 10
+	h = 10
+	h1 = 5
+	l1 = 5
+	l2 = 320
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	// Displacement Error
+	TitleBox tbxTitle1,pos={60,h},size={100,16},fsize=16,frame=0,fstyle=1,title="Probe Displacement Error"
+	h += 25
+
+	SetVariable svarShiftx,pos={10,h},size={250,18},title="Displacement Error X (mm)"
+	h += 25
+
+	SetVariable svarShifty,pos={10,h},size={250,18},title="Displacement Error Y (mm)"
+	h += 25
+
+	SetVariable svarShiftl,pos={10,h},size={250,18},title="Displacement Error L (mm)"
+	h += 25
+
+	Button btnDisplacementError,pos={25,h},size={250,30},fsize=13,fstyle=1
+	Button btnDisplacementError,proc=CAMTO_HallProbe_BtnDisplacementCorrection,title="Apply Displacement Corrections"
+	h += 50
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	// Probe X
+	TitleBox tbxTitle2,pos={125,h},size={100,16},fsize=16,frame=0,fstyle=1,title="Probe X"
+	h = h + 25
+
+	SetVariable svarPxAngy,pos={10,h},size={250,18},title="Angular Error Y (°)"
+	h += 25
+
+	SetVariable svarPxAngz,pos={10,h},size={250,18},title="Angular Error Z (°)"
+	h += 25
+
+	SetVariable svarPxOffset,pos={10,h},size={250,18},title="Offset (T)"
+	h += 25
+
+	Button btnPx,pos={25,h},size={250,30},fsize=13,fstyle=1
+	Button btnPx,proc=CAMTO_HallProbe_BtnPxCorrection,title="Apply Probe X Corrections"
+	h += 50
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	// Probe Y
+	TitleBox tbxTitle3,pos={125,h},size={100,16},fsize=16,frame=0,fstyle=1,title="Probe Y"
+	h += 25
+
+	SetVariable svarPyAngx,pos={10,h},size={250,18},title="Angular Error X (°)"
+	h += 25
+
+	SetVariable svarPyAngz,pos={10,h},size={250,18},title="Angular Error Z (°)"
+	h += 25
+
+	SetVariable svarPyOffset,pos={10,h},size={250,18},title="Offset (T)"
+	h += 25
+
+	Button btnPy,pos={25,h},size={250,30},fsize=13,fstyle=1
+	Button btnPy,proc=CAMTO_HallProbe_BtnPyCorrection,title="Apply Probe Y Corrections"
+	h += 50
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	// Probe Z
+	TitleBox tbxTitle4,pos={125,h},size={100,16},fsize=16,frame=0,fstyle=1,title="Probe Z"
+	h += 25
+
+	SetVariable svarPzAngx,pos={10,h},size={250,18},title="Angular Error X (°)"
+	h += 25
+
+	SetVariable svarPzAngy,pos={10,h},size={250,18},title="Angular Error Y (°)"
+	h += 25
+
+	SetVariable svarPzOffset,pos={10,h},size={250,18},title="Offset (T)"
+	h += 25
+
+	Button btnPz,pos={25,h},size={250,30},fsize=13,fstyle=1
+	Button btnPz,proc=CAMTO_HallProbe_BtnPzCorrection,title="Apply Probe Z Corrections"
+	h += 50
+
+	SetDrawEnv fillpat=0
+	DrawRect l1,h1,l2,h-5
+	h1 = h-5
+
+	h = AddFieldmapOptions(windowName, h1, l1, l2, copyConfigProc="CAMTO_HallProbe_PopupCopyConfig", applyToAllProc="CAMTO_HallProbe_BtnApplyToAll")
+
+	UpdatePanelHallProbe()
+
+	return 0
+
+End
+
+
+Static Function UpdatePanelHallProbe()
+
+	SVAR df = root:varsCAMTO:FIELDMAP_FOLDER
+
+	string windowName = "HallProbe"
+
+	if (WinType(windowName)==0)
+		return -1
+	endif
+
+	UpdateFieldmapOptions(windowName)
+
+	if(strlen(df)>0)
+		Button btnPx,win=$windowName,disable=0
+		Button btnPy,win=$windowName,disable=0
+		Button btnPz,win=$windowName,disable=0
+		Button btnDisplacementError,win=$windowName,disable=0
+
+		SetVariable svarPxAngy,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PX_ANG_Y
+		SetVariable svarPxAngz,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PX_ANG_Z
+		SetVariable svarPyAngx,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PY_ANG_X
+		SetVariable svarPyAngz,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PY_ANG_Z
+		SetVariable svarPzAngx,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PZ_ANG_X
+		SetVariable svarPzAngy,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PZ_ANG_Y
+
+		SetVariable svarShiftx,win=$windowName,value=root:$(df):varsFieldMap:PROBE_SHIFT_X
+		SetVariable svarShifty,win=$windowName,value=root:$(df):varsFieldMap:PROBE_SHIFT_Y
+		SetVariable svarShiftl,win=$windowName,value=root:$(df):varsFieldMap:PROBE_SHIFT_L
+
+		SetVariable svarPxOffset,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PX_OFFSET
+		SetVariable svarPyOffset,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PY_OFFSET
+		SetVariable svarPzOffset,win=$windowName,value=root:$(df):varsFieldMap:PROBE_PZ_OFFSET
+	else
+		Button btnPx,win=$windowName,disable=2
+		Button btnPy,win=$windowName,disable=2
+		Button btnPz,win=$windowName,disable=2
+		Button btnDisplacementError,win=$windowName,disable=2
+
+	endif
+
+End
+
+Function CAMTO_HallProbe_BtnPxCorrection(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+		switch(ba.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			PxCorrection()
+
+			break
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_HallProbe_BtnPyCorrection(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+		switch(ba.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			PyCorrection()
+
+			break
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_HallProbe_BtnPzCorrection(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+		switch(ba.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			PzCorrection()
+
+			break
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_HallProbe_BtnDisplacementCorrection(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+		switch(ba.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			DisplacementCorrection()
+
+			break
+	endswitch
+
+	return 0
+
+End
+
+Function CAMTO_HallProbe_PopupCopyConfig(pa) : PopupMenuControl
+	struct WMPopupAction &pa
+
+	SVAR fieldmapCopy = root:varsCAMTO:FIELDMAP_COPY
+
+	switch(pa.eventCode)
+		case 2:
+			if (IsCorrectFolder() == -1)
+				return -1
+			endif
+
+			fieldmapCopy = pa.popStr
+
+			CopyConfigHallProbe(fieldmapCopy)
+			UpdatePanelHallProbe()
+
+			break
+
+	endswitch
+
+	return 0
+
+End
+
+Static Function CopyConfigHallProbe(dfc)
+	string dfc
+
+	WAVE/T fieldmapFolders= root:wavesCAMTO:fieldmapFolders
+
+	UpdateFieldmapFolders()
+	FindValue/Text=dfc/TXOP=4 fieldmapFolders
+
+	if (V_Value!=-1)
+		NVAR temp_df = :varsFieldmap:PROBE_PX_ANG_Y
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PX_ANG_Y
+		temp_df = temp_dfc
+		NVAR temp_df = :varsFieldmap:PROBE_PX_ANG_Z
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PX_ANG_Z
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PROBE_PY_ANG_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PY_ANG_X
+		temp_df = temp_dfc
+		NVAR temp_df = :varsFieldmap:PROBE_PY_ANG_Z
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PY_ANG_Z
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PROBE_PZ_ANG_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PZ_ANG_X
+		temp_df = temp_dfc
+		NVAR temp_df = :varsFieldmap:PROBE_PZ_ANG_Y
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PZ_ANG_Y
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PROBE_SHIFT_X
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_SHIFT_X
+		temp_df = temp_dfc
+		NVAR temp_df = :varsFieldmap:PROBE_PX_SHIFT_Y
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_SHIFT_Y
+		temp_df = temp_dfc
+		NVAR temp_df = :varsFieldmap:PROBE_SHIFT_L
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_SHIFT_L
+		temp_df = temp_dfc
+
+		NVAR temp_df = :varsFieldmap:PROBE_PX_OFFSET
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PX_OFFSET
+		temp_df = temp_dfc
+		NVAR temp_df = :varsFieldmap:PROBE_PY_OFFSET
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PY_OFFSET
+		temp_df = temp_dfc
+		NVAR temp_df = :varsFieldmap:PROBE_PZ_OFFSET
+		NVAR temp_dfc = root:$(dfc):varsFieldmap:PROBE_PZ_OFFSET
+		temp_df = temp_dfc
+
+	else
+		DoAlert 0, "Data folder not found."
+		return -1
+	endif
+
+	return 0
+
+End
+
+Function CAMTO_HallProbe_BtnApplyToAll(ba) : ButtonControl
+	struct WMButtonAction &ba
+
+	variable i
+	string tdf
+
+	switch(ba.eventCode)
+		case 2:
+
+			DoAlert 1, "Apply Hall Probe Correction for all fieldmaps?"
+			if (V_flag != 1)
+				return -1
+			endif
+
+			UpdateFieldmapFolders()
+
+			Wave/T fieldmapFolders = root:wavesCAMTO:fieldmapFolders
+			NVAR fieldmapCount  = root:varsCAMTO:FIELDMAP_COUNT
+			SVAR fieldmapFolder= root:varsCAMTO:FIELDMAP_FOLDER
+
+			DFREF df = GetDataFolderDFR()
+			string dfc = GetDataFolder(0)
+
+			for (i=0; i < fieldmapCount; i=i+1)
+				tdf = fieldmapFolders[i]
+				fieldmapFolder = tdf
+				SetDataFolder root:$(tdf)
+				CopyConfigHallProbe(dfc)
+				Print("Applying Hall Probe Correction for " + tdf)
+				PxCorrection()
+				PyCorrection()
+				PzCorrection()
+				DisplacementCorrection()
+			endfor
+
+			fieldmapFolder = dfc
+			SetDataFolder df
+
+			UpdatePanelResults()
+
+			break
+	endswitch
+
+	return 0
+
+End
+
+Static Function PxCorrection()
+
+	NVAR pxAngy = :varsFieldmap:PROBE_PX_ANG_Y
+	NVAR pxAngz = :varsFieldmap:PROBE_PX_ANG_Z
+	NVAR pxOffset = :varsFieldmap:PROBE_PX_OFFSET
+	NVAR pxCorrected = :varsFieldmap:PROBE_PX_ANG_CORRECTED
+
+	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
+	NVAR nptsY = :varsFieldmap:LOAD_NPTS_Y
+
+	Wave posX, posY
+
+	variable i, j
+	string posXStr, posYStr
+	string waveStrX, waveStrY, waveStrZ
+
+	if (pxCorrected)
+		DoAlert 0,"Probe X Angular Error is already corrected."
+	else
+		for(i=0; i<nptsY; i+=1)
+			posYStr = num2Str(posY[i])
+
+			for(j=0; j<nptsX; j+=1)
+				posXStr = num2str(posX[j])
+
+				waveStrX = "Bx_X" + posXStr + "Y" + posYStr
+				waveStrY = "By_X" + posXStr + "Y" + posYStr
+				waveStrZ = "Bz_X" + posXStr + "Y" + posYStr
+
+				if (i==0 && j==0)
+					Duplicate/O $waveStrX waveAngXY
+					Duplicate/O $waveStrX waveAngXZ
+				endif
+
+				Wave TmpBx = $waveStrX
+				Wave TmpBy = $waveStrY
+				Wave TmpBz = $waveStrZ
+
+				//Bx - Erro Angular XY
+				waveAngXY = TmpBy * sin(pxAngy*pi/180)
+
+				//Bx - Erro Angular XZ
+				waveAngXZ = TmpBz * sin(pxAngz*pi/180)
+
+				TmpBx = TmpBx - waveAngXY - waveAngXZ
+				TmpBx = TmpBx + pxOffset
+
+			endfor
+		endfor
+
+		pxCorrected = 1
+
+	endif
+End
+
+Static Function PyCorrection()
+
+	NVAR pyAngx = :varsFieldmap:PROBE_PY_ANG_X
+	NVAR pyAngz = :varsFieldmap:PROBE_PY_ANG_Z
+	NVAR pyOffset = :varsFieldmap:PROBE_PY_OFFSET
+	NVAR pyCorrected = :varsFieldmap:PROBE_PY_ANG_CORRECTED
+
+	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
+	NVAR nptsY = :varsFieldmap:LOAD_NPTS_Y
+
+	Wave posX, posY
+
+	variable i, j
+	string posXStr, posYStr
+	string newPosXStr, newPosYStr
+	string waveStrX, waveStrY, waveStrZ
+
+	if (pyCorrected)
+		DoAlert 0,"Probe Y Angular Error is already corrected."
+	else
+		for(i=0; i<nptsY; i+=1)
+			posYStr = num2Str(posY[i])
+
+			for(j=0; j<nptsX; j+=1)
+				posXStr = num2str(posX[j])
+
+				waveStrX = "Bx_X" + posXStr + "Y" + posYStr
+				waveStrY = "By_X" + posXStr + "Y" + posYStr
+				waveStrZ = "Bz_X" + posXStr + "Y" + posYStr
+
+				if (i==0 && j==0)
+					Duplicate/O $waveStrY waveAngYX
+					Duplicate/O $waveStrY waveAngYZ
+				endif
+
+				Wave TmpBx = $waveStrX
+				Wave TmpBy = $waveStrY
+				Wave TmpBz = $waveStrZ
+
+				//By - Erro Angular YX
+				waveAngYX = TmpBx * sin(pyAngx*pi/180)
+
+				//By - Erro Angular YZ
+				waveAngYZ = TmpBz * sin(pyAngz*pi/180)
+
+				TmpBy = TmpBy - waveAngYX - waveAngYZ
+				TmpBy = TmpBy + pyOffset
+
+			endfor
+		endfor
+
+		pyCorrected = 1
+
+	endif
+End
+
+Static Function PzCorrection()
+
+	NVAR pzAngx = :varsFieldmap:PROBE_PZ_ANG_X
+	NVAR pzAngy = :varsFieldmap:PROBE_PZ_ANG_Y
+	NVAR pzOffset = :varsFieldmap:PROBE_PZ_OFFSET
+	NVAR pzCorrected = :varsFieldmap:PROBE_PZ_ANG_CORRECTED
+
+	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
+	NVAR nptsY = :varsFieldmap:LOAD_NPTS_Y
+
+	Wave posX, posY
+
+	variable i, j
+	string posXStr, posYStr
+	string newPosXStr, newPosYStr
+	string waveStrX, waveStrY, waveStrZ
+
+	if (pzCorrected)
+		DoAlert 0,"Probe Z Angular Error is already corrected."
+	else
+		for(i=0; i<nptsY; i+=1)
+			posYStr = num2Str(posY[i])
+
+			for(j=0; j<nptsX; j+=1)
+				posXStr = num2str(posX[j])
+
+				waveStrX = "Bx_X" + posXStr + "Y" + posYStr
+				waveStrY = "By_X" + posXStr + "Y" + posYStr
+				waveStrZ = "Bz_X" + posXStr + "Y" + posYStr
+
+				if (i==0 && j==0)
+					Duplicate/O $waveStrZ waveAngZX
+					Duplicate/O $waveStrZ waveAngZY
+				endif
+
+				Wave TmpBx = $waveStrX
+				Wave TmpBy = $waveStrY
+				Wave TmpBz = $waveStrZ
+
+				//Bz - Erro Angular ZX
+				waveAngZX = TmpBx * sin(pzAngx*pi/180)
+
+				//Bz - Erro Angular ZY
+				waveAngZY = TmpBy * sin(pzAngy*pi/180)
+
+				TmpBz = TmpBz - waveAngZX - waveAngZY
+				TmpBz = TmpBz + pzOffset
+
+			endfor
+		endfor
+
+		pzCorrected = 1
+
+	endif
+End
+
+Static Function DisplacementCorrection()
+
+	NVAR shiftX = :varsFieldmap:PROBE_SHIFT_X
+	NVAR shiftY = :varsFieldmap:PROBE_SHIFT_Y
+	NVAR shiftL = :varsFieldmap:PROBE_SHIFT_L
+	NVAR displacementCorrected = :varsFieldmap:PROBE_DISPLACEMENT_CORRECTED
+
+	NVAR startX = :varsFieldmap:LOAD_START_X
+	NVAR startY = :varsFieldmap:LOAD_START_Y
+	NVAR startL = :varsFieldmap:LOAD_START_L
+	NVAR endX = :varsFieldmap:LOAD_END_X
+	NVAR endY = :varsFieldmap:LOAD_END_Y
+	NVAR endL = :varsFieldmap:LOAD_END_L
+	NVAR stepX = :varsFieldmap:LOAD_STEP_X
+	NVAR stepY = :varsFieldmap:LOAD_STEP_Y
+	NVAR stepL = :varsFieldmap:LOAD_STEP_L
+	NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
+	NVAR nptsY = :varsFieldmap:LOAD_NPTS_Y
+	NVAR nptsL = :varsFieldmap:LOAD_NPTS_L
+
+	Wave posX, posY, posL
+
+	variable i, j
+	string posXStr, posYStr
+	string newPosXStr, newPosYStr
+	string waveStrX, waveStrY, waveStrZ
+	string waveStrTmpX, waveStrTmpY, waveStrTmpZ
+	string waveStrNewX, waveStrNewY, waveStrNewZ
+
+	if (displacementCorrected)
+		DoAlert 0,"Probe Displacement Error is already corrected."
+	else
+		startX = startX  + shiftX
+		endX  = endX   + shiftX
+		startY = startY  + shiftY
+		endY  = endY   + shiftY
+		startL = startL  + shiftL
+		endL  = endL   + shiftL
+
+		Duplicate posX newPosX
+		Duplicate posY newPosY
+
+		for (i=0;i<nptsX;i+=1)
+			newPosX[i] = (startX + stepX*i) / 1000
+		endfor
+
+		for (i=0;i<nptsY;i+=1)
+			newPosY[i] = (startY + stepY*i) / 1000
+		endfor
+
+		for (i=0;i<nptsL;i+=1)
+			posL[i] = (startL + stepL*i) / 1000
+		endfor
+
+		for(i=0; i<nptsY; i+=1)
+			posYStr = num2Str(posY[i])
+			newPosYStr = num2Str(newPosY[i])
+
+			for(j=0; j<nptsX; j+=1)
+				posXStr = num2str(posX[j])
+				newPosXStr = num2str(newPosX[j])
+
+				waveStrX = "Bx_X" + posXStr + "Y" + posYStr
+				waveStrY = "By_X" + posXStr + "Y" + posYStr
+				waveStrZ = "Bz_X" + posXStr + "Y" + posYStr
+
+				waveStrTmpX = "TmpBx_X" + newPosXStr + "Y" + newPosYStr
+				waveStrTmpY = "TmpBy_X" + newPosXStr + "Y" + newPosYStr
+				waveStrTmpZ = "TmpBz_X" + newPosXStr + "Y" + newPosYStr
+
+				Rename $waveStrX $waveStrTmpX
+				Rename $waveStrY $waveStrTmpY
+				Rename $waveStrZ $waveStrTmpZ
+
+			endfor
+		endfor
+
+		for(i=0; i<nptsY; i+=1)
+			posYStr = num2Str(posY[i])
+			newPosYStr = num2Str(newPosY[i])
+
+			for(j=0; j<nptsX; j+=1)
+				posXStr = num2str(posX[j])
+				newPosXStr = num2str(newPosX[j])
+
+				waveStrTmpX = "TmpBx_X" + newPosXStr + "Y" + newPosYStr
+				waveStrTmpY = "TmpBy_X" + newPosXStr + "Y" + newPosYStr
+				waveStrTmpZ = "TmpBz_X" + newPosXStr + "Y" + newPosYStr
+
+				waveStrNewX = "Bx_X" + newPosXStr + "Y" + newPosYStr
+				waveStrNewY = "By_X" + newPosXStr + "Y" + newPosYStr
+				waveStrNewZ = "Bz_X" + newPosXStr + "Y" + newPosYStr
+
+				Rename $waveStrTmpX $waveStrNewX
+				Rename $waveStrTmpY $waveStrNewY
+				Rename $waveStrTmpZ $waveStrNewZ
+
+			endfor
+		endfor
+
+		posX[] = newPosX[p]
+		posY[] = newPosY[p]
+		Killwaves newPosX, newPosY
+
+		displacementCorrected = 1
+
+	endif
+End
 
 //Window Results() : Panel
 //	PauseUpdate; Silent 1		// building window...
