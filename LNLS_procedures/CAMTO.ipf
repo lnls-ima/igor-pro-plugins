@@ -8105,6 +8105,152 @@ Static Function DisplacementCorrection()
 	endif
 End
 
+
+#if Exists("Calc3DSplineInterpolant")
+
+	Function Calc3DFieldmapInterpolant()
+
+		NVAR startX = :varsFieldmap:LOAD_START_X
+		NVAR startY = :varsFieldmap:LOAD_START_Y
+		NVAR startL = :varsFieldmap:LOAD_START_L
+		NVAR endX = :varsFieldmap:LOAD_END_X
+		NVAR endY = :varsFieldmap:LOAD_END_Y
+		NVAR endL = :varsFieldmap:LOAD_END_L
+		NVAR stepX = :varsFieldmap:LOAD_STEP_X
+		NVAR stepY = :varsFieldmap:LOAD_STEP_Y
+		NVAR stepL = :varsFieldmap:LOAD_STEP_L
+		NVAR nptsX = :varsFieldmap:LOAD_NPTS_X
+		NVAR nptsY = :varsFieldmap:LOAD_NPTS_Y
+		NVAR nptsL = :varsFieldmap:LOAD_NPTS_L
+
+		Wave posX, posY, posL
+
+		variable calc_interpolant_flag
+		variable i, j, k, l
+		string posXStr, posYStr
+
+		if (EquallySpaced(posX) == 0)
+			return 0
+		endif
+
+		if (EquallySpaced(posY) == 0)
+			return 0
+		endif
+
+		if (EquallySpaced(posL) == 0)
+			return 0
+		endif
+
+		Make/D/O/N=(nptsX*nptsY*nptsL) NewWave0
+		Make/D/O/N=(nptsX*nptsY*nptsL) NewWave1
+		Make/D/O/N=(nptsX*nptsY*nptsL) NewWave2
+		Make/D/O/N=(nptsX*nptsY*nptsL) NewWave3
+		Make/D/O/N=(nptsX*nptsY*nptsL) NewWave4
+		Make/D/O/N=(nptsX*nptsY*nptsL) NewWave5
+
+		l = 0
+		for (i=0;i<nptsL;i=i+1)
+			for (j=0;j<nptsY;j=j+1)
+				for (k=0;k<nptsX;k=k+1)
+
+					NewWave0[l] = startX + k*stepX
+					NewWave1[l] = startY + j*stepY
+					NewWave2[l] = startL + i*stepL
+
+					posXStr = num2str(NewWave0[l]/1000)
+					posYStr = num2str(NewWave1[l]/1000)
+
+					Wave Tmp = $"Bx_X" + posXStr + "Y" + posYStr
+					NewWave3[l] = Tmp[i]
+
+					Wave Tmp = $"By_X" + posXStr + "Y" + posYStr
+					NewWave4[l] = Tmp[i]
+
+					Wave Tmp = $"Bz_X" + posXStr + "Y" + posYStr
+					NewWave5[l] = Tmp[i]
+
+					l = l + 1
+
+				endfor
+			endfor
+		endfor
+
+		NewWave0[] = NewWave0[p]/1000
+		NewWave1[] = NewWave1[p]/1000
+		NewWave2[] = NewWave2[p]/1000
+
+		calc_interpolant_flag = Calc3DSplineInterpolant(NewWave0, NewWave1, NewWave2, NewWave3, NewWave4, NewWave5)
+
+		Killwaves/Z NewWave0
+		Killwaves/Z NewWave1
+		Killwaves/Z NewWave2
+		Killwaves/Z NewWave3
+		Killwaves/Z NewWave4
+		Killwaves/Z NewWave5
+
+		return calc_interpolant_flag
+	End
+
+
+	ThreadSafe Function/Wave GetPerpendicularField(index, deflectionAngle, posX, posY, posL, gridX)
+		Variable index, deflectionAngle, posX, posY, posL
+		Wave gridX
+
+		Make/D/O/N=3 magField
+		variable rotX, rotY, rotL
+
+		//Atualizar
+		rotX = posX + gridX[index]*cos(deflectionAngle)
+		rotY = posY + gridX[index]*cos(deflectionAngle)
+		rotL = posL + gridX[index]*sin(deflectionAngle)
+		magField[0] = Get3DFieldX(rotX, rotY, rotL)
+		magField[1] = Get3DFieldY(rotX, rotY, rotL)
+		magField[2] = Get3DFieldZ(rotX, rotY, rotL)
+
+		return magField
+
+	End
+
+#else
+
+	Function CalcFieldmapInterpolant()
+		return 0
+	End Function
+
+
+	ThreadSafe Function/Wave GetPerpendicularField(index, deflectionAngle, posX, posY, posL, gridX)
+		Variable index, deflectionAngle, posX, posY, posL
+		Wave gridX
+		Make/D/O/N=3 magField
+		return magField
+	End
+
+#endif
+
+
+Static Function EquallySpaced(w)
+	Wave w
+
+	variable i, tol
+	variable step, prev_step, eq_step
+
+	tol = 1e-10
+	eq_step = 1
+	prev_step = w(1) - w(0)
+
+	for(i=1; i<numpnts(w)-1; i=i+1)
+		step = w(i+1) - w(i)
+		if (Abs(step - prev_step) > tol)
+			eq_step = 0
+			break
+		endif
+		prev_step = step
+	endfor
+
+	return eq_step
+End
+
+
 //Window Results() : Panel
 //	PauseUpdate; Silent 1		// building window...
 //
