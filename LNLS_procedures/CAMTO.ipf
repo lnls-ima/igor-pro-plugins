@@ -7432,9 +7432,9 @@ Static Function CalcPhaseError()
 	KillWaves/Z ang_sum, ang_sum_int
 
 	Make/O/D/N=(nsp) phase_fit = NaN
-	Make/O/D/N=(nsp) phase_error = NaN
+	Make/O/D/N=(nsp) phase_error_wv = NaN
 	CurveFit/Q line phase/D=phase_fit
-	phase_error = phase - phase_fit
+	phase_error_wv = phase - phase_fit
 
 	Make/O/D/N=(np-1) error_pe = NaN
 	Make/O/D/N=(np-1) error_pe_sqrt = NaN
@@ -7443,14 +7443,14 @@ Static Function CalcPhaseError()
 		auxp1 = V_Value
 		FindValue/V=(peakPositionsXPosT[idx+1]) trajL
 		auxp2 = V_Value
-		error_pe[idx] = Mean(phase_error, auxp1-startP+1, auxp2-startP-1)*180/Pi
+		error_pe[idx] = Mean(phase_error_wv, auxp1-startP+1, auxp2-startP-1)*180/Pi
 	endfor
 
 	error_pe_sqrt = error_pe*error_pe
 	IDPhaseError = Sqrt(Sum(error_pe_sqrt)/numpnts(error_pe_sqrt))
 
 	KillWaves/Z phase, phase_fit
-	KillWaves/Z phase_error, error_pe_sqrt
+	KillWaves/Z phase_error_wv, error_pe_sqrt
 
 End
 
@@ -8192,7 +8192,7 @@ End
 	End
 
 
-	ThreadSafe Function/Wave GetPerpendicularField(index, deflectionAngle, posX, posY, posL, gridX)
+	ThreadSafe Static Function/Wave GetPerpendicularField(index, deflectionAngle, posX, posY, posL, gridX)
 		Variable index, deflectionAngle, posX, posY, posL
 		Wave gridX
 
