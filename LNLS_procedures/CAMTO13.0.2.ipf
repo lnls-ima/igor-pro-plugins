@@ -11584,15 +11584,20 @@ Function Carrega_Resultados_Mod(filename)
 End
 
 
-Function GetFromAllFieldmaps(varname, [idx])
+Function GetFromAllFieldmaps(varname, [idx, istext])
 	string varname
 	variable idx
+	variable istext
 	
 	variable iswave
 	if (ParamIsDefault(idx))
 		iswave = 0
 	else
 		iswave = 1
+	endif	
+	
+	if (ParamIsDefault(istext))
+		istext = 0
 	endif	
 	
 	DFREF cf = GetDataFolderDFR()
@@ -11604,8 +11609,15 @@ Function GetFromAllFieldmaps(varname, [idx])
 	
 	string wn
 	wn = varname + "_all"
-	Make/D/O/N=(FieldmapCount) $wn
-	Wave w = $wn
+	
+	
+	if (istext)
+		Make/T/O/N=(FieldmapCount) $wn
+		Wave/T wt = $wn
+	else
+		Make/D/O/N=(FieldmapCount) $wn
+		Wave w = $wn
+	endif
 		
 	variable i
 	string df
@@ -11614,20 +11626,43 @@ Function GetFromAllFieldmaps(varname, [idx])
 		df = FieldMapDirs[i]
 		
 		if (iswave)
-			Wave temp = root:$(df):$(varname)
-			if (WaveExists(temp))
-				w[i] = temp[idx]
+			if (istext)
+				Wave/T tempt = root:$(df):$(varname)
+				if (WaveExists(tempt))
+					wt[i] = tempt[idx]
+				else
+					Print("Wave not found for: " + df)
+					break
+				endif
+			
 			else
-				Print("Wave not found for: " + df)
-				break
+				Wave temp = root:$(df):$(varname)
+				if (WaveExists(temp))
+					w[i] = temp[idx]
+				else
+					Print("Wave not found for: " + df)
+					break
+				endif
+			
 			endif
 		else
-			NVAR tempv = root:$(df):varsFieldMap:$(varname)
-			if (NVAR_Exists(tempv))
-				w[i] = tempv
+			if (istext)
+				SVAR tempvt = root:$(df):varsFieldMap:$(varname)
+				if (SVAR_Exists(tempvt))
+					wt[i] = tempvt
+				else
+					Print("Variable not found for: " + df)
+					break
+				endif
+
 			else
-				Print("Variable not found for: " + df)
-				break
+				NVAR tempv = root:$(df):varsFieldMap:$(varname)
+				if (NVAR_Exists(tempv))
+					w[i] = tempv
+				else
+					Print("Variable not found for: " + df)
+					break
+				endif
 			endif
 		endif
 				
@@ -11673,6 +11708,7 @@ Function PlotForAllFieldmaps(ywave, xwave)
 	SetDataFolder cf
 	
 End
+
 
 // Alterações
 //Versão 12.9.1  - Multipolos Normalizados não são mais expressos por seus módulos (pedido da Priscila)
